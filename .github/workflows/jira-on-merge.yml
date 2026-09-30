@@ -1,0 +1,67 @@
+name: Jira - PR Merged
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  merge:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract issue key
+        id: extract
+        run: |
+          ISSUE=$(echo "${{ github.event.pull_request.title }}" | grep -oE '[A-Z]+-[0-9]+' | head -n1 || true)
+          echo "issue=$ISSUE" >> $GITHUB_OUTPUT
+
+      - name: Move based on target branch
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        run: |
+          ISSUE="${{ steps.extract.outputs.issue }}"
+          [ -z "$ISSUE" ] && exit 0
+
+          TARGET="${{ github.event.pull_request.base.ref }}"
+
+          if [ "$TARGET" == "dev" ]; then
+            STATUS="To Test"
+          elif [ "$TARGET" == "main" ]; then
+            STATUS="Done"
+          else
+            exit 0
+          fi
+
+          chmod +x .github/scripts/jira-transition.sh
+          .github/scripts/jira-transition.sh "$ISSUE" "$STATUS"
+
+  rejected:
+    if: github.event.pull_request.merged == false
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract issue key
+        id: extract
+        run: |
+          ISSUE=$(echo "${{ github.event.pull_request.title }}" | grep -oE '[A-Z]+-[0-9]+' | head -n1 || true)
+          echo "issue=$ISSUE" >> $GITHUB_OUTPUT
+
+      - name: Move back to In Progress
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        run: |
+          ISSUE="${{ steps.extract.outputs.issue }}"
+          [ -z "$ISSUE" ] && exit 0
+          chmod +x .github/scripts/jira-transition.sh
+          .github/scripts/jira-transition.sh "$ISSUE" "In Progress"

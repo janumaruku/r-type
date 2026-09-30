@@ -1,0 +1,31 @@
+name: Jira - PR Opened
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  pr-open:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract issue key
+        id: extract
+        run: |
+          ISSUE=$(echo "${{ github.event.pull_request.title }}" | grep -oE '[A-Z]+-[0-9]+' | head -n1 || true)
+          echo "issue=$ISSUE" >> $GITHUB_OUTPUT
+
+      - name: Move to In Review (if dev)
+        if: github.event.pull_request.base.ref == 'dev'
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        run: |
+          ISSUE="${{ steps.extract.outputs.issue }}"
+          [ -z "$ISSUE" ] && exit 0
+          chmod +x .github/scripts/jira-transition.sh
+          .github/scripts/jira-transition.sh "$ISSUE" "In Review"

@@ -1,0 +1,84 @@
+name: Branch Merge Policy
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  validate-merge-path:
+    name: Validate merge path to main
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'main'
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch dev branch
+        run: git fetch origin dev
+
+      - name: Block dev -> main
+        if: github.head_ref == 'dev'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "::error::PR from 'dev' to 'main' is strictly forbidden.
+          You must create PRs from feature branches."
+
+          gh pr review ${{ github.event.pull_request.number }} \
+            --request-changes \
+            --body "Merging \`dev\` into \`main\` is not allowed.
+          ✔ Correct flow:
+            - feature → dev
+            - feature → main (only after dev)"
+
+          gh pr close ${{ github.event.pull_request.number }} \
+          --comment "This PR has been automatically closed because \`dev → main\` is forbidden."
+
+          exit 1
+
+      - name: Ensure branch is merged into dev
+        id: ancestry_check
+        run: |
+          PR_SHA=${{ github.event.pull_request.head.sha }}
+          
+          if git merge-base --is-ancestor "$PR_SHA" origin/dev; then
+            echo "valid=true" >> $GITHUB_OUTPUT
+          else
+            echo "valid=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Reject if not merged into dev
+        if: steps.ancestry_check.outputs.valid == 'false'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "::error::Branch is not merged into dev."
+          
+          # Avoid duplicate reviews
+          EXISTING=$(gh pr view ${{ github.event.pull_request.number }} --json reviews \
+            --jq '.reviews[] | select(.state=="CHANGES_REQUESTED") | .id' | head -n 1)
+          
+          if [[ -z "$EXISTING" ]]; then
+            gh pr review ${{ github.event.pull_request.number }} \
+              --request-changes \
+              --body "This branch has not been merged into \`dev\`.
+              Required workflow:
+                1. Merge your branch into \`dev\`
+                2. Then open a PR to \`main\`"
+          else
+            echo "Changes already requested, skipping review"
+          fi
+
+          exit 1
+
+      - name: Validation success
+        if: steps.ancestry_check.outputs.valid == 'true'
+        run: |
+          echo "::notice::PR is valid: branch already merged into dev"
