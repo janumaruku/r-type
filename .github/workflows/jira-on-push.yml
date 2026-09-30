@@ -1,0 +1,55 @@
+name: Jira - Push to Branch
+
+on:
+  push:
+    branches-ignore:
+      - main
+      - dev
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for open PR
+        id: pr-check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          PR_COUNT=$(gh pr list --head "$BRANCH" --state open --json number --jq 'length')
+          echo "pr_open=$([ "$PR_COUNT" -gt 0 ] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Extract issue key from branch
+        id: extract
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          ISSUE=$(echo "$BRANCH" | grep -oE '[A-Z]+-[0-9]+' | head -n1 || true)
+          echo "issue=$ISSUE" >> $GITHUB_OUTPUT
+
+      - name: Move to In Progress
+        if: steps.pr-check.outputs.pr_open == 'false'
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        run: |
+          ISSUE="${{ steps.extract.outputs.issue }}"
+          [ -z "$ISSUE" ] && exit 0
+          chmod +x .github/scripts/jira-transition.sh
+          .github/scripts/jira-transition.sh "$ISSUE" "In Progress"
+
+      - name: Move to In Review
+        if: steps.pr-check.outputs.pr_open == 'true'
+        env:
+          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
+          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_BASE_URL: ${{ secrets.JIRA_BASE_URL }}
+        run: |
+          ISSUE="${{ steps.extract.outputs.issue }}"
+          [ -z "$ISSUE" ] && exit 0
+          chmod +x .github/scripts/jira-transition.sh
+          .github/scripts/jira-transition.sh "$ISSUE" "In Review"
