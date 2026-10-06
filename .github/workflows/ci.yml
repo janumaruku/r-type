@@ -393,7 +393,6 @@ jobs:
     name: Push to mirror
 
     needs:
-      - check_coding_style
       - static_analysis
       - unit_test_linux
       - unit_test_windows
