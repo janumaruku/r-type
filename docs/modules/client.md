@@ -141,7 +141,7 @@ classDiagram
     class IGameCommand {
         <<interface>>
         +execute(ClientNetworkAdapter&, net::Packet&)* bool
-        +operator()(ClientNetworkAdapter&, net::Packet&)* bool
+        +operator()(ClientNetworkAdapter&, net::Packet&) bool
     }
     class SnapshotCommand
     class EventCommand

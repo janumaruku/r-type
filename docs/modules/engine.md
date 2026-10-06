@@ -51,15 +51,39 @@ classDiagram
     class ResourceError
     class ConfigError
     class NetworkError
-    class Log {
-        <<namespace>>
-        +setLevel(Level)$
-        +trace(fmt, args)$
-        +debug(fmt, args)$
-        +info(fmt, args)$
-        +warn(fmt, args)$
-        +error(fmt, args)$
+    class Level {
+        <<enumeration>>
+        TRACE
+        DEBUG
+        INFO
+        WARN
+        ERR
+        OFF
     }
+    class Logger {
+        -std::string _context
+        +Logger(std::string context)
+        +trace() LogLine
+        +debug() LogLine
+        +info() LogLine
+        +warn() LogLine
+        +error() LogLine
+        +trace(format_string fmt, Args... args) void
+        +debug(format_string fmt, Args... args) void
+        +info(format_string fmt, Args... args) void
+        +warn(format_string fmt, Args... args) void
+        +error(format_string fmt, Args... args) void
+    }
+    class LogLine {
+        -Level _level
+        -std::string_view _context
+        -bool _active
+        -std::ostringstream _buffer
+        +operator<<(T const& value) LogLine&
+        +~LogLine()
+    }
+    Logger ..> LogLine : creates
+    Logger ..> Level
     class AssetLocator {
         -std::filesystem::path _root
         +AssetLocator(std::optional~path~ override)
@@ -69,7 +93,7 @@ classDiagram
     class ICommand~Args~ {
         <<interface>>
         +execute(Args... args)* bool
-        +operator()(Args... args)* bool
+        +operator()(Args... args) bool
     }
     class FactoryTemplate~Base, Key, Args~ {
         -std::unordered_map~Key, CreatorCallable~ _creators
@@ -88,11 +112,98 @@ classDiagram
 | --- | --- |
 | `Vec2<T>`, `Rect<T>` | Plain aggregates, `constexpr` where possible. Aliases: `Vec2f`, `Vec2i`, `Vec2u`, `FloatRect`, `IntRect`. Coordinates use a y-down screen convention, in **logical units** ([game rules](game.md#rules-and-tuning-values)). |
 | `Rng` | The only source of randomness in the game. The server seeds it from `std::random_device` unless `--seed` is given, which makes test runs reproducible. Never use `std::rand`. |
-| `log::*` | Thread-safe and built on `std::format`. Each line is `[HH:MM:SS.mmm] [LEVEL] [thread] message` on `stderr`. The level comes from `--log-level`. There is no file sink in Part 1. |
+| `Logger`, `LogLine`, `log::*` | Thread-safe logging with a stream style and a `std::format` style, one line at a time, to `std::cerr`, coloured per level. See [Logging](#logging) below. |
 | Error types | Thrown only during start-up or for a fatal, unrecoverable state. Per-frame code never throws on bad input; it returns `bool` or `std::optional`. The one exception is `net::PacketError`, which is thrown and caught inside the packet decode boundary ([network](network.md#netpacket), [handbook](../handbook/development.md#error-handling-policy)). |
-| `ICommand<Args...>` | Generic command interface: `execute(Args...)` returns `false` when the command could not be carried out, and `operator()` forwards to `execute`. Used for the server's and client's message commands. |
+| `ICommand<Args...>` | Generic command interface: `execute(Args...)` returns `false` when the command could not be carried out, and `operator()` is a non-virtual member that forwards to `execute`, so commands only implement `execute`. Used for the server's and client's message commands. |
 | `FactoryTemplate<Base, Key, Args...>` | Maps a key to a creator. `registerCreator<Concrete>(key)` only compiles if `Concrete::create(Args...)` returns `std::unique_ptr<Base>` (enforced by the `HasCreateMethod` concept). `create(key, args...)` throws `std::runtime_error` for an unknown key, so callers check `hasKey` first on untrusted keys. The key type needs `std::hash` and `operator<<` (used in that error message). Copy and move are deleted. |
 | `AssetLocator` | Finds `assets/` from, in order: the `--assets` flag, the `RTYPE_ASSETS_DIR` environment variable, `<executable dir>/assets`, then `<cwd>/assets`. Throws `ResourceError` with every path it tried. |
+
+### Logging
+
+One logging facility for the whole project, in `engine/core/include/engine/core/Log.hpp` and `src/Log.cpp`. It looks like `std::cout`, can also be used like `std::format`, and is safe to call from the network IO thread and the game thread at the same time.
+
+#### Usage
+
+```cpp
+using namespace engine::core;
+
+// std::format style (same syntax as std::format and C++23's std::println)
+log::info("player {} joined from {}", id, endpoint);
+log::error("cannot bind UDP port {}: {}", port, reason);
+
+// Stream style, like std::cout: the line is written when the statement ends
+log::info() << "player " << id << " joined from " << endpoint;
+
+// With a context: one Logger per module or class, the context is printed on every line
+Logger netLog{"net"};
+netLog.warn("dropped {} datagrams", count);
+netLog.debug() << "received " << bytes << " bytes from " << endpoint;
+```
+
+```text
+[14:02:07.415] [INFO] [main] player 2 joined from 10.0.0.5:51234
+[14:02:07.416] [WARN] [net-io] [net] dropped 3 datagrams
+```
+
+The free functions `log::trace()` … `log::error()` use a default `Logger` with no context.
+
+#### API
+
+```cpp
+namespace engine::core {
+
+enum class Level : std::uint8_t { TRACE, DEBUG, INFO, WARN, ERR, OFF };
+
+class LogLine {                       // a single line being built
+public:
+    LogLine(Level level, std::string_view context);
+    ~LogLine();                       // writes the whole line, once
+    LogLine(LogLine&&) noexcept;      // movable, not copyable
+    LogLine(const LogLine&) = delete;
+
+    template <typename T>
+    LogLine& operator<<(const T& value);
+};
+
+class Logger {
+public:
+    explicit Logger(std::string context = "");
+
+    [[nodiscard]] LogLine info() const;                                // stream style
+    template <typename... Args>
+    void info(std::format_string<Args...> fmt, Args&&... args) const;  // format style
+    // same pair for trace, debug, warn and error
+};
+
+namespace log {
+    void setLevel(Level level);
+    Level level();
+    std::optional<Level> parseLevel(std::string_view name);   // "trace" | "debug" | "info" | "warn" | "error"
+    void setThreadName(std::string_view name);                // e.g. "main", "net-io"
+    void setOutput(std::ostream& stream);                     // std::cerr by default; tests redirect it
+    void setColors(bool enabled);                             // default: on only if the output is a terminal
+
+    LogLine info();                                           // and trace, debug, warn, error
+    template <typename... Args>
+    void info(std::format_string<Args...> fmt, Args&&... args);
+}
+
+}
+```
+
+#### Rules
+
+| Rule | Detail |
+| --- | --- |
+| Level order | `TRACE < DEBUG < INFO < WARN < ERR < OFF`. A message is printed when its level is **≥** the threshold set with `setLevel` (default `INFO`). `OFF` silences everything. |
+| `ERR`, not `ERROR` | Windows' `wingdi.h` defines `ERROR` as a macro, which breaks the name even inside an enum. The method `error()` is fine: it's lowercase. |
+| One stream | Every level goes to the same stream: `std::cerr`. It's unbuffered, so a line reaches the terminal immediately, even just before a crash. Diagnostics stay off `std::cout`, so `./r-type_server 2> server.log` captures the whole log. |
+| One line, written once | A `LogLine` builds its text in its own buffer, and its destructor writes the full line to the stream in a single call, under one global mutex. Lines from two threads never mix, and there is no end marker to forget: the line ends with the statement. |
+| Colours per level | `TRACE` grey, `DEBUG` cyan, `INFO` green, `WARN` yellow, `ERR` red. For every level except `ERR`, the colour applies to the prefix only (`[time] [LEVEL] [thread] [context]`) and the message stays in the terminal's normal colour, so long messages stay readable. For `ERR`, the **whole line** is red, so errors stand out when scrolling. A reset code ends the coloured part. Colours are on by default only when the output is a terminal (`isatty` on Linux, `_isatty` on Windows), so CI logs and files stay free of escape codes. |
+| Line format | `[HH:MM:SS.mmm] [LEVEL] [thread] [context] message`. The `[context]` part is omitted when the context is empty. The time is UTC, written with `std::format("{:%T}", std::chrono::floor<std::chrono::milliseconds>(now))`, which works on GCC 13 and MSVC without time-zone support. The thread name is a `thread_local`, `"?"` until `setThreadName` is called. |
+| Cost when filtered out | The format style checks the level before calling `std::format`, so a disabled call costs one comparison. A filtered-out `LogLine` ignores its `<<` calls, but the expressions on the right of `<<` are still evaluated: don't put expensive computations in a log line. The threshold is a `std::atomic<Level>`. |
+| No `printf` style | `"%d"`-style formatting isn't offered: it isn't type-safe, and `std::format` covers the same need. `std::println` is C++23, and we build in C++20, so the format style uses `std::format` with the same syntax. |
+| `[[nodiscard]]` | The stream-style methods are `[[nodiscard]]`, so `log::info();` alone (a line that would print nothing) triggers a compiler warning, which `-Werror` turns into an error. |
 
 ## ECS (`engine_ecs`)
 

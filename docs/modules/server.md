@@ -35,7 +35,7 @@ classDiagram
     class ServerConfig {
         +uint16_t port = 4242
         +std::optional~uint32_t~ seed
-        +log::Level logLevel = INFO
+        +core::Level logLevel = INFO
         +parse(int argc, char** argv)$ ServerConfig
     }
     class ServerApp {
@@ -98,7 +98,7 @@ classDiagram
     class IServerCommand {
         <<interface>>
         +execute(ServerNetworkAdapter&, IncomingMessage&)* bool
-        +operator()(ServerNetworkAdapter&, IncomingMessage&)* bool
+        +operator()(ServerNetworkAdapter&, IncomingMessage&) bool
     }
     class HelloCommand {
         +execute(ServerNetworkAdapter&, IncomingMessage&) bool
@@ -178,11 +178,6 @@ bool InputCommand::execute(ServerNetworkAdapter& adapter, IncomingMessage& messa
     const auto input = message.packet.read<protocol::Input>();   // throws PacketError if malformed
     adapter.world().apply(game::SetInput{message.session->playerId, input.inputSequence, input.buttons});
     return true;
-}
-
-bool InputCommand::operator()(ServerNetworkAdapter& adapter, IncomingMessage& message)
-{
-    return execute(adapter, message);
 }
 
 std::unique_ptr<IServerCommand> InputCommand::create()
