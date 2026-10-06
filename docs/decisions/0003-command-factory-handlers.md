@@ -12,7 +12,7 @@ One variant of factory registration is avoided: a macro that registers a creator
 ## Decision
 
 - `engine_core` provides the generic `ICommand<Args...>` and `FactoryTemplate<Base, Key, Args...>` templates, as in Zappy.
-- Each message type that a side receives has one command class with `execute`, `operator()` and a static `create()`.
+- Each message type that a side receives has one command class that implements `execute` and provides a static `create()`. `ICommand::operator()` is non-virtual and forwards to `execute`, so commands don't redefine it.
 - The class that receives the messages (`ServerNetworkAdapter`, `ConnectingScene`, `ClientNetworkAdapter`) owns a factory keyed by `protocol::MessageType` and fills it in a `registerCommands()` method called from its constructor:
 
 ```cpp

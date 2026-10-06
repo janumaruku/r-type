@@ -17,9 +17,9 @@ Ownership: `std::unique_ptr` for anything owned, references for borrowed objects
 
 ## Logging
 
-Both binaries log to `stderr` through `engine::core::log`. Every level has a defined use:
+Both binaries log to `std::cerr` through `engine::core::Logger` and the `log::` functions ([engine: logging](../modules/engine.md#logging)). Each module or class that logs keeps a `Logger` with a short context name (`"net"`, `"server"`, `"client"`), and each thread names itself with `log::setThreadName` at start-up. Every level has a defined use:
 
-- **error:** an action failed and was abandoned.
+- **error** (`Level::ERR`): an action failed and was abandoned.
 - **warn:** something was degraded (tick overrun, dropped datagrams, audio disabled).
 - **info:** lifecycle events (start, bind, join, leave, game over, periodic stats).
 - **debug:** per-message traces.
