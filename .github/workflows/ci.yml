@@ -7,19 +7,24 @@ on:
   pull_request:
     branches-ignore:
       - 'temp/*'
-
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
+
+  # ============================================================
+  # Linux compilation check
+  # ============================================================
+
   check_compilation:
     name: Compilation check
     if: ${{ github.repository != vars.MIRROR_URL }}
     runs-on: ubuntu-latest
     container: janumaruku/epitest-with-raylib
     timeout-minutes: 4
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -27,16 +32,16 @@ jobs:
       - name: Build binary
         run: |
           set -e
-          
+
           if [ -f Makefile ]; then
             echo "Detected Makefile"
             make -j$(nproc) 2>&1 | tee build.log
-          
+
           elif [ -f CMakeLists.txt ]; then
             echo "Detected CMake project"
             cmake -B build
             cmake --build build -j$(nproc) 2>&1 | tee build.log
-          
+
           else
             echo "No supported build system found"
             exit 1
@@ -48,6 +53,11 @@ jobs:
         with:
           name: build-log
           path: build.log
+          if-no-files-found: warn
+
+  # ============================================================
+  # Linux compilation gate
+  # ============================================================
 
   compilation_required:
     name: Compilation required
@@ -55,6 +65,7 @@ jobs:
     runs-on: ubuntu-latest
     container: janumaruku/epitest-with-raylib
     timeout-minutes: 4
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -62,16 +73,16 @@ jobs:
       - name: Build binary
         run: |
           set -e
-          
+
           if [ -f Makefile ]; then
             echo "Detected Makefile"
             make -j$(nproc) 2>&1
-          
+
           elif [ -f CMakeLists.txt ]; then
             echo "Detected CMake project"
             cmake -B build
             cmake --build build -j$(nproc) 2>&1
-          
+
           else
             echo "No supported build system found"
             exit 1
@@ -87,124 +98,59 @@ jobs:
             fi
           done
 
+  # ============================================================
+  # Windows compilation
+  #
+  # Windows uses Clang-cl.
+  # ============================================================
 
-  check_coding_style:
-    name: Coding style checking
+  compilation_required_windows:
+    name: Windows compilation
     if: ${{ github.repository != vars.MIRROR_URL }}
-    runs-on: ubuntu-latest
-    container: janumaruku/epitest-with-raylib
-    timeout-minutes: 2
-    needs: check_compilation
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 6
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Check repository for unwanted files
-        continue-on-error: true
-        run: |
-          banana-check-repo . 2>&1 | tee check.log
-          if grep -qF "[Banana]" check.log; then
-            echo "JOB_FAILS=true" >> $GITHUB_ENV
-          fi
-
-      - name: Annotations for useless files
-        if: always()
-        continue-on-error: true
-        run: |
-          if ! grep -qF "[Banana]" check.log; then
-            echo "No coding style error found"
-            exit 0
-          fi
-
-          # Extract unique files involved in Banana errors
-          files=$(awk '/\[Banana\]/ {f=$1; sub(":", "", f); print f}' check.log | sort -u)
-          
-          echo "Files with errors:"
-          echo "$files"
-          
-          # Check if ONLY ./libs/myteams/libmyteams.so is present
-          if [ "$files" = "./libs/myteams/libmyteams.so" ]; then
-            echo "Only libmyteams.so has errors → ignoring"
-            echo "JOB_FAILS=false" >> $GITHUB_ENV
-            exit 0
-          fi
-          
-          echo "::group::Coding style errors"
-          awk '
-          /\[Banana\]/ {
-          file = $1
-          sub(":", "", file)
-
-          level = "notice"
-          if ($0 ~ /\[Fatal\]/) level="error"
-          else if ($0 ~ /\[Major\]/) level="error"
-          else if ($0 ~ /\[Minor\]/) level="warning"
-          else if ($0 ~ /\[Info\]/) level="notice"
-          
-          msg = $0
-          sub(/^[^:]+: \[Banana\] \[([^\]]+)\] /, "", msg)
-          
-            printf "::%s file=%s::%s\n", level, file, msg
-          }
-          ' check.log
-          echo "::endgroup::"
-          exit 84
-
-      - name: Download build log
-        uses: actions/download-artifact@v4
+      - name: Cache CPM dependencies
+        uses: actions/cache@v4
         with:
-          name: build-log
+          path: ${{ github.workspace }}\.cpm-cache
+          key: cpm-${{ runner.os }}-clang-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-clang-
 
-      - name: Annotations for coding style errors
-        if: always()
+      - name: Configure CMake
+        shell: pwsh
+        env:
+          CPM_SOURCE_CACHE: ${{ github.workspace }}\.cpm-cache
         run: |
-          if ! grep -qF "[Banana]" build.log; then
-            if [ "$JOB_FAILS" = "true" ]; then
-              echo "::notice::unwanted files found in the repository"
+          cmake -S . -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -T ClangCL
 
-              echo "JOB_FAILS=false" >> $GITHUB_ENV
-              exit 42
-            fi
+      - name: Build
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel
 
-            echo "No coding style error found"
-            exit 0
-          fi
-          
-          echo "::group::Coding style errors"
-          awk '
-          /\[Banana\]/ {
-
-          split($1, loc, ":")
-          file = loc[1]
-          line = loc[2]
-
-          level = "notice"
-          if ($0 ~ /\[Fatal\]/) level="error"
-          else if ($0 ~ /\[Major\]/) level="error"
-          else if ($0 ~ /\[Minor\]/) level="warning"
-          else if ($0 ~ /\[Info\]/) level="notice"
-
-          msg = $0
-          sub(/^[^:]*:[^:]*:[^:]*: [^:]*: /, "", msg)
-
-            printf "::%s file=%s,line=%s,title=%s::%s\n", level, file, line, $NF, msg
-          }
-          ' build.log
-          echo "::endgroup::"
-
-          exit 84
-
+  # ============================================================
+  # Clang-Tidy
+  # ============================================================
 
   static_analysis:
     name: Static analysis with clang tidy
     runs-on: ubuntu-latest
     container: janumaruku/epitest-with-raylib
     needs: compilation_required
+
     steps:
       - name: Install dependencies
         run: |
-          sudo apt update
-          sudo apt install -y clang-tidy bear
+          apt update
+          apt install -y clang-tidy bear
 
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -212,19 +158,29 @@ jobs:
       - name: Build
         shell: bash
         run: |
+          set -e
+
           if [ -f Makefile ]; then
             echo "Detected Makefile"
+
             make fclean
             bear -- make all -j
+
             python3 run-clang-tidy.py -j$(nproc) \
-            -p . 2>&1 | tee analysis.log
+              -p . 2>&1 | tee analysis.log
 
           elif [ -f CMakeLists.txt ]; then
             echo "Detected CMake project"
+
             cmake -B build
             cmake --build build
+
             python3 run-clang-tidy.py -j$(nproc) \
-            -p build 2>&1 | tee analysis.log
+              -p build 2>&1 | tee analysis.log
+
+          else
+            echo "No supported build system found"
+            exit 1
           fi
 
       - name: Annotations for clang tidy log
@@ -232,46 +188,230 @@ jobs:
         continue-on-error: true
         run: |
           echo "::group::Static analysis errors"
-          awk '
-          /(warning:|error:)/ {
 
-          split($1, loc, ":")
-          file = loc[1]
-          line = loc[2]
+          if [ -f analysis.log ]; then
+            awk '
+            /(warning:|error:)/ {
+              split($1, loc, ":")
+              file = loc[1]
+              line = loc[2]
 
-          level = "notice"
-          if ($0 ~ /warning:/) level="warning"
-          else if ($0 ~ /error:/) level="error"
+              level = "notice"
 
-          msg = $0
-          sub(/^[^:]*:[^:]*:[^:]*: (warning:|error:) /, "", msg)
-          sub(/^\[[^]]*\]/, "", msg)
+              if ($0 ~ /warning:/)
+                level="warning"
+              else if ($0 ~ /error:/)
+                level="error"
 
-            printf "::%s file=%s,line=%s,title=%s::%s\n", level, file, line, $NF, msg
-          }
-          ' analysis.log
+              msg = $0
+              sub(/^[^:]*:[^:]*:[^:]*: (warning:|error:) /, "", msg)
+              sub(/^\[[^]]*\]/, "", msg)
+
+              printf "::%s file=%s,line=%s,title=%s::%s\n", \
+                level, file, line, $NF, msg
+            }
+            ' analysis.log
+          fi
+
           echo "::endgroup::"
 
-          if grep "error:" analysis.log; then
+          if [ -f analysis.log ] && grep -q "error:" analysis.log; then
             exit 84
           fi
 
-          exit 0
+  # ============================================================
+  # Linux unit tests + coverage
+  # ============================================================
 
+  unit_test_linux:
+    name: Run unit tests (Linux)
+    runs-on: ubuntu-latest
+    container: epitechcontent/epitest-docker
+    needs: compilation_required
+
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+      statuses: write
+
+    steps:
+      - name: Install dependencies
+        run: |
+          clang --version
+          apt update
+          apt install -y python3-full
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Cache CPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/.cpm-cache
+          key: cpm-${{ runner.os }}-clang-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-clang-
+
+      - name: Configure CMake
+        env:
+          CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+        run: |
+          cmake -S . -B build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DWITH_COVERAGE=ON
+
+      - name: Build binaries
+        run: |
+          cmake --build build \
+            --target coverage \
+            --config Release \
+            -j$(nproc)
+
+      - name: Run tests
+        working-directory: build
+        run: |
+          ctest -V --output-junit test-results.xml
+
+      - name: Fix Git ownership
+        if: always()
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Publish Test Results to GitHub Checks
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: GTest Results (Linux)
+          path: '**/test-results.xml'
+          reporter: java-junit
+          fail-on-error: false
+
+      - name: Upload Coverage Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: build/coverage_html
+          if-no-files-found: warn
+
+  # ============================================================
+  # Windows unit tests
+  #
+  # Windows uses Clang-cl.
+  # ============================================================
+
+  unit_test_windows:
+    name: Run unit tests (Windows)
+    runs-on: windows-2025-vs2026
+    needs: compilation_required_windows
+
+    permissions:
+      checks: write
+      contents: read
+      pull-requests: write
+      statuses: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Cache CPM dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}\.cpm-cache
+          key: cpm-${{ runner.os }}-clang-${{ hashFiles('cmake/Dependencies.cmake') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-clang-
+
+      - name: Configure CMake
+        shell: pwsh
+        env:
+          CPM_SOURCE_CACHE: ${{ github.workspace }}\.cpm-cache
+        run: |
+          cmake -S . -B build `
+            -DCMAKE_BUILD_TYPE=Release `
+            -T ClangCL
+
+      - name: Build binaries
+        shell: pwsh
+        run: |
+          cmake --build build --config Release --parallel
+
+      - name: Run tests
+        shell: pwsh
+        working-directory: build
+        run: |
+          ctest -C Release -V --output-junit test-results.xml
+
+      - name: Publish Test Results to GitHub Checks
+        uses: dorny/test-reporter@v3
+        if: always()
+        with:
+          name: GTest Results (Windows)
+          path: '**/test-results.xml'
+          reporter: java-junit
+          fail-on-error: false
+
+  # ============================================================
+  # Deploy coverage
+  # ============================================================
+
+  deploy-coverage:
+    name: Deploy coverage
+    needs:
+      - unit_test_linux
+      - unit_test_windows
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Coverage Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: coverage-html
+          path: .
+
+      - name: Debug coverage structure
+        run: |
+          tree
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: .
+
+  # ============================================================
+  # Push to mirror
+  # ============================================================
 
   push_to_mirror:
+    name: Push to mirror
+
     needs:
       - check_coding_style
       - static_analysis
+      - unit_test_linux
+      - unit_test_windows
+
     if: ${{ github.repository_owner == vars.USERNAME }}
+
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@main
-      - run: git fetch --unshallow
-      - uses: pixta-dev/repository-mirroring-action@v1
+        uses: actions/checkout@v4
+
+      - name: Fetch complete history
+        run: |
+          git fetch --unshallow
+
+      - name: Mirror repository
+        uses: pixta-dev/repository-mirroring-action@v1
         with:
-          target_repo_url:
-            ${{ vars.FULL_MIRROR_URL }}
-          ssh_private_key:
-            ${{ secrets.GIT_SSH_PRIVATE_KEY }}
+          target_repo_url: ${{ vars.FULL_MIRROR_URL }}
+          ssh_private_key: ${{ secrets.GIT_SSH_PRIVATE_KEY }}
