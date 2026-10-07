@@ -25,9 +25,25 @@ jobs:
     container: janumaruku/epitest-with-raylib
     timeout-minutes: 4
 
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Install cache dependencies
+        run: |
+          apt update
+          apt install -y tar zstd
+
+      - name: Restore CPM cache
+        uses: actions/cache@v4
+        with:
+          path: .cpm-cache
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/CPM.cmake') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-
 
       - name: Build binary
         run: |
@@ -54,7 +70,7 @@ jobs:
         run: |
           while IFS= read -r binary; do
             [ -z "$binary" ] && continue
-        
+
             if [ ! -x "$binary" ]; then
               echo "::error::Missing executable: $binary"
               exit 1
@@ -62,7 +78,7 @@ jobs:
           done <<EOF
           $EXECUTABLES
           EOF
-        
+
   # ============================================================
   # Windows compilation
   #
@@ -75,31 +91,66 @@ jobs:
     runs-on: windows-2025-vs2026
     timeout-minutes: 6
 
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Cache CPM dependencies
+      - name: Restore CPM cache
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}\.cpm-cache
-          key: cpm-${{ runner.os }}-clang-${{ hashFiles('cmake/Dependencies.cmake') }}
+          path: .cpm-cache
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/CPM.cmake') }}
           restore-keys: |
-            cpm-${{ runner.os }}-clang-
+            cpm-${{ runner.os }}-
 
-      - name: Configure CMake
+      - name: Build binary
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+
+          if (Test-Path "Makefile") {
+            Write-Host "Detected Makefile"
+
+            $env:CC = "clang-cl"
+            $env:CXX = "clang-cl"
+
+            make -j $env:NUMBER_OF_PROCESSORS
+          }
+          elseif (Test-Path "CMakeLists.txt") {
+            Write-Host "Detected CMake project"
+
+            cmake -S . -B build `
+              -DCMAKE_BUILD_TYPE=Release `
+              -T ClangCL
+
+            cmake --build build --config Release --parallel
+          }
+          else {
+            Write-Error "No supported build system found"
+            exit 1
+          }
+
+      - name: Check executables
+        if: ${{ vars.EXECUTABLES != '' }}
         shell: pwsh
         env:
-          CPM_SOURCE_CACHE: ${{ github.workspace }}\.cpm-cache
+          EXECUTABLES: ${{ vars.EXECUTABLES }}
         run: |
-          cmake -S . -B build `
-            -DCMAKE_BUILD_TYPE=Release `
-            -T ClangCL
+          foreach ($binary in $env:EXECUTABLES -split "`n") {
+            $binary = $binary.Trim()
 
-      - name: Build
-        shell: pwsh
-        run: |
-          cmake --build build --config Release --parallel
+            if ([string]::IsNullOrWhiteSpace($binary)) {
+              continue
+            }
+
+            if (-not (Test-Path $binary -PathType Leaf)) {
+              Write-Host "::error::Missing executable: $binary"
+              exit 1
+            }
+          }
 
   # ============================================================
   # Clang-Tidy
@@ -111,14 +162,25 @@ jobs:
     container: janumaruku/epitest-with-raylib
     needs: compilation_required
 
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
     steps:
       - name: Install dependencies
         run: |
           apt update
-          apt install -y clang-tidy bear
+          apt install -y clang-tidy bear tar zstd
 
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      - name: Restore CPM cache
+        uses: actions/cache@v4
+        with:
+          path: .cpm-cache
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/CPM.cmake') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-
 
       - name: Build
         shell: bash
@@ -194,6 +256,9 @@ jobs:
     container: epitechcontent/epitest-docker
     needs: compilation_required
 
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
     permissions:
       checks: write
       contents: read
@@ -205,22 +270,20 @@ jobs:
         run: |
           clang --version
           apt update
-          apt install -y python3-full
+          apt install -y python3-full tar zstd
 
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Cache CPM dependencies
+      - name: Restore CPM cache
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/.cpm-cache
-          key: cpm-${{ runner.os }}-clang-${{ hashFiles('cmake/Dependencies.cmake') }}
+          path: .cpm-cache
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/CPM.cmake') }}
           restore-keys: |
-            cpm-${{ runner.os }}-clang-
+            cpm-${{ runner.os }}-
 
       - name: Configure CMake
-        env:
-          CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
         run: |
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
@@ -272,6 +335,9 @@ jobs:
     runs-on: windows-2025-vs2026
     needs: compilation_required_windows
 
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
     permissions:
       checks: write
       contents: read
@@ -282,18 +348,16 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Cache CPM dependencies
+      - name: Restore CPM cache
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}\.cpm-cache
-          key: cpm-${{ runner.os }}-clang-${{ hashFiles('cmake/Dependencies.cmake') }}
+          path: .cpm-cache
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/CPM.cmake') }}
           restore-keys: |
-            cpm-${{ runner.os }}-clang-
+            cpm-${{ runner.os }}-
 
       - name: Configure CMake
         shell: pwsh
-        env:
-          CPM_SOURCE_CACHE: ${{ github.workspace }}\.cpm-cache
         run: |
           cmake -S . -B build `
             -DCMAKE_BUILD_TYPE=Release `
