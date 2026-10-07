@@ -1,6 +1,8 @@
+add_subdirectory(network)
+
 add_executable(r-type_server core/main.cpp)
 
-target_link_libraries(r-type_server PRIVATE project_options)
+target_link_libraries(r-type_server PRIVATE project_options network)
 
 set_target_properties(r-type_server PROPERTIES
 	RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}"
