@@ -11,14 +11,17 @@ CPMAddPackage(
         "BUILD_EXAMPLES OFF"
         "BUILD_GAMES OFF")
 
-set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
+set(GTEST_OPTIONS
+    "INSTALL_GTEST OFF"
+    "BUILD_GMOCK OFF"
+    "gtest_build_tests OFF")
+
 if(WIN32)
-    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    list(APPEND GTEST_OPTIONS "gtest_force_shared_crt ON")
 endif()
 
 CPMAddPackage(
     NAME googletest
     GITHUB_REPOSITORY google/googletest
     GIT_TAG v1.15.2
-    OPTIONS
-        "INSTALL_GTEST OFF")
+    OPTIONS ${GTEST_OPTIONS})
