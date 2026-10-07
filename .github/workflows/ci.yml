@@ -159,7 +159,12 @@ jobs:
               continue
             }
 
-            if (-not (Test-Path $binary -PathType Leaf)) {
+            $path = $binary
+            if ([string]::IsNullOrEmpty([System.IO.Path]::GetExtension($path))) {
+              $path = "$path.exe"
+            }
+
+            if (-not (Test-Path $path -PathType Leaf)) {
               Write-Host "::error::Missing executable: $binary"
               exit 1
             }
