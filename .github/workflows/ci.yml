@@ -46,17 +46,24 @@ jobs:
             cpm-${{ runner.os }}-
 
       - name: Build binary
+        shell: bash
         run: |
-          set -e
+          set -eo pipefail
 
           if [ -f Makefile ]; then
             echo "Detected Makefile"
-            make -j$(nproc) 2>&1
+            make -j$(nproc) 2>&1 | tee build.log
 
           elif [ -f CMakeLists.txt ]; then
             echo "Detected CMake project"
+
             cmake -B build
-            cmake --build build -j$(nproc) 2>&1
+            cmake --build build -j$(nproc) 2>&1 | tee build.log
+
+            ctest \
+              --test-dir build \
+              --output-on-failure \
+              --no-tests=ignore
 
           else
             echo "No supported build system found"
@@ -78,6 +85,16 @@ jobs:
           done <<EOF
           $EXECUTABLES
           EOF
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: |
+            build.log
+            build/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
 
   # ============================================================
   # Windows compilation
