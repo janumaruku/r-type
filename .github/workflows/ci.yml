@@ -188,7 +188,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install -y clang-tidy bear tar zstd
+          apt install -y cmake make git python3 clang-tidy bear tar zstd
 
       - name: Checkout Repository
         uses: actions/checkout@v4
