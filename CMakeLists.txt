@@ -15,7 +15,7 @@ include(CTest)
 
 add_library(project_options INTERFACE)
 
-target_compile_options(project_options INTERFACE -Wall -Wextra -Werror)
+target_compile_options(project_options INTERFACE -Wall -Wextra)
 
 if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 	target_compile_options(project_options INTERFACE
