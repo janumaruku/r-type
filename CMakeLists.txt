@@ -17,6 +17,13 @@ add_library(project_options INTERFACE)
 
 target_compile_options(project_options INTERFACE -Wall -Wextra -Werror)
 
+if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+	target_compile_options(project_options INTERFACE
+		-Wno-c++98-compat
+		-Wno-c++98-compat-pedantic
+		-Wno-pre-c++17-compat)
+endif()
+
 add_subdirectory(src/server)
 add_subdirectory(src/client)
 option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)

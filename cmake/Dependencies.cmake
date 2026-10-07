@@ -26,10 +26,21 @@ CPMAddPackage(
     GIT_TAG v1.15.2
     OPTIONS ${GTEST_OPTIONS})
 
-if(WIN32 AND TARGET gtest)
-    target_compile_options(gtest PRIVATE
-        $<$<CXX_COMPILER_ID:Clang>:-Wno-error=character-conversion>)
-endif()
+function(disable_external_warnings target_name)
+    if(TARGET "${target_name}")
+        set_property(TARGET "${target_name}" PROPERTY COMPILE_WARNING_AS_ERROR OFF)
+        if(CMAKE_CXX_COMPILER_ID MATCHES "Clang|GNU")
+            target_compile_options("${target_name}" PRIVATE -w)
+        elseif(MSVC)
+            target_compile_options("${target_name}" PRIVATE /W0)
+        endif()
+    endif()
+endfunction()
+
+disable_external_warnings(raylib)
+disable_external_warnings(glfw)
+disable_external_warnings(gtest)
+disable_external_warnings(gtest_main)
 
 CPMAddPackage(
     NAME asio
