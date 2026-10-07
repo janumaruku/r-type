@@ -24,4 +24,28 @@ CPMAddPackage(
     NAME googletest
     GITHUB_REPOSITORY google/googletest
     GIT_TAG v1.15.2
-    OPTIONS ${GTEST_OPTIONS})
+    OPTIONS
+        "INSTALL_GTEST OFF")
+
+if(WIN32 AND TARGET gtest)
+    target_compile_options(gtest PRIVATE
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-error=character-conversion>)
+endif()
+
+CPMAddPackage(
+    NAME asio
+    GITHUB_REPOSITORY chriskohlhoff/asio
+    GIT_TAG asio-1-30-2
+    DOWNLOAD_ONLY YES)
+
+add_library(asio INTERFACE)
+target_include_directories(asio INTERFACE "${asio_SOURCE_DIR}/asio/include")
+target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_NO_DEPRECATED)
+
+if(WIN32)
+    target_compile_definitions(asio INTERFACE _WIN32_WINNT=0x0A00)
+    target_link_libraries(asio INTERFACE ws2_32 mswsock)
+else()
+    find_package(Threads REQUIRED)
+    target_link_libraries(asio INTERFACE Threads::Threads)
+endif()
