@@ -21,7 +21,6 @@ target_link_libraries(unit_tests
         project_options)
 
 set_target_properties(unit_tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
-set_target_properties(unit_tests PROPERTIES EXCLUDE_FROM_ALL TRUE)
 
 #target_compile_options(unit_tests PRIVATE --coverage -O0 -g)
 #target_link_options(unit_tests PRIVATE --coverage)
