@@ -70,3 +70,7 @@ Testing/
 
 # ide config files
 .idea
+
+
+#output binaries
+r-type_*
