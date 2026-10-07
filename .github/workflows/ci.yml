@@ -75,16 +75,12 @@ jobs:
         env:
           EXECUTABLES: ${{ vars.EXECUTABLES }}
         run: |
-          while IFS= read -r binary; do
-            [ -z "$binary" ] && continue
-
+          for binary in $EXECUTABLES; do
             if [ ! -x "$binary" ]; then
               echo "::error::Missing executable: $binary"
               exit 1
             fi
-          done <<EOF
-          $EXECUTABLES
-          EOF
+          done
 
       - name: Upload build log
         if: always()
@@ -156,7 +152,7 @@ jobs:
         env:
           EXECUTABLES: ${{ vars.EXECUTABLES }}
         run: |
-          foreach ($binary in $env:EXECUTABLES -split "`n") {
+          foreach ($binary in $env:EXECUTABLES -split "\s+") {
             $binary = $binary.Trim()
 
             if ([string]::IsNullOrWhiteSpace($binary)) {
