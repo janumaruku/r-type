@@ -8,6 +8,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_library(warning_options INTERFACE)
 
-target_compile_options(warning_options INTERFACE -Wall -Wextra -Werror)
+if(MSVC)
+    target_compile_options(warning_options INTERFACE /W4 /WX)
+else()
+    target_compile_options(warning_options INTERFACE -Wall -Wextra -Werror)
+endif()
 
 add_executable(r-type main.cpp)
