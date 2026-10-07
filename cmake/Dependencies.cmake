@@ -23,6 +23,11 @@ CPMAddPackage(
     OPTIONS
         "INSTALL_GTEST OFF")
 
+if(WIN32 AND TARGET gtest)
+    target_compile_options(gtest PRIVATE
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-error=character-conversion>)
+endif()
+
 CPMAddPackage(
     NAME asio
     GITHUB_REPOSITORY chriskohlhoff/asio
