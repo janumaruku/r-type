@@ -291,7 +291,7 @@ jobs:
         run: |
           clang --version
           apt update
-          apt install -y python3-full tar zstd
+          apt install -y llvm python3-full tar zstd
 
       - name: Checkout Repository
         uses: actions/checkout@v4
