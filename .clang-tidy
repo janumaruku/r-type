@@ -1,0 +1,165 @@
+Checks:
+  # D2 - OCP / all attributes must be private
+  #  - cppcoreguidelines-non-private-member-variables-in-classes # forces all member variables
+  # to be private
+  # D3 - LSP
+  - modernize-use-override # F6 – override when relevant
+  - bugprone-virtual-near-miss # detects missing override
+  - cppcoreguidelines-virtual-class-destructor # ensures safe polymorphic destruction
+  - cppcoreguidelines-slicing
+  - cppcoreguidelines-special-member-functions # ensures correct copy/move behavior
+
+  # D5 - Constness
+  - readability-make-member-function-const
+
+  # D6 - RAII
+  - cppcoreguidelines-owning-memory
+  - cppcoreguidelines-no-malloc
+  - hicpp-no-malloc
+  - modernize-make-unique
+  - modernize-make-shared
+
+  # N - Naming
+  - readability-identifier-naming
+
+  # G4 - Global variables
+  - cppcoreguidelines-avoid-non-const-global-variables
+  - cppcoreguidelines-interfaces-global-init
+
+  # C3 - goto
+  - readability-avoid-goto
+
+  # C5 - Ranges
+  - modernize-loop-convert
+
+  # A1 - Constant pointers
+  - modernize-use-const
+
+  # A3 - NULL
+  - modernize-use-nullptr
+
+  # A4 - Auto (DRY)
+  - modernize-use-auto
+
+  # A5 - Casts
+  - google-readability-casting
+
+  # A9 - using namespace
+  - google-build-using-namespace
+
+  # K2 - Constructor list
+  - cppcoreguidelines-prefer-member-initializer
+
+  # K6 - Type aliases
+  - modernize-use-using
+
+  - bugprone-branch-clone
+
+  - bugprone-branch-clone
+  - bugprone-*,
+  - performance-*,
+  - readability-*,
+  - modernize-*,
+  - -modernize-use-trailing-return-type,
+  - -readability-magic-numbers
+  - -readability-named-parameter
+  - -performance-avoid-endl
+  - -readability-braces-around-statements
+  - -readability-suspicious-call-argument
+  - -cppcoreguidelines-special-member-functions
+
+HeaderFilterRegex: '^(src|include)/(?!.*(jsonParser|Serializer)\.hpp$).*'
+
+WarningsAsErrors: >
+  cppcoreguidelines-non-private-member-variables-in-classes,
+  cppcoreguidelines-virtual-class-destructor,
+  modernize-use-override,
+  bugprone-virtual-near-miss,
+  readability-make-member-function-const,
+  cppcoreguidelines-owning-memory,
+  cppcoreguidelines-no-malloc,
+  hicpp-no-malloc,
+  readability-identifier-naming,
+  readability-avoid-goto,
+  modernize-use-const,
+  modernize-use-nullptr,
+  google-readability-casting,
+  google-build-using-namespace,
+  cppcoreguidelines-prefer-member-initializer,
+  modernize-use-emplace,
+  performance-for-range-copy,
+  modernize-use-equals-default,
+
+CheckOptions:
+  # Identifier length options - set minimum to 1 for all symbols
+  - key: readability-identifier-length.MinimumVariableNameLength
+    value: '1'
+  - key: readability-identifier-length.MinimumParameterNameLength
+    value: '1'
+  - key: readability-identifier-length.MinimumLoopCounterNameLength
+    value: '1'
+  - key: readability-identifier-length.MinimumExceptionNameLength
+    value: '1'
+
+  # N3 - Functions (and methods)
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.MethodCase
+    value: camelBack
+  - key: readability-identifier-naming.IgnoreMainLikeFunctions
+    value: 'true'
+
+  # N4 - Variables
+  # Local variables
+  - key: readability-identifier-naming.VariableCase
+    value: camelBack
+  - key: readability-identifier-naming.LocalVariableCase
+    value: camelBack
+
+  # Class members
+  - key: readability-identifier-naming.MemberCase
+    value: camelBack
+  - key: readability-identifier-naming.PrivateMemberPrefix
+    value: _
+  - key: readability-identifier-naming.ProtectedMemberPrefix
+    value: _
+
+  # Parameters
+  - key: readability-identifier-naming.ParameterCase
+    value: camelBack
+
+  # Macros
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+
+  # Global constant
+  - key: readability-identifier-naming.GlobalConstantCase
+    value: UPPER_CASE
+
+  # Enum values
+  - key: readability-identifier-naming.EnumConstantCase
+    value: UPPER_CASE
+
+  # Classes, structs, enums, typedef and use type name
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypedefCase
+    value: CamelCase
+  - key: readability-identifier-naming.TypeAliasCase
+    value: CamelCase
+
+  # C5 - Ranges
+  - key: modernize-loop-convert.MinConfidence
+    value: reasonable
+
+  # A3 - NULL
+  - key: modernize-use-nullptr.NullMacros
+    value: 'NULL'
+
+  # A5 - Casts
+  - key: google-readability-casting.WarnOnOperator
+    value: '1'
