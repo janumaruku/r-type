@@ -7,9 +7,8 @@ target_link_libraries(r-type_server_tests
 
 if(WIN32)
     target_compile_options(r-type_server_tests PRIVATE
-    $<$<CXX_COMPILER_ID:Clang>:-Wno-error=c++98-compat>
-    $<$<CXX_COMPILER_ID:Clang>:-Wno-error=global-constructors>
-    $<$<CXX_COMPILER_ID:Clang>:-Wno-error=newline-eof>)
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-error=global-constructors>
+        $<$<CXX_COMPILER_ID:Clang>:-Wno-error=newline-eof>)
 endif()
 
 include(GoogleTest)
