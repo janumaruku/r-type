@@ -49,14 +49,20 @@ jobs:
 
       - name: Check executables
         if: ${{ vars.EXECUTABLES != '' }}
+        env:
+          EXECUTABLES: ${{ vars.EXECUTABLES }}
         run: |
-          for binary in ${{ vars.EXECUTABLES }}; do
+          while IFS= read -r binary; do
+            [ -z "$binary" ] && continue
+        
             if [ ! -x "$binary" ]; then
               echo "::error::Missing executable: $binary"
               exit 1
             fi
-          done
-
+          done <<EOF
+          $EXECUTABLES
+          EOF
+        
   # ============================================================
   # Windows compilation
   #
