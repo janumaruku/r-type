@@ -183,12 +183,14 @@ jobs:
 
     env:
       CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+      CC: clang
+      CXX: clang++
 
     steps:
       - name: Install dependencies
         run: |
           apt update
-          apt install -y cmake make git python3 clang-tidy bear tar zstd
+          apt install -y cmake make git python3 clang clang-tidy bear tar zstd
 
       - name: Checkout Repository
         uses: actions/checkout@v4
