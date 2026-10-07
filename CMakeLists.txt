@@ -6,8 +6,17 @@ set(CMAKE_CXX_STANDARD 20)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-add_library(warning_options INTERFACE)
+include(cmake/Dependencies.cmake)
+include(CTest)
 
-target_compile_options(warning_options INTERFACE -Wall -Wextra -Werror)
+add_library(project_options INTERFACE)
 
-add_executable(r-type main.cpp)
+target_compile_options(project_options INTERFACE -Wall -Wextra -Werror)
+
+add_subdirectory(src/server)
+add_subdirectory(src/client)
+option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)
+
+if(RTYPE_BUILD_TESTS)
+	add_subdirectory(tests)
+endif()
