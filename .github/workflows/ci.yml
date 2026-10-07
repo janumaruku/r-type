@@ -172,7 +172,8 @@ jobs:
   static_analysis:
     name: Static analysis with clang tidy
     runs-on: ubuntu-latest
-    container: janumaruku/epitest-with-raylib
+    container: ubuntu:22.04
+    timeout-minutes: 6
     needs: compilation_required
 
     env:

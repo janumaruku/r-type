@@ -24,8 +24,7 @@ CPMAddPackage(
     NAME googletest
     GITHUB_REPOSITORY google/googletest
     GIT_TAG v1.15.2
-    OPTIONS
-        "INSTALL_GTEST OFF")
+    OPTIONS ${GTEST_OPTIONS})
 
 if(WIN32 AND TARGET gtest)
     target_compile_options(gtest PRIVATE
