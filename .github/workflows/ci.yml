@@ -15,47 +15,6 @@ permissions:
 jobs:
 
   # ============================================================
-  # Linux compilation check
-  # ============================================================
-
-  check_compilation:
-    name: Compilation check
-    if: ${{ github.repository != vars.MIRROR_URL }}
-    runs-on: ubuntu-latest
-    container: janumaruku/epitest-with-raylib
-    timeout-minutes: 4
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Build binary
-        run: |
-          set -e
-
-          if [ -f Makefile ]; then
-            echo "Detected Makefile"
-            make -j$(nproc) 2>&1 | tee build.log
-
-          elif [ -f CMakeLists.txt ]; then
-            echo "Detected CMake project"
-            cmake -B build
-            cmake --build build -j$(nproc) 2>&1 | tee build.log
-
-          else
-            echo "No supported build system found"
-            exit 1
-          fi
-
-      - name: Upload build log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: build.log
-          if-no-files-found: warn
-
-  # ============================================================
   # Linux compilation gate
   # ============================================================
 
