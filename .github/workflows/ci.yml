@@ -177,7 +177,7 @@ jobs:
   static_analysis:
     name: Static analysis with clang tidy
     runs-on: ubuntu-latest
-    container: ubuntu:latest
+    container: epitechcontent/epitest-docker
     timeout-minutes: 6
     needs: compilation_required
 
