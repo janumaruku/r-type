@@ -21,12 +21,13 @@ Read in this order if you are new to the project:
 | [architecture/accessibility.md](architecture/accessibility.md) | Motor, visual, audio and cognitive accessibility features |
 | [modules/engine.md](modules/engine.md) | `engine_core`, `engine_ecs`, `engine_runtime`, `engine_render`, `engine_input`, `engine_audio` |
 | [modules/network.md](modules/network.md) | `net::Packet` serialization and the `net::UdpSocket` helper |
-| [modules/game.md](modules/game.md) | Components, systems, factories, rules, `GameWorld` |
+| [modules/game.md](modules/game.md) | Components, systems, builders, rules, `GameWorld` |
 | [modules/server.md](modules/server.md) | `r-type_server`: threads, sessions, tick loop |
 | [modules/client.md](modules/client.md) | `r-type_client`: scenes, snapshot assembly, interpolation, prediction, presentation |
 | [protocol/RFC-rtype.md](protocol/RFC-rtype.md) | The binary UDP protocol, byte by byte. Enough to write a new client |
 | [handbook/development.md](handbook/development.md) | Error handling, logging, configuration, testing, build, workflow |
 | [decisions/](decisions/) | Architecture decision records: why things are the way they are |
+| [reference/ECS_JOURNEY.md](reference/ECS_JOURNEY.md) | How the ECS design was built and measured, step by step, with its traps and tests (background for `engine_ecs`) |
 | [roadmap.md](roadmap.md) | Part 1 phases, gates and open decisions |
 
 ## Conventions used in these pages

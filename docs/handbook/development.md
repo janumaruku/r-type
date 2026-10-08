@@ -44,7 +44,7 @@ Part 1 has **unit tests only**, written with GoogleTest. Other kinds of tests ar
 
 | What | Examples of cases |
 | --- | --- |
-| ECS | Every rule in [engine: ECS](../modules/engine.md#ecs-engine_ecs): registration, views, deferred destruction, index reuse |
+| ECS | Every rule of the contract in [engine: ECS](../modules/engine.md#contract): registration, views, commands, stale handles, resources, stages. The journey's "Check yourself" lists ([ECS journey](../reference/ECS_JOURNEY.md)) give the cases |
 | Runtime | `FixedTimestep` step counts and the 0.25 s cap |
 | `net::Packet` | Round trips of every primitive and container, reads past the end, writes past `MAX_SIZE`, forged list counts ([network: tests](../modules/network.md#tests)) |
 | Protocol | Every message round-trips, and every truncated prefix of a valid payload throws `PacketError` |
@@ -53,7 +53,7 @@ Part 1 has **unit tests only**, written with GoogleTest. Other kinds of tests ar
 
 Conventions:
 
-- One test executable per library target (`engine_tests`, `network_tests`, `protocol_tests`, `game_tests`), linked to that target and `GTest::gtest_main`, so a broken module only breaks its own tests.
+- One test executable per library target (`engine_core_tests`, `engine_ecs_tests`, `network_tests`, `protocol_tests`, `game_tests`…), linked to that target and `GTest::gtest_main`, so a broken module only breaks its own tests.
 - Code that only exists in an application (such as the client's `SnapshotAssembler`) is compiled into a static library next to the executable (`client_logic`, linked by `r-type_client`), so its tests can link it too. `main.cpp` stays as thin as possible.
 - Tests live in `tests/<module>/`, one `<Class>Tests.cpp` per class under test. Test names read as sentences: `TEST(Packet, ReadPastEndThrows)`.
 - CMake registers them with `gtest_discover_tests`, so `ctest --preset linux-debug` runs everything. CI runs it on every pull request.
@@ -71,6 +71,26 @@ A test's kind depends on what it exercises, not on the framework. GoogleTest is 
 | Functional / end-to-end | The real `r-type_server` and `r-type_client` binaries started as processes | Not well: a script (Python or shell) run by CTest suits it better |
 | Manual | 4 clients on Linux and Windows, one unplugged, star speed at 30 and 144 FPS | No: a checklist in `docs/how-to/release-check.md`, run before each defence |
 
+## Benchmarks
+
+Tests show that code is correct; benchmarks show that a design choice was worth it. Part 1 benchmarks the ECS (`ecs_benchmarks`, targets in [engine: ECS](../modules/engine.md#benchmarks)); other modules can add theirs the same way.
+
+- **Tool:** Google Benchmark, fetched by CPM only when `RTYPE_BUILD_BENCHMARKS=ON`, with its own tests, install rules and `-Werror` turned off. Each benchmark executable links `benchmark::benchmark_main`.
+- **Layout:** `benchmarks/<module>/`, one `<Topic>Benchmarks.cpp` per area (storage, registry, iteration), shared helpers in a `BenchmarkHelpers.hpp`.
+- **Build:** only in Release. Use the `linux-release` preset with `-DRTYPE_BUILD_BENCHMARKS=ON`; Debug and sanitizer numbers are meaningless.
+- **How to write one, run it, read the output and compare two versions with `compare.py`:** see [Benchmarking with Google Benchmark](../reference/ECS_JOURNEY.md#benchmarking-with-google-benchmark) in the ECS journey.
+
+**Rules for trustworthy numbers** (from the journey):
+
+1. Release builds only, with the flags you ship. When a result matters, measure `-O2` and `-O3`.
+2. A quiet machine: check the load average in the output header, close other programs.
+3. Repetitions, and read the median and the coefficient of variation, not a single run.
+4. Both compilers, GCC and Clang: the same code can differ by 2×.
+5. Compare against a hand-written baseline: "1.1× the manual loop" means something, "3 ms" alone doesn't.
+6. Benchmark what the claim is about. Counting copies is a test's job, not a benchmark's.
+
+A change that claims a speed-up comes with a before/after comparison (`compare.py benchmarks before.json after.json`, 10 repetitions each) in its pull request.
+
 ## Build, dependencies and platforms
 
 - **CMake ≥ 3.28** (the version already pinned in the repository), with `CMakePresets.json` presets `linux-debug`, `linux-release`, `windows-msvc-debug` and `windows-msvc-release`.
@@ -81,6 +101,7 @@ A test's kind depends on what it exercises, not on the framework. GoogleTest is 
 | Raylib | 5.5 | `engine_render`, `engine_audio` | Built static from source by CPM (`BUILD_EXAMPLES=OFF`), with its bundled GLFW and miniaudio. Never found with `find_package`, so a copy preinstalled on a machine or CI image is ignored |
 | Asio (standalone) | 1.30.2 | `network` | Header-only and ships no CMake file, so we declare an `INTERFACE` target `asio` with its include directory and `ASIO_STANDALONE`, `ASIO_NO_DEPRECATED`, plus `_WIN32_WINNT=0x0A00` on Windows |
 | GoogleTest | 1.15.x | test executables | Only when `RTYPE_BUILD_TESTS=ON`. `INSTALL_GTEST=OFF`, and `gtest_force_shared_crt=ON` on Windows so it uses the same C runtime as our code |
+| Google Benchmark | 1.9.x | benchmark executables | Only when `RTYPE_BUILD_BENCHMARKS=ON`, with `BENCHMARK_ENABLE_TESTING`, `BENCHMARK_ENABLE_INSTALL` and `BENCHMARK_ENABLE_WERROR` set to `OFF` |
 
 - **Self-contained (requirement T-03).** Apart from the compiler, Linux needs only the low-level system libraries Raylib links against, which the subject explicitly allows: the X11, Xrandr, Xinerama, Xcursor, Xi and OpenGL development packages. Audio needs no development package: miniaudio loads ALSA or PulseAudio at run time. Windows needs Visual Studio 2022 and nothing else.
 - **Compilers:** GCC ≥ 13, Clang ≥ 17 or MSVC ≥ 19.38, all in C++20, because `std::format` is required. Warnings are `-Wall -Wextra -Werror` (and `/W4 /WX` on MSVC) through the existing `warning_options` interface target.
