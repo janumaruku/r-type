@@ -65,9 +65,9 @@ sequenceDiagram
     participant C as All clients
     participant CW as ClientWorld + effects
     GW->>GW: collisionSystem: PLAYER_SHOT overlaps ENEMY
-    GW->>GW: healthSystem: Bydos at 0 HP, mark both for destruction, score +100
+    GW->>GW: healthSystem: Bydos at 0 HP, kill commands for both, score +100
     GW->>SA: EnemyKilled(ship 41, bydos 63, position)
-    GW->>GW: flushDestroyed(), NetIds 63 and 77 released
+    GW->>GW: commands applied, then netIdCleanupSystem releases NetIds 63 and 77
     SA->>C: EVENT ENEMY_KILLED(41, 63, x, y)
     C->>CW: explosion effect at (x, y), explosion_small.wav
     SA->>C: next SNAPSHOT: 63 and 77 missing, roster score 1400
@@ -108,7 +108,7 @@ sequenceDiagram
 | `ServerNetworkAdapter` | `GameWorld` | `apply(PlayerCommand)`, `drainEvents()`, `collectReplicated()`, `roster()` |
 | Both adapters | `rtype_protocol` | `Header` and message structs, read and written with `packet.read<T>()` and `packet << message` |
 | Both adapters | `network` | `UdpSocket::sendTo`, `UdpSocket::receiveAll`, `net::Packet` |
-| `GameWorld` systems | `engine_ecs` | `Registry`, `View`, `markForDestruction` |
+| `GameWorld` systems | `engine_ecs` | `Registry` views, `commands()`, resources |
 | Client `renderSystem` | `engine_render` | `RenderQueue::push`, `IRenderer::submit` |
 | Client `GameScene` | `engine_input`, `engine_audio` | `ActionMap::isActive`, `IAudio::playSound` |
 | Nothing | `GameWorld` → `network` or `render` | Forbidden by the [dependency rules](overview.md#dependency-rules) |
