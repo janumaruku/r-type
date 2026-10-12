@@ -1,6 +1,4 @@
-add_subdirectory(network)
-
-add_executable(r-type_server core/main.cpp)
+add_executable(r-type_server src/main.cpp)
 
 target_link_libraries(r-type_server PRIVATE project_options network)
 

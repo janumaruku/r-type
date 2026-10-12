@@ -19,9 +19,10 @@ include(Dependencies)
 include(ProjectOptions)
 include(CTest)
 
-add_subdirectory(src/server)
+add_subdirectory(network)
+add_subdirectory(apps/server)
 if (RTYPE_BUILD_CLIENT)
-    add_subdirectory(src/client)
+    add_subdirectory(apps/client)
 endif ()
 
 if (RTYPE_BUILD_TESTS)
