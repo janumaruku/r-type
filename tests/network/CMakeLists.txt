@@ -1,0 +1,3 @@
+add_executable(network_tests NetworkTests.cpp)
+target_link_libraries(network_tests PRIVATE rtype_network GTest::gtest_main)
+gtest_discover_tests(network_tests)

@@ -1,0 +1,3 @@
+add_executable(engine_runtime_tests RuntimeTests.cpp)
+target_link_libraries(engine_runtime_tests PRIVATE rtype_engine_runtime GTest::gtest_main)
+gtest_discover_tests(engine_runtime_tests)
