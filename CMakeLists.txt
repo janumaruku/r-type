@@ -13,11 +13,6 @@ include(cmake/ProjectOptions.cmake)
 include(CTest)
 
 add_subdirectory(engine)
-add_subdirectory(network)
-add_subdirectory(rtype)
-add_subdirectory(apps/server)
-add_subdirectory(apps/client)
-add_subdirectory(benchmarks)
 
 option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)
 

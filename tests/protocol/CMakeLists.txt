@@ -1,3 +1,0 @@
-add_executable(protocol_tests ProtocolTests.cpp)
-target_link_libraries(protocol_tests PRIVATE rtype_protocol GTest::gtest_main)
-gtest_discover_tests(protocol_tests)

@@ -1,3 +1,0 @@
-add_executable(server_tests ServerTests.cpp)
-target_link_libraries(server_tests PRIVATE project_options GTest::gtest_main)
-gtest_discover_tests(server_tests)

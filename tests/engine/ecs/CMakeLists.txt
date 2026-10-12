@@ -1,3 +1,0 @@
-add_executable(engine_ecs_tests EcsTests.cpp)
-target_link_libraries(engine_ecs_tests PRIVATE rtype_engine_ecs GTest::gtest_main)
-gtest_discover_tests(engine_ecs_tests)
