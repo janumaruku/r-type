@@ -38,6 +38,8 @@
 *.exe
 *.out
 *.app
+unit_tests
+.cpm-cache/
 
 # Build directories
 build/
