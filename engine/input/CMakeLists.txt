@@ -1,0 +1,4 @@
+add_library(rtype_engine_input INTERFACE)
+target_link_libraries(rtype_engine_input INTERFACE project_options)
+target_include_directories(rtype_engine_input INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(rtype_engine INTERFACE rtype_engine_input)

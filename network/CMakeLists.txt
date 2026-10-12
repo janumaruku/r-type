@@ -1,0 +1,3 @@
+add_library(rtype_network INTERFACE)
+target_link_libraries(rtype_network INTERFACE project_options asio)
+target_include_directories(rtype_network INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
