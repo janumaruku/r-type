@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
 
-TEST(Client, TestSetup) {
+TEST(Network, TestSetup) {
     EXPECT_TRUE(true);
 }
