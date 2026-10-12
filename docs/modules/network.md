@@ -235,7 +235,66 @@ That count check matters: a length field comes from the network, so an attacker 
 
 ## `net::UdpSocket`
 
-`UdpSocket` exists so that nobody on the team writes the threading code twice. It owns an `asio::io_context`, one UDP socket and one thread running `io_context::run()`. Received datagrams wait in a locked queue until the game thread collects them. Sends are posted onto the IO thread, so the socket is only ever touched by one thread.
+### Why it exists
+
+The game loop runs 60 times per second and must never pause: the subject requires that the server "does not block or wait for clients' messages" (F-05). But receiving on a socket is waiting by nature: nothing comes back until a client sends something. So two jobs run side by side, on two threads:
+
+| Job | Thread | Speed | Must never… |
+| --- | --- | --- | --- |
+| The game loop: simulate, send snapshots | `main` | Fixed, 60 ticks per second | …wait for the network |
+| Listening on the socket | `net-io` | Whenever a client sends | …be blocked by the game |
+
+`UdpSocket` is the meeting point between those two threads. Inside it are the Asio socket and the IO thread that listens forever, a queue protected by a mutex where the IO thread drops what it receives, `receiveAll()` that the game thread calls once per tick to collect what has arrived, and `sendTo()` that hands sending over to the IO thread, so the socket is only ever touched by one thread.
+
+```text
+      IO thread ("net-io")                         Game thread ("main"), 60×/s
+      ────────────────────                         ───────────────────────────
+  client sends ──► Asio receives 13 bytes
+                   from 10.0.0.5:51234
+                   wraps them in a Datagram
+                   pushes it on the queue  ──┐
+                                             │      tick N:
+  client sends ──► Asio receives 13 bytes    ├────► receiveAll()  →  [Datagram, Datagram]
+                   pushes it on the queue  ──┘        for each one:
+                                                        decode, apply input
+                                                      world.step()
+                   Asio sends the bytes   ◄──────────  sendTo(client, snapshot)
+```
+
+Without it, each of us would write that thread, mutex and queue ourselves, in both the server and the client. That is the code most likely to deadlock or crash, so it is written once.
+
+### What a `Datagram` is
+
+A `Datagram` is one received message, as it waits in the queue:
+
+| Field | Holds | Why it's needed |
+| --- | --- | --- |
+| `bytes` | The raw bytes that arrived, for example the 13 bytes of an INPUT | It's the message itself |
+| `from` | The sender's address and port, for example `10.0.0.5:51234` | UDP has no connections: the bytes alone don't say who sent them |
+
+`from` is the important part. With TCP, each client has its own socket, so you always know who is talking. With UDP, every client sends to the **same** socket, and the sender address that comes with each datagram is the only way to tell them apart. The server uses it to find the client's session (`sessions.find(datagram.from)` → player 2), to answer the right client (`sendTo(datagram.from, …)`), and to spot a new client (an unknown address sending HELLO).
+
+### `Datagram` versus `Packet`
+
+| | `Datagram` | `Packet` |
+| --- | --- | --- |
+| Level | Transport: what arrived, and from whom | Serialization: reading and writing values |
+| Contains | bytes and sender | bytes and a read position |
+| Made by | `UdpSocket`, on the IO thread | the game thread, from `datagram.bytes` |
+| Used for | handing a message from one thread to the other | `packet.read<Header>()`, `packet >> input` |
+
+```text
+receiveAll() ──► Datagram { from = 10.0.0.5:51234, bytes = 54 52 01 02 … }
+                     │
+                     ├── from  ──► sessions.find(from)        → player 2
+                     └── bytes ──► Packet packet(bytes)
+                                   packet.read<Header>()      → type = INPUT
+                                   InputCommand reads Input   → UP + FIRE
+```
+
+The `Datagram` is only the envelope; the `Packet` is how the letter inside gets read.
+
+### API
 
 ```cpp
 namespace net {
@@ -304,4 +363,4 @@ These are plain Asio and don't need wrapping:
 ## Tests
 
 - `Packet`: every `Primitive` type round-trips; reading past the end throws; writing past `MAX_SIZE` throws; `fullyRead()` is true only at the exact end; a vector or string whose length field exceeds the bytes left throws without allocating; a struct without `serialize` fails to compile (checked with a `static_assert(!Serializable<...>)` test).
-- `UdpSocket`: two sockets on loopback exchange 1000 packets; `receiveAll` on an empty queue returns at once; a flood of 10 000 datagrams leaves the queue at 4096 and counts the rest in `dropped()`; `stop()` twice is harmless.
+- `UdpSocket`: two sockets on loopback exchange 1000 packets; `receiveAll` on an empty queue returns at once; a flood of 10 000 datagrams never leaves more than 4096 queued, and queued + `dropped()` ≤ 10 000 (the operating system may drop part of the flood itself, so exact counts aren't asserted); `stop()` twice is harmless.
