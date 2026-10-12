@@ -25,9 +25,9 @@ These are deliberately left for Part 2, so that no empty modules exist now:
 
 | Term | Meaning in these pages |
 | --- | --- |
-| Entity | An integer index in the ECS registry. It has no behaviour of its own. |
+| Entity | A handle in the ECS registry: an index plus a generation, so a handle to a dead entity is detected. It has no behaviour of its own. |
 | Component | A plain data struct attached to an entity (`Transform`, `Health`, …). |
-| System | A free function that reads and writes components every tick. |
+| System | A function registered in the ECS registry, in a stage, that reads and writes components every time its stage runs. |
 | Tick | One fixed simulation step on the server: 1/60 s. |
 | NetId | A 32-bit id that names one replicated entity on every machine. ECS indices are local to each process and never go on the wire. |
 | Snapshot | The complete list of replicated entities and players at one server tick, sent 30 times per second. |
@@ -47,7 +47,7 @@ flowchart TB
         server["r-type_server<br/>ServerApp, SessionManager, tick loop,<br/>ServerNetworkAdapter, SnapshotBuilder"]
     end
     subgraph RTYPE["R-Type layer: no Raylib, no sockets"]
-        game["rtype_game<br/>components, systems, factories,<br/>rules, GameWorld"]
+        game["rtype_game<br/>components, systems, builders,<br/>rules, GameWorld"]
         proto["rtype_protocol<br/>message types, message structs,<br/>serialize / deserialize"]
     end
     subgraph ENGINE["Engine + Network: game-agnostic"]
@@ -57,7 +57,7 @@ flowchart TB
             audio["engine_audio<br/>IAudio + Raylib backend"]
         end
         runtime["engine_runtime<br/>Clock, FixedTimestep"]
-        ecs["engine_ecs<br/>Entity, SparseArray, Registry"]
+        ecs["engine_ecs<br/>Entity, SparseSet, Registry,<br/>View, systems, commands, resources"]
         net["network<br/>Packet, UdpSocket"]
     end
     core["engine_core<br/>Vec2, Rect, Color, log, errors, Rng,<br/>ICommand, FactoryTemplate"]
@@ -70,6 +70,7 @@ flowchart TB
     server --> game & proto & net & runtime
     game --> ecs & runtime & core
     proto --> net & core
+    net --> core
     render --> input & core
     input --> core
     audio --> core
@@ -87,14 +88,14 @@ Read it from the top down: an application pulls in the R-Type layer, which pulls
 | Target | Kind | Owns | Must not know about |
 | --- | --- | --- | --- |
 | `engine_core` | static lib | Math types, colours, logging, error types, RNG, asset path lookup, `ICommand` and `FactoryTemplate` | Everything above it |
-| `engine_ecs` | header-only (INTERFACE) | Entities, component storage, views, deferred destruction | Game components, rendering, networking |
+| `engine_ecs` | static lib | Generational entities, sparse-set storage, views, systems and stages, command buffer, resources | Game components, rendering, networking |
 | `engine_runtime` | static lib | Steady clock, fixed-timestep accumulator, fixed-rate ticker | What runs inside a tick |
 | `engine_render` | static lib, client only | Window, draw-command queue, texture cache, Raylib rendering backend, translation of Raylib key state into input events | Game components, the protocol |
 | `engine_input` | static lib, client only | Engine key codes, per-frame input state, rebindable action map | Game actions' meaning, the network |
 | `engine_audio` | static lib, client only | Sound and music playback, volume, mute; a `NullAudio` for tests | When to play what |
 | `network` | static lib | `Packet` (bounds-checked serialization), `UdpSocket` (Asio socket on its own IO thread) | Players, sessions, R-Type message types |
 | `rtype_protocol` | static lib | R-Type message types, header, message structs and their serialize/deserialize | Sockets, the ECS, Raylib |
-| `rtype_game` | static lib | Components, simulation systems, factories, rules, `GameWorld` | Sockets, packets, Raylib, keyboards |
+| `rtype_game` | static lib | Components, simulation systems, builders, rules, `GameWorld` | Sockets, packets, Raylib, keyboards |
 | `r-type_server` | executable | Sessions, the tick loop, adapters, snapshots | Raylib |
 | `r-type_client` | executable | Scenes, the replicated world, presentation systems, prediction, adapters | Authority over game outcomes |
 
@@ -120,7 +121,7 @@ Code review enforces these, backed by `target_link_libraries` scopes. Breaking o
 | `engine_input` | `engine_core` | — |
 | `engine_render` | `engine_core`, `engine_input` | `raylib` |
 | `engine_audio` | `engine_core` | `raylib` |
-| `network` | `asio` (INTERFACE target, see [development handbook](../handbook/development.md#build-dependencies-and-platforms)) | `ws2_32`, `mswsock` (Windows only) |
+| `network` | `engine_core` (for `NetworkError` and the logger, used by `UdpSocket`), `asio` (INTERFACE target, see [development handbook](../handbook/development.md#build-dependencies-and-platforms)) | `ws2_32`, `mswsock` (Windows only) |
 | `rtype_protocol` | `network`, `engine_core` | — |
 | `rtype_game` | `engine_ecs`, `engine_runtime`, `engine_core` | — |
 | `r-type_server` | — | `rtype_game`, `rtype_protocol`, `network`, `engine_runtime` |
@@ -144,7 +145,7 @@ r-type/
 │   └── ProjectOptions.cmake    # warnings, sanitizers, C++20
 ├── engine/
 │   ├── core/      include/engine/core/*.hpp      src/*.cpp
-│   ├── ecs/       include/engine/ecs/*.hpp       (header-only)
+│   ├── ecs/       include/engine/ecs/*.hpp *.tpp src/*.cpp
 │   ├── runtime/   include/engine/runtime/*.hpp   src/*.cpp
 │   ├── render/    include/engine/render/*.hpp    src/*.cpp  src/raylib/*.cpp
 │   ├── input/     include/engine/input/*.hpp     src/*.cpp
@@ -159,6 +160,7 @@ r-type/
 ├── assets/        sprites/ sounds/ music/ fonts/
 ├── config/        client.cfg keybindings.cfg     # defaults, copied next to the binaries
 ├── tests/         engine/ network/ protocol/ game/ client/
+├── benchmarks/    ecs/                           # Google Benchmark, Release only
 └── docs/          architecture/ modules/ protocol/ handbook/ decisions/
 ```
 

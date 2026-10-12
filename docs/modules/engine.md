@@ -207,114 +207,223 @@ namespace log {
 
 ## ECS (`engine_ecs`)
 
-The ECS uses the classic Epitech design: each component type gets one `SparseArray<Component>`, indexed by the entity's index. It is header-only because everything in it is a template. Gameplay types are unknown to it. The game registers its components at start-up.
+The ECS stores game data as components in **sparse sets**, one per component type, and runs **systems** registered in the registry, grouped in **stages**. Entities are **generational** handles, structural changes made during iteration go through a **command buffer**, and shared objects that aren't components (the random generator, the rules, `dt`) are **resources**.
+
+The design follows the journey written while building the bootstrap ECS ([ECS journey](../reference/ECS_JOURNEY.md)), taken directly to its final form: the sparse sets and views of its steps 8–9, plus its steps 10 (own type erasure, no `std::any`), 11 (generational entities) and 12 (command buffer, resources, stages). Parallel scheduling of systems is left for Part 2. The reasons are in [ADR 0005](../decisions/0005-ecs-design.md).
+
+Namespace `engine::ecs`, headers in `engine/ecs/include/engine/ecs/` (template definitions in `.tpp` files included at the end of their header), non-template code in `engine/ecs/src/`. It knows no game type: the game registers its components, systems and resources at start-up.
 
 ```mermaid
 classDiagram
     class Entity {
-        -size_t _index
-        +Entity(size_t index)
-        +index() size_t
-        +operator size_t() size_t
+        -uint32_t _index
+        -uint32_t _generation
+        +index() uint32_t
+        +generation() uint32_t
         +operator==(Entity) bool
+        +NONE$ Entity
     }
-    class SparseArray~Component~ {
-        <<template>>
-        -std::vector~std::optional~Component~~ _data
-        +operator[](size_t index) std::optional~Component~&
-        +begin() iterator
-        +end() iterator
+    class SparseSetBase {
+        <<abstract>>
+        #std::vector~uint32_t~ _sparse
+        #std::vector~Entity~ _dense
+        +contains(Entity) bool
         +size() size_t
-        +has(size_t index) bool
-        +insertAt(size_t index, Component const&) reference
-        +insertAt(size_t index, Component&&) reference
-        +emplaceAt(size_t index, Args&&...) reference
-        +erase(size_t index) void
-        +getIndex(std::optional~Component~ const&) size_t
+        +empty() bool
+        +entities() std::span~const Entity~
+        +erase(Entity)* void
+    }
+    class SparseSet~Component~ {
+        -std::vector~Component~ _components
+        +get(Entity) Component&
+        +tryGet(Entity) Component*
+        +insertAt(Entity, Component const&) Component&
+        +insertAt(Entity, Component&&) Component&
+        +emplaceAt(Entity, Args&&...) Component&
+        +erase(Entity) void
+        +components() std::span~Component~
     }
     class Registry {
-        -unordered_map~type_index, std::any~ _components
-        -unordered_map~type_index, EraseFn~ _erasers
-        -std::vector~size_t~ _freeIndices
-        -std::vector~bool~ _alive
-        -std::vector~Entity~ _pendingKill
-        -size_t _nextIndex
-        +registerComponent~C~() SparseArray~C~&
-        +getComponents~C~() SparseArray~C~&
+        -std::vector~std::unique_ptr~SparseSetBase~~ _storages
+        -std::vector~uint32_t~ _generations
+        -std::vector~uint32_t~ _freeIndices
+        -ResourceMap _resources
+        -std::vector~Stage~ _stages
+        -CommandBuffer _commands
         +spawnEntity() Entity
-        +entityFromIndex(size_t) Entity
-        +isAlive(Entity) bool
         +killEntity(Entity) void
-        +markForDestruction(Entity) void
-        +flushDestroyed() std::vector~Entity~
-        +addComponent~C~(Entity, C&&) std::optional~C~&
-        +emplaceComponent~C~(Entity, Args&&...) std::optional~C~&
+        +isAlive(Entity) bool
+        +aliveCount() size_t
+        +registerComponent~C~() SparseSet~C~&
+        +getComponents~C~() SparseSet~C~&
+        +addComponent~C~(Entity, C&&) C&
+        +emplaceComponent~C~(Entity, Args&&...) C&
         +removeComponent~C~(Entity) void
         +getComponent~C~(Entity) C*
-        +view~C...~() View~C...~
-        +aliveCount() size_t
+        +view~Cs...~() View~Cs...~
+        +indexedView~Cs...~() IndexedView~Cs...~
+        +addSystem~Cs...~(stage, name, f) void
+        +runStage(stage) void
+        +commands() CommandBuffer&
+        +applyCommands() void
+        +setResource~T~(T value) T&
+        +getResource~T~() T&
+        +tryGetResource~T~() T*
     }
     class View~Cs~ {
-        <<template>>
-        -Registry& _registry
-        -std::tuple~SparseArray~Cs~&...~ _arrays
+        -std::tuple~SparseSet~Cs~*...~ _sets
+        -SparseSetBase const* _driver
         +begin() iterator
         +end() iterator
     }
-    class SystemPipeline~Context~ {
-        <<template>>
-        -std::vector~NamedSystem~ _systems
-        +add(std::string name, SystemFn fn) void
-        +run(Context& ctx, float dt) void
-        +names() std::vector~std::string~
+    class CommandBuffer {
+        -std::vector~Command~ _commands
+        +kill(Entity) void
+        +spawn(init) void
+        +add~C~(Entity, C value) void
+        +remove~C~(Entity) void
+        +apply(Registry&) void
+        +size() size_t
     }
-    Registry "1" *-- "many" SparseArray : owns one per component type
-    Registry ..> Entity : creates
+    SparseSetBase <|-- SparseSet
+    Registry "1" *-- "many" SparseSetBase : one storage per component type
+    Registry *-- CommandBuffer
     Registry ..> View : creates
-    View ..> SparseArray : iterates
+    View ..> SparseSet : iterates
+    SparseSetBase o-- Entity
 ```
 
-The full public API of `Registry` that the game codes against:
+### Entities
+
+| Rule | Detail |
+| --- | --- |
+| Generational handle | An `Entity` is an **index** (`std::uint32_t`, the row in the storages) plus a **generation** (`std::uint32_t`, how many times that index has been reused). Killing an entity increments its index's generation, so any handle kept from before is detected as dead. |
+| Only the registry creates them | The constructor is private (`friend class Registry`). Copying is public, so handles can be stored and passed around. Tests and engine internals that need an entity without a registry use `detail::EntityAccess::make(index, generation)`; it lives in `detail` so that any other use stands out in review. |
+| `Entity::NONE` | A constant meaning "no entity" (all bits set), for fields like a missile's target. There is no default constructor. |
+| No implicit conversion to an integer | Unlike the bootstrap, an `Entity` doesn't convert to `std::size_t`: that would silently drop the generation. Code that needs the row uses `index()`. |
+| `isAlive(e)` | True only if `e.index()` is in range **and** its generation matches the registry's current one. A stale handle is never alive. |
+| Spawning | Reuses freed indices first (LIFO, with their incremented generation), so storages stay as large as the maximum number of entities alive at the same time. |
+| Killing | Erases the entity from every storage (one virtual `erase` per storage, no lookup), increments the generation and frees the index. Killing a dead or stale handle does nothing. |
+
+Storing an `Entity` beyond the current tick is now safe: a dead target is detected with `isAlive`. Anything sent over the network still uses a `NetId` (overview rule 7), because entity indices are local to each process.
+
+### Storage: sparse sets
+
+Each component type is stored in a `SparseSet<Component>`: a `_sparse` array (entity index → position), a packed `_dense` array of entities and a packed `_components` array, aligned with `_dense`.
+
+```text
+entity index:   0     1     2     3     4
+_sparse:     [npos,   1,  npos,   0,  npos]      index → position in the packed arrays
+_dense:        [e3,   e1]                        position → entity (index + generation)
+_components:   [C3,   C1]                        position → component
+```
+
+| Rule | Detail |
+| --- | --- |
+| Untyped base, typed storage | `SparseSetBase` holds `_sparse`, `_dense`, `contains`, `size`, `entities()` and a pure virtual `erase(Entity)`. `SparseSet<C>` adds the components. The registry and views work through the base when the type doesn't matter. |
+| `contains(e)` checks the generation | `_sparse[e.index()]` must point to a position whose `_dense` entry equals `e`, so a stale handle never reads a new entity's component. |
+| Erase is swap-and-pop, O(1) | The last element moves into the hole, in both packed arrays, and its `_sparse` entry is fixed. Order isn't stable. |
+| Strong exception guarantee on insert | If inserting throws, the three arrays are left exactly as before. The order of operations is in the journey, step 8 ("Design decisions"). |
+| `get` vs `tryGet` | `get` asserts the component exists (a bug otherwise); `tryGet` returns `nullptr` when it doesn't. |
+| Spans, not vectors | `entities()` and `components()` return `std::span`, so callers can't resize the arrays and break the invariants. |
+| Components | Any type satisfying the `Component` concept: an object type, not `const`, movable (move-constructible and move-assignable). Move-only components (holding a `std::unique_ptr`) are allowed. |
+
+### Registry
+
+| Area | Functions | Behaviour |
+| --- | --- | --- |
+| Type ids | `detail::typeId<T>()` | A small integer per type, assigned on first use and stable for the process's lifetime. Storages and resources are vectors indexed by it: a lookup is an array access, not a hash. **Never sent over the network or saved**: ids depend on first-use order. |
+| Components | `registerComponent<C>()`, `getComponents<C>()` (+ `const`) | Registering is idempotent. `getComponents` on an unregistered type throws `EngineError` naming the type. |
+| Entity data | `addComponent`, `emplaceComponent`, `removeComponent`, `getComponent` (`nullptr` if absent or stale) | Adding to a dead entity throws `EngineError` (detectable now, thanks to generations). |
+| Copying | (none) | The registry is **move-only**: it owns its storages through `std::unique_ptr`. A game has one registry per process. |
+| Threads | (none) | **Not thread-safe.** Only the game thread touches the registry; the network thread hands data over through `UdpSocket`'s queue. |
+
+### Views
+
+`registry.view<Position, const Velocity>()` iterates every entity that has all the listed components, yielding references (`const` where the type is `const`). `indexedView<…>()` also yields the `Entity` first. Both work with structured bindings:
 
 ```cpp
-namespace engine::ecs {
-class Registry {
-public:
-    template <class C> SparseArray<C>& registerComponent();   // idempotent
-    template <class C> SparseArray<C>& getComponents();       // throws EngineError if C was never registered
-    template <class C> const SparseArray<C>& getComponents() const;
-
-    Entity spawnEntity();                     // reuses freed indices (LIFO)
-    Entity entityFromIndex(std::size_t index);
-    bool isAlive(Entity e) const;
-    void killEntity(Entity e);                // immediate: erases from every SparseArray
-    void markForDestruction(Entity e);        // deferred: safe inside a view loop
-    std::vector<Entity> flushDestroyed();     // kills marked entities, returns them
-
-    template <class C> std::optional<C>& addComponent(Entity e, C&& component);
-    template <class C, class... Args> std::optional<C>& emplaceComponent(Entity e, Args&&... args);
-    template <class C> void removeComponent(Entity e);
-    template <class C> C* getComponent(Entity e);             // nullptr when absent
-
-    template <class... Cs> View<Cs...> view();                // yields std::tuple<Entity, Cs&...>
-    std::size_t aliveCount() const;
-};
-}
+for (auto&& [pos, vel] : registry.view<Position, const Velocity>()) …
+for (auto&& [entity, health] : registry.indexedView<Health>()) …
 ```
 
-These rules are part of the contract. Unit tests check every one of them.
+| Rule | Detail |
+| --- | --- |
+| Driver | The **smallest** of the listed sets drives the iteration, held as a `const SparseSetBase*`. Every other set is checked with `contains`. Cost follows the smallest set, not the number of entities. |
+| Backwards | The driver is walked from its last element to its first, so erasing the **current** entity is safe: swap-and-pop brings in an element that was already visited. |
+| Performance target | Within 10% of a hand-written join at every density, with GCC and Clang (see [handbook: benchmarks](../handbook/development.md#benchmarks)). |
 
-1. **Registration.** `rtype::game::registerComponents(Registry&)` registers every game component exactly once, when the world is created. A missing registration fails fast with an `EngineError` that names the type.
-2. **No structural changes inside a view.** A system iterating `view<A, B>()` must not add or remove `A` or `B`, or spawn entities, inside the loop, because a `SparseArray` may reallocate. It collects requests in a local vector and applies them after the loop. Kills always go through `markForDestruction`.
-3. **One flush per tick.** `flushDestroyed()` runs once, at the end of the simulation tick ([game systems](game.md#systems-and-tick-order)). The game releases the `NetId`s of the entities it returns.
-4. **Index reuse.** Freed indices are reused, so an `Entity` value is valid only within the tick that produced it. Anything that lives longer, such as a projectile's owner, stores a `NetId` instead.
-5. **Iteration order.** `view` goes by ascending index and yields only entities that have all the requested components. Systems must not rely on any other order.
+### Systems and stages
 
-`SystemPipeline<Context>` is a named, ordered list of `std::function<void(Context&, float)>`. The game provides the `Context` (`rtype::game::SimContext`, see [game](game.md#world-context-commands-and-events)), so the engine never learns what a system needs. Names are logged at debug level, which makes the tick order easy to trace.
+```cpp
+registry.addSystem<Transform, const Velocity>(Stage::FIXED_UPDATE, "movement", movementSystem);
+// movementSystem(Registry&, SparseSet<Transform>&, const SparseSet<Velocity>&)
+
+registry.runStage(Stage::FIXED_UPDATE);   // runs that stage's systems in insertion order
+```
+
+| Rule | Detail |
+| --- | --- |
+| Signature | A system receives the `Registry&` first, then one storage per listed component, in the listed order. A `const` component gives a `const SparseSet<C>&`. Checked at compile time with a readable `static_assert` message. |
+| Stages | Systems belong to a stage: any `enum class` whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`). `runStage` runs one stage's systems in the order they were added. The server never adds render systems. |
+| Names | Each system has a name, logged at `trace` level with its run time, which makes the tick order and its cost visible. |
+| Registration | Adding a system registers its component types. Adding a system while a stage is running is a programming error, caught with an `assert`. |
+| Callables | Stored in `std::function`, so systems must be copyable callables (free functions and lambdas without move-only captures). |
+
+### Command buffer
+
+Structural changes requested while iterating are recorded in `registry.commands()` and applied later, in order:
+
+| Command | Effect when applied |
+| --- | --- |
+| `kill(e)` | `killEntity(e)` (ignored if `e` is already dead) |
+| `spawn(init)` | spawns an entity, then calls `init(Registry&, Entity)` to add its components |
+| `add<C>(e, value)` | `addComponent(e, value)` (ignored if `e` died meanwhile) |
+| `remove<C>(e)` | `removeComponent<C>(e)` |
+
+- The registry applies the buffer **after each system** in `runStage`, so the next system sees a consistent world. `applyCommands()` applies it on demand, for code outside a stage.
+- Commands are stored as `std::function`, so a value passed to a deferred `add` must be copyable. A move-only component is added immediately, outside any view loop.
+
+### Resources
+
+Objects that every system may need but that aren't components: the game's random generator, rules, event outbox, `dt`. One instance per type, stored by `detail::typeId<T>()` like the storages.
+
+| Function | Behaviour |
+| --- | --- |
+| `setResource<T>(T value) -> T&` | Creates or replaces the resource |
+| `getResource<T>() -> T&` (+ `const`) | Throws `EngineError` naming the type if it was never set |
+| `tryGetResource<T>() -> T*` | `nullptr` if never set |
+| `DeltaTime` | A resource type provided by the ECS (`{ float seconds; }`). The caller sets it before `runStage`; systems never read a clock. |
+
+### Contract
+
+Unit tests check every rule. Each one maps to a "Check yourself" list in the journey.
+
+1. **Registration.** The game registers every component type when its world is created. Using an unregistered type throws `EngineError` naming it.
+2. **Inside a view loop, only the current entity may change immediately.** Killing it or removing one of its components is safe. Killing *other* entities, spawning, or adding components goes through `commands()`. Component references taken in the loop dangle after an add, so don't keep them.
+3. **Commands are applied after each system**, in the order they were recorded.
+4. **Stale handles are detected.** After a kill, the old handle is not alive, `getComponent` through it returns `nullptr`, and adding to it throws.
+5. **Iteration order is unspecified.** Systems must not depend on it.
+6. **Type ids are process-local.** Never serialize them.
+7. **Single-threaded.** Only the game thread uses the registry.
+
+### Benchmarks
+
+The ECS ships with a Google Benchmark suite (`ecs_benchmarks`, in `benchmarks/ecs/`), built only with `RTYPE_BUILD_BENCHMARKS=ON` in a Release build. It covers the journey's measurements, with these acceptance targets:
+
+| Benchmark | Target |
+| --- | --- |
+| `getComponents<T>()` lookup | a few nanoseconds (array index, no hash) |
+| `isAlive` on random handles, half stale | under 5 ns |
+| spawn + add + kill, with 1, 8 and 32 registered types | grows linearly with the type count, with a small slope (one virtual call per storage) |
+| `view<A, B>()` vs a hand-written join, densities 0.1% to 100% | within 10% at every density, GCC and Clang, `-O2` and `-O3` |
+| memory per component | reported as a counter (`_sparse` + `_dense` + component) |
+
+How to run and compare them: [handbook: benchmarks](../handbook/development.md#benchmarks).
 
 ## Runtime (`engine_runtime`)
 
-Runtime turns wall-clock time into the fixed steps that requirement F-08 asks for. Nothing in the game reads the clock directly: every system receives `dt` from these classes.
+Runtime turns wall-clock time into the fixed steps that requirement F-08 asks for. Nothing in the game reads the clock directly: the owner of the registry turns these classes' output into the `DeltaTime` resource before running a stage, and systems read `dt` from there.
 
 ```mermaid
 classDiagram
@@ -352,7 +461,7 @@ classDiagram
 | Class | Used by | Behaviour |
 | --- | --- | --- |
 | `Stopwatch` | client frame loop | `restart()` returns the seconds since the last call and starts timing again. |
-| `FixedTimestep` | client prediction and input sending | `advance(frame)` adds `min(frame, 0.25 s)` to an accumulator and returns how many whole steps to run, capped at `maxStepsPerFrame` (5). `alpha()` is the leftover fraction, used for render interpolation. |
+| `FixedTimestep` | client prediction and input sending | `advance(frame)` adds `min(frame, 0.25 s)` to an accumulator and returns how many whole steps to run, capped at `maxStepsPerFrame` (5). When the cap is hit, the time it could not run is discarded, so the next frames don't hit the cap too (the "spiral of death"). `alpha()` is the leftover fraction, always in `[0, 1)`, used for render interpolation. |
 | `FixedRateTicker` | server simulation thread | `waitNext()` sleeps until the next deadline with `sleep_until`. If the thread falls more than 250 ms behind, it resets the deadline to now, adds one to `overruns()`, and logs a warning instead of trying to catch up. |
 
 ## Render (`engine_render`)
@@ -506,6 +615,7 @@ classDiagram
 - **Escape is a normal key.** By default Raylib closes the window when Escape is pressed. `Window` calls `SetExitKey(KEY_NULL)` to turn that off, so Escape goes through the `QUIT` action like any other binding.
 - `beginFrame()` clears the pressed and released sets. `apply()` updates all three sets. OS key-repeat events are ignored, and a key counts as pressed only on its first down event.
 - The client defines `enum class Action { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE, TOGGLE_HUD_HELP, QUIT }`. Default bindings are the arrow keys (required by F-09) plus WASD, with `SPACE` and `LCTRL` to fire. Bindings are saved to `config/keybindings.cfg`, one `ACTION=KEY` per line ([accessibility](../architecture/accessibility.md)).
+- **Names in the bindings file.** `engine_input` provides `toString(Key)` and `keyFromString`. Actions belong to the client, so `ActionMap` finds `toString(Action)` and `fromString(std::string_view, Action&)` by ADL, the same pattern as the `Packet` serializers. A missing file keeps the default bindings, and a malformed line is skipped with a warning.
 
 ## Audio (`engine_audio`)
 
@@ -538,7 +648,7 @@ classDiagram
 
 - **`update()` once per frame.** Raylib streams music in small pieces and needs `UpdateMusicStream` to be called every frame, or the music stutters and stops. The client calls `audio.update()` once per frame. `NullAudio::update()` does nothing.
 - **Overlapping sounds.** A Raylib `Sound` can only play once at a time. Each `SoundSlot` holds the loaded sound plus 4 aliases made with `LoadSoundAlias`, which share the same sample data. `playSound` uses the first copy that isn't playing, or restarts the oldest one when all 5 are busy. That keeps memory flat even during heavy explosions.
-- **Device lifetime.** The constructor calls `InitAudioDevice` and the destructor `CloseAudioDevice`, after unloading every sound and music. If `IsAudioDeviceReady()` is false, the client logs a warning and switches to `NullAudio` instead of failing.
+- **Device lifetime.** The constructor calls `InitAudioDevice` and the destructor `CloseAudioDevice`, after unloading every sound and music. If `IsAudioDeviceReady()` is false, the constructor throws. The client never builds `RaylibAudio` directly: it calls `makeAudio()`, which tries `RaylibAudio` and, on failure, logs a warning and returns `NullAudio` instead of failing.
 - Volumes go from 0 to 1, and the effective volume is master × channel.
 - Raylib types appear only in the `.cpp` file. The diagram shows the private members to explain the design, but the header holds a pimpl.
 
