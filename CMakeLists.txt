@@ -8,18 +8,22 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(WIN32)
-	set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
-endif()
+if (WIN32)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+endif ()
+
+option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)
+option(RTYPE_BUILD_CLIENT "Build the client and Raylib" ON)
 
 include(Dependencies)
 include(ProjectOptions)
 include(CTest)
 
 add_subdirectory(src/server)
-add_subdirectory(src/client)
-option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)
+if (RTYPE_BUILD_CLIENT)
+    add_subdirectory(src/client)
+endif ()
 
-if(RTYPE_BUILD_TESTS)
-	add_subdirectory(tests)
-endif()
+if (RTYPE_BUILD_TESTS)
+    add_subdirectory(tests)
+endif ()
