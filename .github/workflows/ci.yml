@@ -63,7 +63,6 @@ jobs:
             ctest \
               --test-dir build \
               --output-on-failure \
-              --no-tests=ignore
 
           else
             echo "No supported build system found"

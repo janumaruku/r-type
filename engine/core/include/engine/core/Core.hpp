@@ -4,3 +4,8 @@
 ** File description:
 ** Core module interface
 */
+
+namespace engine::core {
+
+    
+}
