@@ -26,5 +26,6 @@ if (RTYPE_BUILD_CLIENT)
 endif ()
 
 if (RTYPE_BUILD_TESTS)
+    include(Tests)
     add_subdirectory(tests)
 endif ()
