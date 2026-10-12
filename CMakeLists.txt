@@ -14,6 +14,7 @@ endif ()
 
 option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)
 option(RTYPE_BUILD_CLIENT "Build the client and Raylib" ON)
+option(WITH_COVERAGE "Instrument the code and add the coverage target (Clang only)" OFF)
 
 include(Dependencies)
 include(ProjectOptions)
@@ -29,3 +30,5 @@ if (RTYPE_BUILD_TESTS)
     include(Tests)
     add_subdirectory(tests)
 endif ()
+
+include(Coverage)
