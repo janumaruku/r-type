@@ -4,7 +4,7 @@ project(r-type VERSION 1.0 LANGUAGES CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -13,18 +13,8 @@ if(WIN32)
 endif()
 
 include(Dependencies)
+include(ProjectOptions)
 include(CTest)
-
-add_library(project_options INTERFACE)
-
-target_compile_options(project_options INTERFACE -Wall -Wextra)
-
-if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-	target_compile_options(project_options INTERFACE
-		-Wno-c++98-compat
-		-Wno-c++98-compat-pedantic
-		-Wno-pre-c++17-compat)
-endif()
 
 add_subdirectory(src/server)
 add_subdirectory(src/client)
