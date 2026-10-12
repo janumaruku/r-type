@@ -57,8 +57,12 @@ jobs:
           elif [ -f CMakeLists.txt ]; then
             echo "Detected CMake project"
 
-            cmake --preset linux-release
-            cmake --build --preset linux-release 2>&1 | tee build.log
+            cmake -B build
+            cmake --build build -j$(nproc) 2>&1 | tee build.log
+
+            ctest \
+              --test-dir build \
+              --output-on-failure \
 
           else
             echo "No supported build system found"
