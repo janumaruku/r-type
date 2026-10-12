@@ -2,5 +2,7 @@
 ** EPITECH PROJECT, 2026
 ** r-type
 ** File description:
-** Game module interface
+** Vec2.cpp
 */
+
+#include "Vec2.hpp"

@@ -1,4 +1,0 @@
-add_library(rtype_engine_render INTERFACE)
-target_link_libraries(rtype_engine_render INTERFACE project_options raylib)
-target_include_directories(rtype_engine_render INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-target_link_libraries(rtype_engine INTERFACE rtype_engine_render)
