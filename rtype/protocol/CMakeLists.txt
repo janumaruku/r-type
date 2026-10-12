@@ -1,0 +1,3 @@
+add_library(rtype_protocol INTERFACE)
+target_link_libraries(rtype_protocol INTERFACE project_options)
+target_include_directories(rtype_protocol INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)

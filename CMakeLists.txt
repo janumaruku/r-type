@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.28.3...4.0)
 
 project(r-type VERSION 1.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(WIN32)
@@ -11,21 +9,16 @@ if(WIN32)
 endif()
 
 include(cmake/Dependencies.cmake)
+include(cmake/ProjectOptions.cmake)
 include(CTest)
 
-add_library(project_options INTERFACE)
+add_subdirectory(engine)
+add_subdirectory(network)
+add_subdirectory(rtype)
+add_subdirectory(apps/server)
+add_subdirectory(apps/client)
+add_subdirectory(benchmarks)
 
-target_compile_options(project_options INTERFACE -Wall -Wextra)
-
-if(WIN32 AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-	target_compile_options(project_options INTERFACE
-		-Wno-c++98-compat
-		-Wno-c++98-compat-pedantic
-		-Wno-pre-c++17-compat)
-endif()
-
-add_subdirectory(src/server)
-add_subdirectory(src/client)
 option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)
 
 if(RTYPE_BUILD_TESTS)

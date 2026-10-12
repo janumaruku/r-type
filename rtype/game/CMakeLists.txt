@@ -1,0 +1,3 @@
+add_library(rtype_game_domain INTERFACE)
+target_link_libraries(rtype_game_domain INTERFACE project_options rtype_engine rtype_protocol)
+target_include_directories(rtype_game_domain INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
