@@ -7,13 +7,12 @@
 
 #include <benchmark/benchmark.h>
 
-#include <string>
+#include "BenchmarkHelpers.hpp"
 
 static void BM_Setup(benchmark::State &state)
 {
     for (auto _ : state) {
-        std::string temp = "a very, very long string";
-        benchmark::DoNotOptimize(temp);
+        benchmark::DoNotOptimize(pickEntities(densityOf(state)));
     }
 }
-BENCHMARK(BM_Setup);
+BENCHMARK(BM_Setup)->Arg(100);
