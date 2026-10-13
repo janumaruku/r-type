@@ -62,7 +62,14 @@ struct EntityAccess {
 
 template <>
 struct std::hash<engine::ecs::Entity> {
-    std::size_t operator()(const engine::ecs::Entity &entity) const noexcept;
+    std::size_t operator()(const engine::ecs::Entity &entity) const noexcept
+    {
+        const std::uint64_t packed =
+            (static_cast<std::uint64_t>(entity.generation()) << 32) |
+            entity.index();
+
+        return std::hash<std::uint64_t>{}(packed);
+    }
 };
 
 static_assert(sizeof(engine::ecs::Entity) == 8);
