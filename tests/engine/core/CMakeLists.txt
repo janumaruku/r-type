@@ -4,6 +4,8 @@ target_sources(engine_core_tests PRIVATE
     Rec2tests.cpp
     ColorTests.cpp
     ErrorTests.cpp
+    AssetLocatorTests.cpp
+    FactoryTemplateTests.cpp
     LoggerTests.cpp
     RngTests.cpp
 )

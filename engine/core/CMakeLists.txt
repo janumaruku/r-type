@@ -4,6 +4,7 @@ add_library(engine_core STATIC
     src/Rng.cpp
     src/Rect2.cpp
     src/Vec2.cpp
+    src/AssetLocator.cpp
 )
 
 target_include_directories(engine_core PUBLIC include)
