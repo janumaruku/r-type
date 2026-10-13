@@ -42,6 +42,6 @@ if (RTYPE_BUILD_TESTS)
     add_subdirectory(tests)
 endif ()
 
-include(Coverage)
-
 add_subdirectory(engine)
+
+include(Coverage)
