@@ -20,6 +20,7 @@ include(Dependencies)
 include(ProjectOptions)
 include(CTest)
 
+add_subdirectory(engine)
 add_subdirectory(network)
 add_subdirectory(apps/server)
 if (RTYPE_BUILD_CLIENT)
@@ -32,5 +33,3 @@ if (RTYPE_BUILD_TESTS)
 endif ()
 
 include(Coverage)
-
-add_subdirectory(engine)
