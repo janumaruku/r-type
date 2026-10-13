@@ -36,6 +36,9 @@ public:
 
 private:
     std::uint32_t _index;
+    // Incremented each time the index is reused. Wraps to 0 after 2^32 reuses
+    // of the same index, so a handle that old could match a new entity again.
+    // Accepted: that is billions of kills of one slot.
     std::uint32_t _generation;
 
     constexpr Entity(std::uint32_t index, std::uint32_t generation) noexcept:
