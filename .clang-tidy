@@ -68,7 +68,7 @@ Checks:
   - -readability-suspicious-call-argument
   - -cppcoreguidelines-special-member-functions
 
-HeaderFilterRegex: '^(src|include)/(?!.*(jsonParser|Serializer)\.hpp$).*'
+HeaderFilterRegex: '.*/(engine|network|rtype|apps)/.*'
 
 WarningsAsErrors: >
   cppcoreguidelines-non-private-member-variables-in-classes,
