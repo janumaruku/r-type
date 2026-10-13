@@ -11,29 +11,22 @@
 #include <cstddef>
 #include <cstdint>
 #include <concepts>
+#include <array>
 #include <limits>
 #include <optional>
+#include <string>
 #include <span>
 #include <vector>
 #include <stdexcept>
 #include <type_traits>
+
+#include "Serializers.hpp"
 
 namespace net {
 
 class PacketError : public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
-};
-
-class Packet;
-
-template <typename T>
-concept Primitive = (std::is_arithmetic_v<T> || std::is_enum_v<T>) && !std::is_same_v<T, bool>;
-
-template <typename T>
-concept Serializable = Primitive<T> || requires(Packet& packet, const T& in, T& out) {
-    serialize(packet, in);
-    deserialize(packet, out);
 };
 
 class Packet {
@@ -75,3 +68,4 @@ static_assert(std::numeric_limits<float>::is_iec559, "floats must be IEEE-754");
 #endif
 
 #include "Packet.tpp"
+#include "Serializers.tpp"
