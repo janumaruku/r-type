@@ -49,10 +49,15 @@ private:
 
 inline constexpr Entity Entity::NONE{0xFFFFFFFF, 0xFFFFFFFF};
 
+namespace detail {
 struct EntityAccess {
-    static constexpr Entity make(std::uint32_t index,
-        std::uint32_t generation) noexcept;
+    [[nodiscard]] static constexpr Entity make(std::uint32_t index,
+        std::uint32_t generation) noexcept
+    {
+        return Entity{index, generation};
+    }
 };
+} // namespace detail
 } // namespace engine::ecs
 
 template <>
