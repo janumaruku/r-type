@@ -20,6 +20,7 @@ include(Dependencies)
 include(ProjectOptions)
 include(CTest)
 
+add_subdirectory(engine)
 add_subdirectory(network)
 add_subdirectory(apps/server)
 if (RTYPE_BUILD_CLIENT)
