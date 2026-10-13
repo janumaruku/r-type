@@ -5,7 +5,7 @@
 ** Entity
 */
 
-#include "ecs/Entity.hpp"
+#include "engine/ecs/Entity.hpp"
 
 namespace engine::ecs {
 std::uint32_t Entity::index() const noexcept
