@@ -1,1 +1,1 @@
-rtype_add_test(network_tests SOURCES SetupTests.cpp LIBS network)
+rtype_add_test(network_tests LIBS network SOURCES PacketTests.cpp)
