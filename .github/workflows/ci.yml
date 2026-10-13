@@ -23,7 +23,7 @@ jobs:
     if: ${{ github.repository != vars.MIRROR_URL }}
     runs-on: ubuntu-latest
     container: janumaruku/epitest-with-raylib
-    timeout-minutes: 4
+    timeout-minutes: 10
 
     env:
       CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
@@ -86,9 +86,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: build-log
-          path: |
-            build.log
-            build/Testing/Temporary/LastTest.log
+          path: build.log
           if-no-files-found: warn
 
   # ============================================================
@@ -101,7 +99,7 @@ jobs:
     name: Windows compilation
     if: ${{ github.repository != vars.MIRROR_URL }}
     runs-on: windows-2025-vs2026
-    timeout-minutes: 6
+    timeout-minutes: 15
 
     env:
       CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
@@ -134,11 +132,8 @@ jobs:
           elseif (Test-Path "CMakeLists.txt") {
             Write-Host "Detected CMake project"
 
-            cmake -S . -B build `
-              -DCMAKE_BUILD_TYPE=Release `
-              -T ClangCL
-
-            cmake --build build --config Release --parallel
+            cmake --preset windows-clangcl-release
+            cmake --build --preset windows-clangcl-release --parallel
           }
           else {
             Write-Error "No supported build system found"
@@ -177,7 +172,7 @@ jobs:
     name: Static analysis with clang tidy
     runs-on: ubuntu-latest
     container: epitechcontent/epitest-docker
-    timeout-minutes: 6
+    timeout-minutes: 10
     needs: compilation_required
 
     env:
@@ -205,7 +200,7 @@ jobs:
       - name: Build
         shell: bash
         run: |
-          set -e
+          set -eo pipefail
 
           if [ -f Makefile ]; then
             echo "Detected Makefile"
@@ -219,11 +214,11 @@ jobs:
           elif [ -f CMakeLists.txt ]; then
             echo "Detected CMake project"
 
-            cmake -B build
-            cmake --build build
+            cmake --preset linux-debug
 
             python3 run-clang-tidy.py -j$(nproc) \
-              -p build 2>&1 | tee analysis.log
+              -p build/linux-debug \
+              "$PWD/(engine|network|rtype|apps|tests)/" 2>&1 | tee analysis.log
 
           else
             echo "No supported build system found"
@@ -274,6 +269,7 @@ jobs:
     name: Run unit tests (Linux)
     runs-on: ubuntu-latest
     container: epitechcontent/epitest-docker
+    timeout-minutes: 15
     needs: compilation_required
 
     env:
@@ -305,22 +301,18 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -S . -B build \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_COMPILER=clang++ \
-            -DWITH_COVERAGE=ON
+          cmake --preset linux-coverage
 
       - name: Build binaries
         run: |
-          cmake --build build \
-            --target coverage \
-            --config Release \
-            -j$(nproc)
+          cmake --build --preset linux-coverage
 
       - name: Run tests
-        working-directory: build
         run: |
-          ctest -V --output-junit test-results.xml
+          ctest \
+            --test-dir build/linux-coverage \
+            --output-on-failure \
+            --output-junit test-results.xml
 
       - name: Fix Git ownership
         if: always()
@@ -341,7 +333,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
-          path: build/coverage_html
+          path: build/linux-coverage/coverage_html
           if-no-files-found: warn
 
   # ============================================================
@@ -353,6 +345,7 @@ jobs:
   unit_test_windows:
     name: Run unit tests (Windows)
     runs-on: windows-2025-vs2026
+    timeout-minutes: 15
     needs: compilation_required_windows
 
     env:
@@ -379,20 +372,17 @@ jobs:
       - name: Configure CMake
         shell: pwsh
         run: |
-          cmake -S . -B build `
-            -DCMAKE_BUILD_TYPE=Release `
-            -T ClangCL
+          cmake --preset windows-clangcl-debug
 
       - name: Build binaries
         shell: pwsh
         run: |
-          cmake --build build --config Release --parallel
+          cmake --build --preset windows-clangcl-debug --parallel
 
       - name: Run tests
         shell: pwsh
-        working-directory: build
         run: |
-          ctest -C Release -V --output-junit test-results.xml
+          ctest --preset windows-clangcl-debug --output-junit test-results.xml
 
       - name: Publish Test Results to GitHub Checks
         uses: dorny/test-reporter@v3
@@ -413,6 +403,7 @@ jobs:
       - unit_test_linux
       - unit_test_windows
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout Repository
@@ -448,6 +439,7 @@ jobs:
     if: ${{ github.repository_owner == vars.USERNAME }}
 
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout Repository

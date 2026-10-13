@@ -1,0 +1,1 @@
+rtype_add_test(network_tests SOURCES SetupTests.cpp LIBS network)
