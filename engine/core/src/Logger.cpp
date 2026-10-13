@@ -25,9 +25,9 @@
 
 namespace engine::core::log {
 
-thread_local std::string thread_name = "?";
+thread_local std::string threadName = "?";
 
-const std::map<Level, const char *> levelNames{
+const std::map<Level, const char *> LEVEL_NAMES{
     {Level::TRACE, "TRACE"},
     {Level::DEBUG, "DEBUG"},
     {Level::INFO, "INFO"},
@@ -36,7 +36,7 @@ const std::map<Level, const char *> levelNames{
     {Level::OFF, "OFF"},
 };
 
-const std::map<Level, const char *> levelColors{
+const std::map<Level, const char *> LEVEL_COLORS{
     {Level::TRACE, "90"},
     {Level::DEBUG, "36"},
     {Level::INFO, "32"},
@@ -46,14 +46,14 @@ const std::map<Level, const char *> levelColors{
 
 const char *levelName(Level level) noexcept
 {
-    const auto it = levelNames.find(level);
-    return it == levelNames.end() ? "OFF" : it->second;
+    const auto it = LEVEL_NAMES.find(level);
+    return it == LEVEL_NAMES.end() ? "OFF" : it->second;
 }
 
 const char *levelColor(Level level) noexcept
 {
-    const auto it = levelColors.find(level);
-    return it == levelColors.end() ? "" : it->second;
+    const auto it = LEVEL_COLORS.find(level);
+    return it == LEVEL_COLORS.end() ? "" : it->second;
 }
 
 bool isTerminal() noexcept
@@ -92,7 +92,7 @@ LogLine::LogLine(LogLine &&other) noexcept
 
 void Logger::setThreadName(const std::string &name) noexcept
 {
-    thread_name = name;
+    threadName = name;
 }
 
 LogLine Logger::trace()
@@ -145,7 +145,7 @@ LogLine::~LogLine() noexcept
         const auto timestamp = std::chrono::floor<std::chrono::milliseconds>(now);
         const std::string contextPart = context.empty() ? "" : std::format(" [{}]", context);
         const std::string line = std::format("[{:%T}] [{}] [{}]{} {}",
-            timestamp, levelName(level), thread_name, contextPart, buffer.str());
+            timestamp, levelName(level), threadName, contextPart, buffer.str());
 
         if (!isTerminal()) {
             std::cerr << line << '\n';
@@ -154,7 +154,7 @@ LogLine::~LogLine() noexcept
             std::cerr << std::format("[{:%T}] [", timestamp)
                       << '\033' << "[" << color << "m"
                       << levelName(level) << "\033[37m] ["
-                      << thread_name << "]" << contextPart << " "
+                      << threadName << "]" << contextPart << " "
                       << buffer.str() << "\033[0m\n";
         }
     } catch (...) {}

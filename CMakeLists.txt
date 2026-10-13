@@ -8,6 +8,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if (UNIX AND NOT APPLE)
+    execute_process(
+        COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so.6
+        OUTPUT_VARIABLE CXX_RUNTIME_LIBRARY
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if (IS_ABSOLUTE "${CXX_RUNTIME_LIBRARY}")
+        get_filename_component(CXX_RUNTIME_DIRECTORY "${CXX_RUNTIME_LIBRARY}" DIRECTORY)
+        list(APPEND CMAKE_BUILD_RPATH "${CXX_RUNTIME_DIRECTORY}")
+    endif ()
+endif ()
+
 if (WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif ()
@@ -15,6 +26,11 @@ endif ()
 option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)
 option(RTYPE_BUILD_CLIENT "Build the client and Raylib" ON)
 option(WITH_COVERAGE "Instrument the code and add the coverage target (Clang only)" OFF)
+option(RTYPE_BUILD_BENCHMARKS "Build the benchmarks (use a Release build)" OFF)
+
+if (RTYPE_BUILD_BENCHMARKS AND NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(WARNING "Benchmark stats are only useful in Release. Use --preset linux-bench to build the targets")
+endif ()
 
 include(Dependencies)
 include(ProjectOptions)
@@ -31,6 +47,10 @@ if (RTYPE_BUILD_TESTS)
     add_subdirectory(tests)
 endif ()
 
-include(Coverage)
-
 add_subdirectory(engine)
+
+if (RTYPE_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif ()
+
+include(Coverage)
