@@ -32,7 +32,7 @@ inline void deserialize(Packet &packet, std::string &out)
 }
 
 template <typename T>
-    requires (!std::same_as<T, bool>)
+    requires Serializable<T>
 void serialize(Packet &packet, const std::vector<T> &in)
 {
     if (in.size() > std::numeric_limits<std::uint16_t>::max())
@@ -43,7 +43,7 @@ void serialize(Packet &packet, const std::vector<T> &in)
 }
 
 template <typename T>
-    requires (!std::same_as<T, bool>)
+    requires Serializable<T>
 void deserialize(Packet &packet, std::vector<T> &out)
 {
     const auto count = packet.read<std::uint16_t>();
@@ -56,7 +56,7 @@ void deserialize(Packet &packet, std::vector<T> &out)
 }
 
 template <typename T, std::size_t N>
-    requires (!std::same_as<T, bool>)
+    requires Serializable<T>
 void serialize(Packet &packet, const std::array<T, N> &in)
 {
     for (const auto &value : in)
@@ -64,7 +64,7 @@ void serialize(Packet &packet, const std::array<T, N> &in)
 }
 
 template <typename T, std::size_t N>
-    requires (!std::same_as<T, bool>)
+    requires Serializable<T>
 void deserialize(Packet &packet, std::array<T, N> &out)
 {
     for (std::size_t i = 0; i < N; ++i)
