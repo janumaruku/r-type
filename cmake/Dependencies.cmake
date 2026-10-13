@@ -45,6 +45,22 @@ disable_external_warnings(glfw)
 disable_external_warnings(gtest)
 disable_external_warnings(gtest_main)
 
+if (RTYPE_BUILD_BENCHMARKS)
+    CPMAddPackage(
+            NAME benchmark
+            GITHUB_REPOSITORY google/benchmark
+            GIT_TAG v1.9.5
+            SYSTEM YES
+            OPTIONS
+            "BENCHMARK_ENABLE_TESTING OFF"
+            "BENCHMARK_ENABLE_GTEST_TESTS OFF"
+            "BENCHMARK_ENABLE_INSTALL OFF"
+            "BENCHMARK_ENABLE_WERROR OFF")
+
+    disable_external_warnings(benchmark)
+    disable_external_warnings(benchmark_main)
+endif ()
+
 CPMAddPackage(
         NAME asio
         GITHUB_REPOSITORY chriskohlhoff/asio
