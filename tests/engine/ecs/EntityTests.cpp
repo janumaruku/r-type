@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "ecs/Entity.hpp"
+#include "engine/ecs/Entity.hpp"
 
 TEST(Entity, construct)
 {
