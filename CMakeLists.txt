@@ -8,6 +8,17 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+if (UNIX AND NOT APPLE)
+    execute_process(
+        COMMAND ${CMAKE_CXX_COMPILER} -print-file-name=libstdc++.so.6
+        OUTPUT_VARIABLE CXX_RUNTIME_LIBRARY
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if (IS_ABSOLUTE "${CXX_RUNTIME_LIBRARY}")
+        get_filename_component(CXX_RUNTIME_DIRECTORY "${CXX_RUNTIME_LIBRARY}" DIRECTORY)
+        list(APPEND CMAKE_BUILD_RPATH "${CXX_RUNTIME_DIRECTORY}")
+    endif ()
+endif ()
+
 if (WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 endif ()
@@ -31,6 +42,6 @@ if (RTYPE_BUILD_TESTS)
     add_subdirectory(tests)
 endif ()
 
-include(Coverage)
-
 add_subdirectory(engine)
+
+include(Coverage)
