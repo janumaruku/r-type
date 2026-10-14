@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <iterator>
 #include <thread>
 #include <vector>
 
@@ -28,6 +29,13 @@ void sendDatagram(asio::ip::udp::socket& sender,
     const std::vector<std::uint8_t>& bytes)
 {
     sender.send_to(asio::buffer(bytes), destination);
+}
+
+net::Packet makePacket(const std::vector<std::uint8_t>& bytes)
+{
+    net::Packet packet;
+    packet.writeRaw(bytes.data(), bytes.size());
+    return packet;
 }
 
 std::vector<net::Datagram> waitForDatagrams(net::UdpSocket& receiver,
@@ -179,4 +187,89 @@ TEST(UdpSocket, FloodIsBoundedAndAccountsForApplicationDrops)
 
     EXPECT_LE(queued, 4096U);
     EXPECT_LE(queued + receiver.dropped(), sentCount);
+}
+
+TEST(UdpSocket, SendToDeliversPacketsInOrderWithIntactBytes)
+{
+    constexpr std::size_t packetCount = 1000;
+    net::UdpSocket receiver(0);
+    net::UdpSocket sender(0);
+    receiver.start();
+    sender.start();
+
+    std::vector<net::Datagram> received;
+    const auto destination = receiver.localEndpoint();
+    for (std::size_t index = 0; index < packetCount; ++index) {
+        const std::vector<std::uint8_t> bytes{
+            static_cast<std::uint8_t>(index & 0xff),
+            static_cast<std::uint8_t>((index >> 8) & 0xff),
+        };
+        auto packet = makePacket(bytes);
+        sender.sendTo(destination, packet);
+
+        auto batch = receiver.receiveAll();
+        received.insert(received.end(),
+            std::make_move_iterator(batch.begin()),
+            std::make_move_iterator(batch.end()));
+    }
+
+    auto remaining = waitForDatagrams(receiver, packetCount - received.size());
+    received.insert(received.end(),
+        std::make_move_iterator(remaining.begin()),
+        std::make_move_iterator(remaining.end()));
+
+    ASSERT_EQ(received.size(), packetCount);
+    for (std::size_t index = 0; index < packetCount; ++index) {
+        const std::vector<std::uint8_t> expectedBytes{
+            static_cast<std::uint8_t>(index & 0xff),
+            static_cast<std::uint8_t>((index >> 8) & 0xff),
+        };
+        EXPECT_EQ(received[index].bytes, expectedBytes);
+    }
+}
+
+TEST(UdpSocket, ConcurrentSendToCallsDeliverIntactPackets)
+{
+    constexpr std::size_t packetsPerThread = 200;
+    net::UdpSocket receiver(0);
+    net::UdpSocket sender(0);
+    receiver.start();
+    sender.start();
+    const auto destination = receiver.localEndpoint();
+
+    auto sendPackets = [&](std::uint8_t threadId) {
+        for (std::size_t index = 0; index < packetsPerThread; ++index) {
+            auto packet = makePacket({
+                threadId,
+                static_cast<std::uint8_t>(index),
+                0xa5,
+            });
+            sender.sendTo(destination, packet);
+        }
+    };
+
+    std::thread first(sendPackets, 0);
+    std::thread second(sendPackets, 1);
+    first.join();
+    second.join();
+
+    const auto received = waitForDatagrams(receiver, packetsPerThread * 2);
+    for (const auto& datagram : received) {
+        ASSERT_EQ(datagram.bytes.size(), 3U);
+        EXPECT_LT(datagram.bytes[0], 2U);
+        EXPECT_LT(datagram.bytes[1], packetsPerThread);
+        EXPECT_EQ(datagram.bytes[2], 0xa5);
+    }
+}
+
+TEST(UdpSocket, SendToAfterStopIsHarmless)
+{
+    net::UdpSocket sender(0);
+    sender.start();
+    const auto destination = asio::ip::udp::endpoint(
+        asio::ip::address_v4::loopback(), 1);
+    const auto packet = makePacket({1, 2, 3});
+    sender.stop();
+
+    EXPECT_NO_THROW(sender.sendTo(destination, packet));
 }
