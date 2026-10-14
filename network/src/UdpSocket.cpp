@@ -5,14 +5,15 @@
 ** UdpSocket.cpp
 */
 
+#include "UdpSocket.hpp"
 
+#include <asio/post.hpp>
 #include <cassert>
 #include <format>
 #include <utility>
 
-#include "Logger.hpp"
-#include "UdpSocket.hpp"
 #include "Errors.hpp"
+#include "Logger.hpp"
 
 namespace net {
 
@@ -45,6 +46,7 @@ void UdpSocket::start()
                 _port, error.message()));
     }
 
+    _running = true;
     receiveNext();
     _thread = std::thread([this]() { _ioContext.run(); });
 }
@@ -65,10 +67,11 @@ void UdpSocket::receiveNext()
             }
             if (bytesReceived > Packet::MAX_SIZE) {
                 ++_dropped;
-                engine::core::log::Logger("UdpSocket").debug(
-                    "Dropped UDP datagram from {}: size {} exceeds maximum {}",
-                    _sender.address().to_string(), bytesReceived,
-                    Packet::MAX_SIZE);
+                engine::core::log::Logger("UdpSocket")
+                    .debug("Dropped UDP datagram from {}: size {} exceeds "
+                           "maximum {}",
+                        _sender.address().to_string(), bytesReceived,
+                        Packet::MAX_SIZE);
                 receiveNext();
                 return;
             }
@@ -78,10 +81,9 @@ void UdpSocket::receiveNext()
                 ++_dropped;
             } else {
                 _incoming.push_back({
-                    .bytes = std::vector<std::uint8_t>(
-                        _receiveBuffer.begin(),
+                    .bytes = std::vector<std::uint8_t>(_receiveBuffer.begin(),
                         _receiveBuffer.begin() + bytesReceived),
-                    .from = _sender,
+                    .from  = _sender,
                 });
             }
             receiveNext();
@@ -90,6 +92,7 @@ void UdpSocket::receiveNext()
 
 void UdpSocket::stop()
 {
+    _running = false;
     _workGuard.reset();
     _ioContext.stop();
     if (_thread.joinable())
@@ -99,12 +102,27 @@ void UdpSocket::stop()
 void UdpSocket::sendTo(const asio::ip::udp::endpoint &endpoint,
     const Packet &packet)
 {
-    auto bytes = packet.bytes();
-    _socket.async_send_to(asio::buffer(bytes.data(), bytes.size()), endpoint,
-        [](const asio::error_code &error, std::size_t bytesSent) {
-            if (error)
-                throw PacketError(std::format("Failed to send {} bytes: {}",
-                    bytesSent, error.message()));
+    if (!_running) {
+        engine::core::log::Logger("UdpSocket")
+            .debug("tried to send a packet while the socket is not running");
+        return;
+    }
+    const auto packetBytes = packet.bytes();
+    std::vector<std::uint8_t> bytes(packetBytes.begin(), packetBytes.end());
+    std::shared_ptr<std::vector<std::uint8_t>> sharedBytes =
+        std::make_shared<std::vector<std::uint8_t>>(std::move(bytes));
+    asio::post(_workGuard.get_executor(),
+        [this, endpoint, sharedBytes = std::move(sharedBytes)]() {
+            _socket.async_send_to(asio::buffer(*sharedBytes), endpoint,
+                [endpoint, sharedBytes = sharedBytes](
+                    const asio::error_code &error, std::size_t) {
+                    if (!error)
+                        return;
+                    engine::core::log::Logger("UdpSocket").debug(
+                        "Failed to send UDP datagram to {}:{}: {}",
+                        endpoint.address().to_string(), endpoint.port(),
+                        error.message());
+                });
         });
 }
 

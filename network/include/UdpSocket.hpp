@@ -50,6 +50,8 @@ public:
 
 private:
 
+    bool _running = false;
+
     void receiveNext();
 
     std::uint16_t _port = 0;
