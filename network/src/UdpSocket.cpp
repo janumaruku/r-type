@@ -5,18 +5,20 @@
 ** UdpSocket.cpp
 */
 
-#include "UdpSocket.hpp"
 
 #include <cassert>
 #include <format>
+#include <utility>
 
+#include "Logger.hpp"
+#include "UdpSocket.hpp"
 #include "Errors.hpp"
 
 namespace net {
 
 UdpSocket::UdpSocket(std::uint16_t port):
     _port(port), _workGuard(asio::make_work_guard(_ioContext)),
-    _socket(_ioContext)
+    _socket(_ioContext), _dropped(0)
 {}
 
 UdpSocket::~UdpSocket()
@@ -43,9 +45,47 @@ void UdpSocket::start()
                 _port, error.message()));
     }
 
-    receiveAll();
-
+    receiveNext();
     _thread = std::thread([this]() { _ioContext.run(); });
+}
+
+void UdpSocket::receiveNext()
+{
+    _socket.async_receive_from(asio::buffer(_receiveBuffer), _sender,
+        [this](const asio::error_code &error, std::size_t bytesReceived) {
+            if (error == asio::error::operation_aborted)
+                return;
+            if (error) {
+                receiveNext();
+                return;
+            }
+            if (bytesReceived == 0) {
+                receiveNext();
+                return;
+            }
+            if (bytesReceived > Packet::MAX_SIZE) {
+                ++_dropped;
+                engine::core::log::Logger("UdpSocket").debug(
+                    "Dropped UDP datagram from {}: size {} exceeds maximum {}",
+                    _sender.address().to_string(), bytesReceived,
+                    Packet::MAX_SIZE);
+                receiveNext();
+                return;
+            }
+
+            std::scoped_lock lock(_mutex);
+            if (_incoming.size() >= 4096) {
+                ++_dropped;
+            } else {
+                _incoming.push_back({
+                    .bytes = std::vector<std::uint8_t>(
+                        _receiveBuffer.begin(),
+                        _receiveBuffer.begin() + bytesReceived),
+                    .from = _sender,
+                });
+            }
+            receiveNext();
+        });
 }
 
 void UdpSocket::stop()
@@ -68,17 +108,17 @@ void UdpSocket::sendTo(const asio::ip::udp::endpoint &endpoint,
         });
 }
 
-void UdpSocket::receiveAll()
+std::vector<Datagram> UdpSocket::receiveAll(std::size_t max)
 {
-    _socket.async_receive_from(asio::buffer(_receiveBuffer), _sender,
-        [this](const asio::error_code &error, std::size_t bytesReceived) {
-            if (!error && bytesReceived > 0) {
-                std::vector<std::uint8_t> data(_receiveBuffer.begin(),
-                    _receiveBuffer.begin() + bytesReceived);
-                _incoming.push_back({.data = std::move(data), .from = _sender});
-            }
-            receiveAll();
-        });
+    std::vector<Datagram> result;
+    std::scoped_lock lock(_mutex);
+    const auto count = std::min(max, _incoming.size());
+    result.reserve(count);
+    for (std::size_t index = 0; index < count; ++index) {
+        result.push_back(std::move(_incoming.front()));
+        _incoming.pop_front();
+    }
+    return result;
 }
 
 [[nodiscard]] asio::ip::udp::endpoint UdpSocket::localEndpoint() const

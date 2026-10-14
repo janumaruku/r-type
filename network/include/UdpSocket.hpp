@@ -10,6 +10,7 @@
 
 #include <array>
 #include <asio.hpp>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <mutex>
@@ -20,7 +21,7 @@
 namespace net {
 
 struct Datagram {
-    std::vector<std::uint8_t> data;
+    std::vector<std::uint8_t> bytes;
     asio::ip::udp::endpoint from;
 };
 
@@ -42,12 +43,14 @@ public:
     void stop();
 
     void sendTo(const asio::ip::udp::endpoint &endpoint, const Packet &packet);
-    void receiveAll();
+    [[nodiscard]] std::vector<Datagram> receiveAll(std::size_t max = 1024);
 
     [[nodiscard]] asio::ip::udp::endpoint localEndpoint() const;
     [[nodiscard]] std::uint64_t dropped() const;
 
 private:
+
+    void receiveNext();
 
     std::uint16_t _port = 0;
     asio::io_context _ioContext;
@@ -55,7 +58,7 @@ private:
     asio::ip::udp::socket _socket;
 
     std::thread _thread;
-    std::array<std::uint8_t, MAX_PACKET_SIZE> _receiveBuffer;
+    std::array<std::uint8_t, 1500> _receiveBuffer;
 
     asio::ip::udp::endpoint _sender;
     std::mutex _mutex;
