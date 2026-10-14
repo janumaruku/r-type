@@ -11,6 +11,6 @@ namespace engine::input {
     };
 
     constexpr std::size_t KEY_COUNT = static_cast<std::size_t>(Key::COUNT);
-
+    constexpr std::size_t KEY_MAX_SIZE = 8;
 }
 
