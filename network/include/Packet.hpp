@@ -19,6 +19,7 @@
 #include <vector>
 #include <stdexcept>
 #include <type_traits>
+#include <bit>
 
 #include "Serializers.hpp"
 
