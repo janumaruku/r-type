@@ -1,0 +1,16 @@
+#include <cstdint>
+
+namespace engine::input {
+
+    enum class Key:std::uint8_t {
+        UNKNOWN,
+        A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z,
+        NUM0, NUM1, NUM2, NUM3, NUM4, NUM5, NUM6, NUM7, NUM8, NUM9,
+        UP, DOWN, LEFT, RIGHT, SPACE, ENTER, ESCAPE, LSHIFT, LCTRL,
+        COUNT
+    };
+
+    constexpr std::size_t KEY_COUNT = static_cast<std::size_t>(Key::COUNT);
+    constexpr std::size_t KEY_MAX_SIZE = 8;
+}
+
