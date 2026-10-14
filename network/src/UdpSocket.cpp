@@ -34,16 +34,16 @@ void UdpSocket::start()
     asio::error_code error;
     _socket.open(asio::ip::udp::v4(), error);
     if (error)
-        throw engine::core::
-            NetworkError(std::format("Failed to open UDP socket on port {}: {}",
-                _port, error.message()));
+        throw engine::core::NetworkError(std::format(
+            "Failed to open UDP socket on port {}: {}", _port,
+            error.message()));
 
     _socket.bind(asio::ip::udp::endpoint(asio::ip::udp::v4(), _port), error);
     if (error) {
         _socket.close();
-        throw engine::core::
-            NetworkError(std::format("Failed to bind UDP socket on port {}: {}",
-                _port, error.message()));
+        throw engine::core::NetworkError(std::format(
+            "Failed to bind UDP socket on port {}: {}", _port,
+            error.message()));
     }
 
     _running = true;
@@ -53,41 +53,109 @@ void UdpSocket::start()
 
 void UdpSocket::receiveNext()
 {
-    _socket.async_receive_from(asio::buffer(_receiveBuffer), _sender,
-        [this](const asio::error_code &error, std::size_t bytesReceived) {
-            if (error == asio::error::operation_aborted)
-                return;
-            if (error) {
-                receiveNext();
-                return;
-            }
-            if (bytesReceived == 0) {
-                receiveNext();
-                return;
-            }
-            if (bytesReceived > Packet::MAX_SIZE) {
-                ++_dropped;
-                engine::core::log::Logger("UdpSocket")
-                    .debug("Dropped UDP datagram from {}: size {} exceeds "
-                           "maximum {}",
-                        _sender.address().to_string(), bytesReceived,
-                        Packet::MAX_SIZE);
-                receiveNext();
-                return;
-            }
+    if (!_socket.is_open())
+        return;
+    try {
+        _socket.async_receive_from(asio::buffer(_receiveBuffer), _sender,
+            [this](const asio::error_code &error, std::size_t bytesReceived) {
+                try {
+                    handleReceive(error, bytesReceived);
+                } catch (const std::exception &exception) {
+                    ++_receiveErrors;
+                    engine::core::log::Logger("UdpSocket").error(
+                        "Exception in UDP receive handler: {}",
+                        exception.what());
+                    if (_receiveErrors < MAX_RECEIVE_ERRORS)
+                        rearmReceive();
+                } catch (...) {
+                    ++_receiveErrors;
+                    engine::core::log::Logger("UdpSocket")
+                        .error("Unknown exception in UDP receive handler");
+                    if (_receiveErrors < MAX_RECEIVE_ERRORS)
+                        rearmReceive();
+                }
+            });
+    } catch (const std::exception &exception) {
+        engine::core::log::Logger("UdpSocket").error(
+            "Exception while starting UDP receive: {}", exception.what());
+    } catch (...) {
+        engine::core::log::Logger("UdpSocket")
+            .error("Unknown exception while starting UDP receive");
+    }
+}
 
-            std::scoped_lock lock(_mutex);
-            if (_incoming.size() >= 4096) {
-                ++_dropped;
-            } else {
-                _incoming.push_back({
-                    .bytes = std::vector<std::uint8_t>(_receiveBuffer.begin(),
-                        _receiveBuffer.begin() + bytesReceived),
-                    .from  = _sender,
-                });
-            }
-            receiveNext();
-        });
+void UdpSocket::handleReceive(const asio::error_code &error,
+    std::size_t bytesReceived)
+{
+    if (error == asio::error::operation_aborted)
+        return;
+
+#ifdef _WIN32
+    if (error == asio::error::connection_refused ||
+        error == asio::error::connection_reset) {
+        _receiveErrors = 0;
+        rearmReceive();
+        return;
+    }
+#endif
+
+    if (error) {
+        handleReceiveError(error);
+        return;
+    }
+
+    _receiveErrors = 0;
+    if (bytesReceived == 0) {
+        rearmReceive();
+        return;
+    }
+    if (bytesReceived > Packet::MAX_SIZE) {
+        ++_dropped;
+        engine::core::log::Logger("UdpSocket")
+            .debug("Dropped UDP datagram from {}: size {} exceeds maximum {}",
+                _sender.address().to_string(), bytesReceived, Packet::MAX_SIZE);
+        rearmReceive();
+        return;
+    }
+
+    enqueueDatagram(bytesReceived);
+    rearmReceive();
+}
+
+void UdpSocket::handleReceiveError(const asio::error_code &error)
+{
+    ++_receiveErrors;
+    if (_receiveErrors >= MAX_RECEIVE_ERRORS) {
+        engine::core::log::Logger("UdpSocket")
+            .error("Stopping UDP receive loop after repeated errors: {}",
+                error.message());
+        return;
+    }
+
+    engine::core::log::Logger("UdpSocket")
+        .warn("UDP receive failed: {}", error.message());
+    rearmReceive();
+}
+
+void UdpSocket::enqueueDatagram(std::size_t bytesReceived)
+{
+    std::scoped_lock lock(_mutex);
+    if (_incoming.size() >= 4096) {
+        ++_dropped;
+        return;
+    }
+
+    _incoming.push_back({
+        .bytes = std::vector<std::uint8_t>(_receiveBuffer.begin(),
+            _receiveBuffer.begin() + bytesReceived),
+        .from  = _sender,
+    });
+}
+
+void UdpSocket::rearmReceive()
+{
+    if (_socket.is_open())
+        receiveNext();
 }
 
 void UdpSocket::stop()
@@ -95,6 +163,7 @@ void UdpSocket::stop()
     _running = false;
     _workGuard.reset();
     _ioContext.stop();
+    _socket.close();
     if (_thread.joinable())
         _thread.join();
 }
@@ -114,14 +183,15 @@ void UdpSocket::sendTo(const asio::ip::udp::endpoint &endpoint,
     asio::post(_workGuard.get_executor(),
         [this, endpoint, sharedBytes = std::move(sharedBytes)]() {
             _socket.async_send_to(asio::buffer(*sharedBytes), endpoint,
-                [endpoint, sharedBytes = sharedBytes](
-                    const asio::error_code &error, std::size_t) {
+                [endpoint,
+                    sharedBytes = sharedBytes](const asio::error_code &error,
+                    std::size_t) {
                     if (!error)
                         return;
-                    engine::core::log::Logger("UdpSocket").debug(
-                        "Failed to send UDP datagram to {}:{}: {}",
-                        endpoint.address().to_string(), endpoint.port(),
-                        error.message());
+                    engine::core::log::Logger("UdpSocket")
+                        .debug("Failed to send UDP datagram to {}:{}: {}",
+                            endpoint.address().to_string(), endpoint.port(),
+                            error.message());
                 });
         });
 }

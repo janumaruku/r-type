@@ -50,9 +50,17 @@ public:
 
 private:
 
+    static constexpr std::size_t MAX_RECEIVE_ERRORS = 3;
+
     bool _running = false;
+    std::size_t _receiveErrors = 0;
 
     void receiveNext();
+    void handleReceive(const asio::error_code &error,
+        std::size_t bytesReceived);
+    void handleReceiveError(const asio::error_code &error);
+    void enqueueDatagram(std::size_t bytesReceived);
+    void rearmReceive();
 
     std::uint16_t _port = 0;
     asio::io_context _ioContext;
