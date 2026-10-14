@@ -2,11 +2,13 @@
 #include <optional>
 #include <string_view>
 #include <array>
+#include <cctype>
 
-namespace engine::input {
+namespace engine::input
+{
 
-
-    constexpr std::array<std::pair<Key, std::string_view>, KEY_COUNT> KEY_TABLE = {
+    constexpr std::array<std::pair<Key, std::string_view>, KEY_COUNT> KEY_TABLE =
+    {
         {
             {Key::UNKNOWN, "UNKNOWN"},
             {Key::A, "A"},
@@ -57,19 +59,33 @@ namespace engine::input {
         }
     };
 
-    std::string_view toString(Key key) noexcept {
-
+    std::string_view toString(Key key) noexcept
+    {
         const auto key_id = static_cast<std::size_t>(key);
+
         if (key_id < KEY_COUNT)
             return KEY_TABLE[key_id].second;
         return "UNKNOWN";
     }
 
-    std::optional<Key> keyFromString(std::string_view name) noexcept {
+    std::optional<Key> keyFromString(std::string_view name) noexcept
+    {
+        char buff[KEY_MAX_SIZE];
 
+        if (name.empty())
+            return std::nullopt;
+        if (name.size() >= sizeof(buff))
+            return std::nullopt;
+        for (std::size_t i = 0; i < name.size(); ++i)
+            buff[i] = static_cast<char>(std::toupper(static_cast<unsigned char>(name[i])));
+        std::string_view upperName(buff, name.size());
+        if (upperName == "UNKNOWN" || upperName == "COUNT")
+            return std::nullopt;
+        for (const auto& [key, keyName] : KEY_TABLE) {
+            if (keyName == upperName)
+                return key;
+        }
+        return std::nullopt;
     }
 
-
-
 }
-
