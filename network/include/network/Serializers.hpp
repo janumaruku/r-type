@@ -9,7 +9,6 @@
 #define SERIALIZERS_HPP
 
 #include <array>
-#include <concepts>
 #include <cstddef>
 #include <string>
 #include <type_traits>
