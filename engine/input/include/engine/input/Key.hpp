@@ -6,6 +6,7 @@
 */
 
 #include <cstdint>
+#include <stddef.h>
 
 namespace engine::input {
 
