@@ -20,15 +20,16 @@ public:
     Rect2() = default;
     Rect2(const Vec2<T> &origin, const T &w, const T &h) noexcept;
 
-    const Vec2<T> &origin() const noexcept;
-    const T &width() const noexcept;
-    const T &height() const noexcept;
+    [[nodiscard]] const Vec2<T> &origin() const noexcept;
+    [[nodiscard]] const T &width() const noexcept;
+    [[nodiscard]] const T &height() const noexcept;
 
-    bool contains(const Vec2<T> &point) const noexcept;
-    bool intersects(const Rect2<T> &other) const noexcept;
+    [[nodiscard]] bool contains(const Vec2<T> &point) const noexcept;
+    [[nodiscard]] bool intersects(const Rect2<T> &other) const noexcept;
 
-    Vec2<T> center() const;
-    static Rect2 fromCenter(const Vec2<T> &center, const Vec2<T> &halfsize);
+    [[nodiscard]] Vec2<T> center() const;
+    [[nodiscard]] static Rect2 fromCenter(const Vec2<T> &center,
+        const Vec2<T> &halfsize);
 
 private:
     Vec2<T> _origin;

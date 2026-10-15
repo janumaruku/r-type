@@ -15,12 +15,12 @@ namespace engine::core {
 class Rng {
 public:
     explicit Rng(std::uint32_t seed);
-    static std::uint32_t randomSeed();          // from std::random_device, for when no --seed is given
+    [[nodiscard]] static std::uint32_t randomSeed(); // from std::random_device
 
-    int uniformInt(int lo, int hi);             // inclusive: lo ≤ result ≤ hi
-    float uniformFloat(float lo, float hi);     // lo ≤ result < hi
-    bool chance(float probability);             // true with that probability, clamped to [0, 1]
-    std::uint32_t seed() const noexcept;        // the seed it was built with, for logging
+    [[nodiscard]] int uniformInt(int lo, int hi); // inclusive: lo <= result <= hi
+    [[nodiscard]] float uniformFloat(float lo, float hi); // lo <= result < hi
+    [[nodiscard]] bool chance(float probability); // clamped to [0, 1]
+    [[nodiscard]] std::uint32_t seed() const noexcept;
 
 private:
     std::uint32_t _seed;
