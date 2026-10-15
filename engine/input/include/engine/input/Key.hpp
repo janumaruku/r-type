@@ -5,6 +5,8 @@
 ** Key.hpp
 */
 
+#pragma once
+
 #include <cstdint>
 #include <cstddef>
 
