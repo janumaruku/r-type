@@ -10,7 +10,10 @@
 
 #include <array>
 #include <asio.hpp>
+#include <atomic>
 #include <cstddef>
+#include <thread>
+#include <cstdint>
 #include <deque>
 #include <mutex>
 #include <vector>
@@ -52,10 +55,11 @@ public:
 
 private:
     static constexpr std::size_t MAX_RECEIVE_ERRORS = 3;
+    static constexpr int SYSTEM_RECEIVE_BUFFER_BYTES = 4 * 1024 * 1024;
 
     engine::core::log::Logger _logger{"UDP-socket"};
 
-    bool _running = false;
+    std::atomic<bool> _running{false};
     std::atomic<bool> _receiving{false};
     std::size_t _receiveErrors = 0;
 

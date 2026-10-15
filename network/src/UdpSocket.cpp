@@ -47,7 +47,16 @@ void UdpSocket::start()
             error.message()));
     }
 
-    _logger.info("UDP socket bound on port {}", localEndpoint().port());
+    _socket.set_option(asio::socket_base::receive_buffer_size(
+        SYSTEM_RECEIVE_BUFFER_BYTES), error);
+    if (error)
+        _logger.warn("Cannot enlarge the UDP receive buffer: {}",
+            error.message());
+
+    asio::socket_base::receive_buffer_size bufferSize;
+    _socket.get_option(bufferSize, error);
+    _logger.info("UDP socket bound on port {}, system receive buffer {} bytes",
+        localEndpoint().port(), error ? 0 : bufferSize.value());
 
     _running = true;
     _receiving = true;
