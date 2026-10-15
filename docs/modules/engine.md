@@ -211,7 +211,7 @@ The ECS stores game data as components in **sparse sets**, one per component typ
 
 The design follows the journey written while building the bootstrap ECS ([ECS journey](../reference/ECS_JOURNEY.md)), taken directly to its final form: the sparse sets and views of its steps 8–9, plus its steps 10 (own type erasure, no `std::any`), 11 (generational entities) and 12 (command buffer, resources, stages). Parallel scheduling of systems is left for Part 2. The reasons are in [ADR 0005](../decisions/0005-ecs-design.md).
 
-Namespace `engine::ecs`, headers in `../../engine/ecs/include/ecs` (template definitions in `.tpp` files included at the end of their header), non-template code in `engine/ecs/src/`. It knows no game type: the game registers its components, systems and resources at start-up.
+Namespace `engine::ecs`, headers in `engine/ecs/include/engine/ecs/` (template definitions in `.tpp` files included at the end of their header), non-template code in `engine/ecs/src/`. It knows no game type: the game registers its components, systems and resources at start-up.
 
 ```mermaid
 classDiagram
