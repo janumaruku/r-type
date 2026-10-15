@@ -83,8 +83,24 @@ void UdpSocket::receiveNext()
     } catch (const std::exception &exception) {
         _logger.error(
             "Exception while starting UDP receive: {}", exception.what());
+        retryReceiveLater();
     } catch (...) {
         _logger.error("Unknown exception while starting UDP receive");
+        retryReceiveLater();
+    }
+}
+
+void UdpSocket::retryReceiveLater()
+{
+    ++_receiveErrors;
+    if (_receiveErrors >= MAX_RECEIVE_ERRORS) {
+        _logger.error("Stopping UDP receive loop after repeated errors");
+        return;
+    }
+    try {
+        asio::post(_ioContext, [this] { rearmReceive(); });
+    } catch (...) {
+        _logger.error("Cannot schedule a new UDP receive");
     }
 }
 
@@ -102,6 +118,15 @@ void UdpSocket::handleReceive(const asio::error_code &error,
         return;
     }
     #endif
+
+    if (error == asio::error::message_size) {
+        ++_dropped;
+        _receiveErrors = 0;
+        _logger.debug("Dropped UDP datagram larger than the {}-byte receive buffer",
+            _receiveBuffer.size());
+        rearmReceive();
+        return;
+    }
 
     if (error) {
         handleReceiveError(error);

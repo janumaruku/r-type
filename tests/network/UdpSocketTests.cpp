@@ -188,6 +188,27 @@ TEST(UdpSocket, OversizedDatagramIsDroppedAndCounted)
     EXPECT_TRUE(receiver.receiveAll().empty());
 }
 
+TEST(UdpSocket, DatagramsLargerThanTheBufferDoNotStopReceiving)
+{
+    constexpr std::size_t largeCount = 5;
+    net::UdpSocket receiver(0);
+    receiver.start();
+    asio::io_context ioContext;
+    auto sender = makeSender(ioContext);
+    const auto destination = loopbackOf(receiver);
+    const std::vector<std::uint8_t> large(2000, 0);
+
+    for (std::size_t index = 0; index < largeCount; ++index)
+        sendDatagram(sender, destination, large);
+    sendDatagram(sender, destination, {7});
+
+    const auto received = waitForDatagrams(receiver, 1);
+
+    ASSERT_EQ(received.size(), 1U);
+    EXPECT_EQ(received[0].bytes, std::vector<std::uint8_t>{7});
+    EXPECT_EQ(receiver.dropped(), largeCount);
+}
+
 TEST(UdpSocket, FloodIsBoundedAndAccountsForApplicationDrops)
 {
     constexpr std::size_t sentCount = 5000;

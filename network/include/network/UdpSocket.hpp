@@ -63,6 +63,7 @@ private:
     void handleReceiveError(const asio::error_code &error);
     void enqueueDatagram(std::size_t bytesReceived);
     void rearmReceive();
+    void retryReceiveLater();
 
     std::uint16_t _port = 0;
     asio::io_context _ioContext;
