@@ -14,10 +14,10 @@ namespace engine::core {
 
 struct Color {
     Color() noexcept;
-    Color(const std::uint8_t r,
-        const std::uint8_t g,
-        const std::uint8_t b,
-        const std::uint8_t a) noexcept;
+    Color(std::uint8_t r,
+        std::uint8_t g,
+        std::uint8_t b,
+        std::uint8_t a) noexcept;
 
 
     std::uint8_t r;
@@ -25,7 +25,7 @@ struct Color {
     std::uint8_t b;
     std::uint8_t a;
 
-    bool operator==(const Color &other) const noexcept = default;
+    [[nodiscard]] bool operator==(const Color &other) const noexcept = default;
     [[nodiscard]] Color withAlpha(const std::uint8_t &alpha) const noexcept;
 
     static const Color WHITE;
