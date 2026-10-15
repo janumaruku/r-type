@@ -6,7 +6,6 @@
 */
 
 #include "InputEvent.hpp"
-#include "Key.hpp"
 #include <bitset>
 
 namespace engine::input {
