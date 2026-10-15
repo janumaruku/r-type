@@ -13,3 +13,8 @@ bool engine::ecs::SparseSetBase::contains(const Entity &entity) const noexcept
         _sparse[entity.index()] != NPOS &&
         _dense[_sparse[entity.index()]] == entity;
 }
+
+std::size_t engine::ecs::SparseSetBase::size() const noexcept
+{
+    return _dense.size();
+}
