@@ -16,12 +16,12 @@
 namespace engine::core::log {
 
 enum class Level : std::uint8_t {
-    TRACE,
-    DEBUG,
-    INFO,
-    WARN,
-    ERROR,
-    OFF,
+    EG_TRACE,
+    EG_DEBUG,
+    EG_INFO,
+    EG_WARN,
+    EG_ERROR,
+    EG_OFF,
 };
 
 struct LogLine {

@@ -28,20 +28,20 @@ namespace engine::core::log {
 thread_local std::string threadName = "?";
 
 const std::map<Level, const char *> LEVEL_NAMES{
-    {Level::TRACE, "TRACE"},
-    {Level::DEBUG, "DEBUG"},
-    {Level::INFO, "INFO"},
-    {Level::WARN, "WARN"},
-    {Level::ERROR, "ERR"},
-    {Level::OFF, "OFF"},
+    {Level::EG_TRACE, "TRACE"},
+    {Level::EG_DEBUG, "DEBUG"},
+    {Level::EG_INFO, "INFO"},
+    {Level::EG_WARN, "WARN"},
+    {Level::EG_ERROR, "ERR"},
+    {Level::EG_OFF, "OFF"},
 };
 
 const std::map<Level, const char *> LEVEL_COLORS{
-    {Level::TRACE, "90"},
-    {Level::DEBUG, "36"},
-    {Level::INFO, "32"},
-    {Level::WARN, "33"},
-    {Level::ERROR, "31"},
+    {Level::EG_TRACE, "90"},
+    {Level::EG_DEBUG, "36"},
+    {Level::EG_INFO, "32"},
+    {Level::EG_WARN, "33"},
+    {Level::EG_ERROR, "31"},
 };
 
 const char *levelName(Level level) noexcept
@@ -97,27 +97,27 @@ void Logger::setThreadName(const std::string &name) noexcept
 
 LogLine Logger::trace()
 {
-    return LogLine{Level::TRACE, _context, true};
+    return LogLine{Level::EG_TRACE, _context, true};
 }
 
 LogLine Logger::debug()
 {
-    return LogLine{Level::DEBUG, _context, true};
+    return LogLine{Level::EG_DEBUG, _context, true};
 }
 
 LogLine Logger::info()
 {
-    return LogLine{Level::INFO, _context, true};
+    return LogLine{Level::EG_INFO, _context, true};
 }
 
 LogLine Logger::warn()
 {
-    return LogLine{Level::WARN, _context, true};
+    return LogLine{Level::EG_WARN, _context, true};
 }
 
 LogLine Logger::error()
 {
-    return LogLine{Level::ERROR, _context, true};
+    return LogLine{Level::EG_ERROR, _context, true};
 }
 
 
