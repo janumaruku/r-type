@@ -65,3 +65,4 @@ static_assert(std::numeric_limits<float>::is_iec559, "floats must be IEEE-754");
 #endif
 
 #include "Packet.tpp"
+#include "Serializers.tpp"
