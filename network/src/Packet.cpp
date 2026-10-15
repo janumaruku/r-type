@@ -5,7 +5,7 @@
 ** Packet.cpp
 */
 
-#include "../include/network/Packet.hpp"
+#include "network/Packet.hpp"
 #include <cstddef>
 #include <cstring>
 
