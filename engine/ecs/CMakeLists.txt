@@ -1,5 +1,6 @@
 add_library(engine_ecs STATIC src/Entity.cpp
-        src/TypeId.cpp)
+        src/TypeId.cpp
+)
 
 target_include_directories(engine_ecs PUBLIC include)
 
