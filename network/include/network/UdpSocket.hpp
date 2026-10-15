@@ -11,12 +11,12 @@
 #include <array>
 #include <asio.hpp>
 #include <cstddef>
-#include <cstdint>
 #include <deque>
 #include <mutex>
 #include <vector>
 
-#include "Packet.hpp"
+#include "Logger.hpp"
+#include "network/Packet.hpp"
 
 namespace net {
 
@@ -29,15 +29,15 @@ class UdpSocket {
 public:
     static constexpr std::size_t MAX_PACKET_SIZE = 1200;
 
-    explicit UdpSocket(std::uint16_t port);
+    explicit UdpSocket(std::uint16_t port = 0);
     ~UdpSocket();
 
-    UdpSocket()                  = delete;
+    UdpSocket() = delete;
     UdpSocket(const UdpSocket &) = delete;
-    UdpSocket(UdpSocket &&)      = delete;
+    UdpSocket(UdpSocket &&) = delete;
 
     UdpSocket &operator=(const UdpSocket &) = delete;
-    UdpSocket &operator=(UdpSocket &&)      = delete;
+    UdpSocket &operator=(UdpSocket &&) = delete;
 
     void start();
     void stop();
@@ -49,8 +49,9 @@ public:
     [[nodiscard]] std::uint64_t dropped() const;
 
 private:
-
     static constexpr std::size_t MAX_RECEIVE_ERRORS = 3;
+
+    engine::core::log::Logger _logger{"UDP-socket"};
 
     bool _running = false;
     std::size_t _receiveErrors = 0;
