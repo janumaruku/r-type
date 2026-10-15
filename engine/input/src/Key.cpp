@@ -68,10 +68,10 @@ namespace engine::input
 
     std::string_view toString(Key key) noexcept
     {
-        const auto key_id = static_cast<std::size_t>(key);
+        const auto keyId = static_cast<std::size_t>(key);
 
-        if (key_id < KEY_COUNT)
-            return KEY_TABLE[key_id].second;
+        if (keyId < KEY_COUNT)
+            return KEY_TABLE[keyId].second;
         return "UNKNOWN";
     }
 

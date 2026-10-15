@@ -40,6 +40,7 @@ classDiagram
         -std::mutex _mutex
         -std::deque~Datagram~ _incoming
         -std::atomic~uint64_t~ _dropped
+        -std::atomic~bool~ _receiving
         +UdpSocket(uint16_t port)
         +~UdpSocket()
         +start() void
@@ -48,6 +49,7 @@ classDiagram
         +receiveAll(size_t max) std::vector~Datagram~
         +localEndpoint() asio::ip::udp::endpoint
         +dropped() uint64_t
+        +isReceiving() bool
     }
     Packet ..> PacketError : throws
     UdpSocket ..> Datagram : produces
@@ -320,6 +322,7 @@ public:
 
     asio::ip::udp::endpoint localEndpoint() const;
     std::uint64_t dropped() const noexcept;
+    bool isReceiving() const noexcept;           // false before start(), after stop(), and once the receive loop gave up
 };
 
 }
@@ -329,9 +332,15 @@ public:
 
 - **Receive.** One `async_receive_from` is always outstanding, into a 1500-byte buffer. Its handler drops datagrams of 0 bytes or more than `Packet::MAX_SIZE` bytes, pushes the rest onto `_incoming` under `_mutex`, and starts the next receive. If `_incoming` already holds 4096 datagrams, the new one is dropped and `_dropped` goes up by 1, so memory stays bounded however fast a client sends.
 - **Collect.** `receiveAll(max)` moves up to `max` datagrams out of the queue under the lock and returns them. It never waits.
+- **Health.** `isReceiving()` tells the caller whether datagrams can still arrive. A socket whose receive loop gave up still sends, and `receiveAll` keeps returning nothing, so the server and client check it once per tick and treat `false` as a lost socket: log it, then restart it with `stop()` and `start()` or shut down.
 - **Send.** `sendTo` copies the packet's bytes into a `std::shared_ptr<std::vector<std::uint8_t>>` and `asio::post`s an `async_send_to` onto the IO thread. The shared pointer keeps the bytes alive until the send completes. A failed send is logged at debug level and otherwise ignored, because UDP gives no delivery guarantee anyway.
-- **Errors.** `connection_refused` and `connection_reset` are ignored and the receive is re-armed. On Windows these arrive when an ICMP "port unreachable" comes back, typically right after a client crashes, and they must not stop the receive loop. `operation_aborted` during `stop()` ends the loop quietly. Anything else is logged and the receive is re-armed.
-- **Lifetime.** `start()` opens and binds the socket, then starts the thread. `stop()` is idempotent: it closes the socket, resets the work guard, stops the context and joins the thread. The destructor calls `stop()`.
+- **Errors.** The receive loop keeps running through the errors peers routinely cause, and gives up only after three failures in a row.
+    - `connection_refused` and `connection_reset` (Windows only) are ignored and the receive is re-armed. They arrive when an ICMP "port unreachable" comes back, typically right after a client crashes.
+    - `message_size` means a datagram was larger than the 1500-byte receive buffer. Windows reports it as an error where Linux truncates the datagram, so it is counted in `dropped()` like any oversized datagram, and the receive is re-armed.
+    - `operation_aborted` comes from `stop()` and ends the loop quietly.
+    - Any other receive error is logged as a warning and the receive is re-armed. So is an exception thrown by the receive handler, or by `async_receive_from` itself, in which case the next receive is posted to the IO thread rather than started from inside the failing call.
+    - Errors and exceptions share one counter, reset by every successful receive. At the third failure in a row the loop gives up: it logs an error, stops re-arming, and `isReceiving()` becomes `false`.
+- **Lifetime.** `start()` opens and binds the socket, asks the system for a 4 MiB receive buffer (`SO_RCVBUF`), logs the port and the buffer size actually granted, then starts the thread. A refused request is only a warning: the socket works with the default buffer. `stop()` is idempotent: it closes the socket, resets the work guard, stops the context and joins the thread. The destructor calls `stop()`.
 
 ### What stays in the applications
 
@@ -357,10 +366,11 @@ These are plain Asio and don't need wrapping:
 | Constant | Value | Why |
 | --- | --- | --- |
 | `Packet::MAX_SIZE` | 1200 bytes | Below the 1280-byte IPv6 minimum MTU once IP and UDP headers are added, so packets never fragment |
-| Incoming queue | 4096 datagrams | About 1.5 s of traffic at full load; caps memory at roughly 5 MB |
-| Receive buffer | 1500 bytes | Larger than any valid packet, so an oversized datagram is seen whole and dropped rather than silently truncated |
+| Incoming queue (`UdpSocket::MAX_QUEUED_DATAGRAMS`) | 4096 datagrams | About 1.5 s of traffic at full load; caps memory at roughly 5 MB |
+| Receive buffer (`_receiveBuffer`) | 1500 bytes | Larger than any valid packet, so an oversized datagram is seen whole and dropped rather than silently truncated |
+| System receive buffer (`SO_RCVBUF`) | 4 MiB requested | Where the operating system holds datagrams until the IO thread reads them. The default (about 200 KB on Linux) overflows during a burst if the IO thread is briefly descheduled, and the system then drops datagrams before `UdpSocket` ever sees them. It is a request: Linux caps it at `net.core.rmem_max`, so the granted size is logged at start |
 
 ## Tests
 
 - `Packet`: every `Primitive` type round-trips; reading past the end throws; writing past `MAX_SIZE` throws; `fullyRead()` is true only at the exact end; a vector or string whose length field exceeds the bytes left throws without allocating; a struct without `serialize` fails to compile (checked with a `static_assert(!Serializable<...>)` test).
-- `UdpSocket`: two sockets on loopback exchange 1000 packets; `receiveAll` on an empty queue returns at once; a flood of 10 000 datagrams never leaves more than 4096 queued, and queued + `dropped()` ≤ 10 000 (the operating system may drop part of the flood itself, so exact counts aren't asserted); `stop()` twice is harmless.
+- `UdpSocket`: two sockets on loopback exchange 1000 packets; `receiveAll` on an empty queue returns at once; a flood of 5000 datagrams, sent in steps of 100 with nobody reading the queue, fills the queue to exactly `MAX_QUEUED_DATAGRAMS`, counts at least one drop, and keeps queued + `dropped()` ≤ 5000 (the operating system may still drop part of the flood itself, which the margin of 904 datagrams absorbs); `stop()` twice is harmless.
