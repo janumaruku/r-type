@@ -11,7 +11,7 @@
 #include <cstdint>
 #include <limits>
 
-#include "../../network/include/network/Packet.hpp"
+#include "network/Packet.hpp"
 
 TEST(Packet, WritesAndReadsBytesIdentically)
 {

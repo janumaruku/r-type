@@ -5,7 +5,7 @@
 ** UdpSocket.cpp
 */
 
-#include "../include/network/UdpSocket.hpp"
+#include "network/UdpSocket.hpp"
 
 #include <asio/post.hpp>
 #include <cassert>
