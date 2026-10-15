@@ -26,6 +26,11 @@ endif ()
 option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)
 option(RTYPE_BUILD_CLIENT "Build the client and Raylib" ON)
 option(WITH_COVERAGE "Instrument the code and add the coverage target (Clang only)" OFF)
+option(RTYPE_BUILD_BENCHMARKS "Build the benchmarks (use a Release build)" OFF)
+
+if (RTYPE_BUILD_BENCHMARKS AND NOT CMAKE_CONFIGURATION_TYPES AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(WARNING "Benchmark stats are only useful in Release. Use --preset linux-bench to build the targets")
+endif ()
 
 include(Dependencies)
 include(ProjectOptions)
@@ -44,5 +49,9 @@ if (RTYPE_BUILD_TESTS)
 endif ()
 
 add_subdirectory(engine)
+
+if (RTYPE_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
+endif ()
 
 include(Coverage)
