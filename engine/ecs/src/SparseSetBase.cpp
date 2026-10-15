@@ -18,3 +18,9 @@ std::size_t engine::ecs::SparseSetBase::size() const noexcept
 {
     return _dense.size();
 }
+
+std::span<const engine::ecs::Entity> engine::ecs::SparseSetBase::
+entities() const noexcept
+{
+    return _dense;
+}
