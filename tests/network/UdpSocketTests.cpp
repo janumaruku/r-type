@@ -91,6 +91,17 @@ TEST(UdpSocket, StopIsIdempotent)
     EXPECT_NO_THROW(socket.stop());
 }
 
+TEST(UdpSocket, IsReceivingFollowsStartAndStop)
+{
+    net::UdpSocket socket(0);
+
+    EXPECT_FALSE(socket.isReceiving());
+    socket.start();
+    EXPECT_TRUE(socket.isReceiving());
+    socket.stop();
+    EXPECT_FALSE(socket.isReceiving());
+}
+
 TEST(UdpSocket, DestructorStopsStartedSocket)
 {
     EXPECT_NO_THROW({
