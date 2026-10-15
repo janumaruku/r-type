@@ -32,6 +32,7 @@ include(ProjectOptions)
 include(CTest)
 
 add_subdirectory(network)
+
 add_subdirectory(apps/server)
 if (RTYPE_BUILD_CLIENT)
     add_subdirectory(apps/client)
