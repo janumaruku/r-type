@@ -20,24 +20,24 @@ public:
     Vec2() = default;
     Vec2(const T &x, const T &y) noexcept;
 
-    const T &x() const noexcept;
-    const T &y() const noexcept;
+    [[nodiscard]] const T &x() const noexcept;
+    [[nodiscard]] const T &y() const noexcept;
 
-    T length() const noexcept;
-    T lengthSquared() const noexcept;
-    Vec2<T> normalized() const noexcept;
+    [[nodiscard]] T length() const noexcept;
+    [[nodiscard]] T lengthSquared() const noexcept;
+    [[nodiscard]] Vec2<T> normalized() const noexcept;
     
-    Vec2<T>operator+(const Vec2 &other) const noexcept;
-    Vec2<T>operator-(const Vec2 &other) const noexcept;
+    [[nodiscard]] Vec2<T>operator+(const Vec2 &other) const noexcept;
+    [[nodiscard]] Vec2<T>operator-(const Vec2 &other) const noexcept;
 
-    Vec2<T>operator*(const T &scalar) const noexcept;
-    Vec2<T>operator/(const T &scalar) const noexcept;
+    [[nodiscard]] Vec2<T>operator*(const T &scalar) const noexcept;
+    [[nodiscard]] Vec2<T>operator/(const T &scalar) const noexcept;
 
     void operator+=(const Vec2 &other) noexcept;
     void operator-=(const Vec2 &other) noexcept;
 
-    bool operator==(const Vec2 &other) const noexcept;
-    bool operator!=(const Vec2 &other) const noexcept;
+    [[nodiscard]] bool operator==(const Vec2 &other) const noexcept;
+    [[nodiscard]] bool operator!=(const Vec2 &other) const noexcept;
 
 private:
     T _x;
