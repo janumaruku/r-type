@@ -109,7 +109,7 @@ TEST(Serializers, VectorOfSerializableStructsRoundTrips)
 
 TEST(Serializers, FloatArrayRoundTrips)
 {
-    const std::array<float, 4> expected{1.0F, -2.5F, 3.25F, 4.0F};
+    constexpr std::array expected{1.0F, -2.5F, 3.25F, 4.0F};
     net::Packet packet;
     packet << expected;
 
@@ -122,7 +122,7 @@ TEST(Serializers, FloatArrayRoundTrips)
 TEST(Serializers, OversizedVectorCountThrowsBeforeAllocation)
 {
     constexpr std::uint16_t count = std::numeric_limits<std::uint16_t>::max();
-    const std::array<std::uint8_t, 10> bytes{};
+    constexpr std::array<std::uint8_t, 10> bytes{};
     net::Packet packet;
     packet << count;
     packet.writeRaw(bytes.data(), bytes.size());
