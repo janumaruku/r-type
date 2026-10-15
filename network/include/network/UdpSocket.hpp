@@ -28,6 +28,7 @@ struct Datagram {
 class UdpSocket {
 public:
     static constexpr std::size_t MAX_PACKET_SIZE = 1200;
+    static constexpr std::size_t MAX_QUEUED_DATAGRAMS = 4096;
 
     explicit UdpSocket(std::uint16_t port = 0);
     ~UdpSocket();

@@ -8,7 +8,7 @@
 #ifndef PACKET_TPP
 #define PACKET_TPP
 
-#include "Packet.hpp"
+#include "network/Packet.hpp"
 
 namespace net {
 

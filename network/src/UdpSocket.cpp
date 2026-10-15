@@ -142,7 +142,7 @@ void UdpSocket::handleReceiveError(const asio::error_code &error)
 void UdpSocket::enqueueDatagram(std::size_t bytesReceived)
 {
     std::scoped_lock lock(_mutex);
-    if (_incoming.size() >= 4096) {
+    if (_incoming.size() >= MAX_QUEUED_DATAGRAMS) {
         ++_dropped;
         return;
     }
@@ -166,6 +166,7 @@ void UdpSocket::stop()
     _workGuard.reset();
     _ioContext.stop();
     _socket.close();
+
     if (_thread.joinable()) {
         _thread.join();
         _logger.info("UDP socket stopped");
@@ -179,6 +180,7 @@ void UdpSocket::sendTo(const asio::ip::udp::endpoint &endpoint,
         _logger.debug("tried to send a packet while the socket is not running");
         return;
     }
+
     const auto packetBytes = packet.bytes();
     std::vector bytes(packetBytes.begin(), packetBytes.end());
     auto sharedBytes = std::make_shared<std::vector<std::uint8_t>>(
