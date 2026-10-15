@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "Packet.hpp"
+#include "../../network/include/network/Packet.hpp"
 
 namespace test_types {
 

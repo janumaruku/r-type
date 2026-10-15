@@ -10,22 +10,17 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <concepts>
-#include <array>
 #include <limits>
-#include <optional>
-#include <string>
 #include <span>
 #include <vector>
 #include <stdexcept>
-#include <type_traits>
 #include <bit>
 
-#include "Serializers.hpp"
+#include "network/Serializers.hpp"
 
 namespace net {
 
-class PacketError : public std::runtime_error {
+class PacketError: public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
 };
@@ -38,19 +33,19 @@ public:
     explicit Packet(std::span<const std::uint8_t> bytes);
 
     template <Serializable T>
-    Packet& write(const T& value);
+    Packet &write(const T &value);
 
     template <Serializable T>
     [[nodiscard]] T read();
 
     template <Serializable T>
-    Packet& operator<<(const T& value);
+    Packet &operator<<(const T &value);
 
     template <Serializable T>
-    Packet& operator>>(T& value);
+    Packet &operator>>(T &value);
 
-    void writeRaw(const void* data, std::size_t size);
-    void readRaw(void* data, std::size_t size);
+    void writeRaw(const void *data, std::size_t size);
+    void readRaw(void *data, std::size_t size);
 
     [[nodiscard]] std::size_t size() const noexcept;
     [[nodiscard]] std::size_t remaining() const noexcept;
@@ -62,7 +57,8 @@ private:
     std::size_t _offset = 0;
 };
 
-static_assert(std::endian::native == std::endian::little, "the wire format is little-endian");
+static_assert(std::endian::native == std::endian::little,
+    "the wire format is little-endian");
 static_assert(std::numeric_limits<float>::is_iec559, "floats must be IEEE-754");
 
 }
