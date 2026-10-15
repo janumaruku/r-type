@@ -11,7 +11,7 @@
 #include <cstdint>
 #include <limits>
 #include <span>
-#include <vector>"
+#include <vector>
 
 #include "Entity.hpp"
 
@@ -30,7 +30,7 @@ public:
 
     [[nodiscard]] std::span<const Entity> entities() const noexcept;
 
-    virtual void erase(Entity entity) = 0;
+    virtual void erase(const Entity &entity) = 0;
 
 protected:
     std::vector<size_type> _sparse;
