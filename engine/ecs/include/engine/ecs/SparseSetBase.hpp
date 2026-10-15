@@ -9,6 +9,7 @@
 #define R_TYPE_SPARSESETBASE_HPP
 
 #include <cstdint>
+#include <limits>
 #include <span>
 #include <vector>"
 
@@ -17,20 +18,22 @@
 namespace engine::ecs {
 class SparseSetBase {
 public:
-    using EntityType = std::uint32_t;
+    using size_type = std::size_t; // NOLINT
+
+    static constexpr size_type NPOS = std::numeric_limits<size_type>::max();
 
     virtual ~SparseSetBase() = default;
 
-    [[nodiscard]] bool contains(EntityType e) const noexcept;
+    [[nodiscard]] bool contains(const Entity &entity) const noexcept;
 
     [[nodiscard]] std::size_t size() const noexcept;
 
-    [[nodiscard]] std::span<const EntityType> entities() const noexcept;
+    [[nodiscard]] std::span<const Entity> entities() const noexcept;
 
-    virtual void erase(EntityType e) = 0;
+    virtual void erase(Entity entity) = 0;
 
-private:
-    std::vector<std::uint32_t> _sparse;
+protected:
+    std::vector<size_type> _sparse;
     std::vector<Entity> _dense;
 };
 }
