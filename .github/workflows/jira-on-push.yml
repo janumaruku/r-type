@@ -9,6 +9,9 @@ on:
 jobs:
   push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
 
     permissions:
       contents: read
