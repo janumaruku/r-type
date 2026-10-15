@@ -48,6 +48,7 @@ public:
 
     [[nodiscard]] asio::ip::udp::endpoint localEndpoint() const;
     [[nodiscard]] std::uint64_t dropped() const;
+    [[nodiscard]] bool isReceiving() const noexcept;
 
 private:
     static constexpr std::size_t MAX_RECEIVE_ERRORS = 3;
@@ -55,6 +56,7 @@ private:
     engine::core::log::Logger _logger{"UDP-socket"};
 
     bool _running = false;
+    std::atomic<bool> _receiving{false};
     std::size_t _receiveErrors = 0;
 
     void receiveNext();
@@ -64,6 +66,7 @@ private:
     void enqueueDatagram(std::size_t bytesReceived);
     void rearmReceive();
     void retryReceiveLater();
+    void giveUpReceiving();
 
     std::uint16_t _port = 0;
     asio::io_context _ioContext;

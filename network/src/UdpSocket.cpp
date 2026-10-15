@@ -50,6 +50,7 @@ void UdpSocket::start()
     _logger.info("UDP socket bound on port {}", localEndpoint().port());
 
     _running = true;
+    _receiving = true;
     receiveNext();
     _thread = std::thread([this] {
         _logger.setThreadName("net-io");
@@ -73,11 +74,15 @@ void UdpSocket::receiveNext()
                         exception.what());
                     if (_receiveErrors < MAX_RECEIVE_ERRORS)
                         rearmReceive();
+                    else
+                        giveUpReceiving();
                 } catch (...) {
                     ++_receiveErrors;
                     _logger.error("Unknown exception in UDP receive handler");
                     if (_receiveErrors < MAX_RECEIVE_ERRORS)
                         rearmReceive();
+                    else
+                        giveUpReceiving();
                 }
             });
     } catch (const std::exception &exception) {
@@ -94,14 +99,22 @@ void UdpSocket::retryReceiveLater()
 {
     ++_receiveErrors;
     if (_receiveErrors >= MAX_RECEIVE_ERRORS) {
-        _logger.error("Stopping UDP receive loop after repeated errors");
+        giveUpReceiving();
         return;
     }
     try {
         asio::post(_ioContext, [this] { rearmReceive(); });
     } catch (...) {
         _logger.error("Cannot schedule a new UDP receive");
+        giveUpReceiving();
     }
+}
+
+void UdpSocket::giveUpReceiving()
+{
+    _receiving = false;
+    _logger.error("UDP receive loop stopped after repeated errors; "
+        "the socket no longer receives");
 }
 
 void UdpSocket::handleReceive(const asio::error_code &error,
@@ -154,13 +167,11 @@ void UdpSocket::handleReceive(const asio::error_code &error,
 void UdpSocket::handleReceiveError(const asio::error_code &error)
 {
     ++_receiveErrors;
+    _logger.warn("UDP receive failed: {}", error.message());
     if (_receiveErrors >= MAX_RECEIVE_ERRORS) {
-        _logger.error("Stopping UDP receive loop after repeated errors: {}",
-            error.message());
+        giveUpReceiving();
         return;
     }
-
-    _logger.warn("UDP receive failed: {}", error.message());
     rearmReceive();
 }
 
@@ -188,6 +199,7 @@ void UdpSocket::rearmReceive()
 void UdpSocket::stop()
 {
     _running = false;
+    _receiving = false;
     _workGuard.reset();
     _ioContext.stop();
     _socket.close();
@@ -246,6 +258,11 @@ std::vector<Datagram> UdpSocket::receiveAll(std::size_t max)
 [[nodiscard]] std::uint64_t UdpSocket::dropped() const
 {
     return _dropped.load();
+}
+
+[[nodiscard]] bool UdpSocket::isReceiving() const noexcept
+{
+    return _receiving.load();
 }
 
 } // namespace net
