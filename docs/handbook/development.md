@@ -93,7 +93,7 @@ A change that claims a speed-up comes with a before/after comparison (`compare.p
 
 ## Build, dependencies and platforms
 
-- **CMake ≥ 3.28** (the version already pinned in the repository), with `CMakePresets.json` presets `linux-debug`, `linux-release`, `windows-msvc-debug` and `windows-msvc-release`.
+- **CMake ≥ 3.28** (the version already pinned in the repository), with `CMakePresets.json` presets `linux-debug`, `linux-release`, `linux-coverage`, `windows-clangcl-debug` and `windows-clangcl-release`. The release presets do not build the tests.
 - **Package manager: CPM.cmake** (allowed by the subject), pinned in `cmake/CPM.cmake`. Dependencies are declared in `cmake/Dependencies.cmake`:
 
 | Package | Version | Used by | Notes |
@@ -103,8 +103,8 @@ A change that claims a speed-up comes with a before/after comparison (`compare.p
 | GoogleTest | 1.15.x | test executables | Only when `RTYPE_BUILD_TESTS=ON`. `INSTALL_GTEST=OFF`, and `gtest_force_shared_crt=ON` on Windows so it uses the same C runtime as our code |
 | Google Benchmark | 1.9.x | benchmark executables | Only when `RTYPE_BUILD_BENCHMARKS=ON`, with `BENCHMARK_ENABLE_TESTING`, `BENCHMARK_ENABLE_INSTALL` and `BENCHMARK_ENABLE_WERROR` set to `OFF` |
 
-- **Self-contained (requirement T-03).** Apart from the compiler, Linux needs only the low-level system libraries Raylib links against, which the subject explicitly allows: the X11, Xrandr, Xinerama, Xcursor, Xi and OpenGL development packages. Audio needs no development package: miniaudio loads ALSA or PulseAudio at run time. Windows needs Visual Studio 2022 and nothing else.
-- **Compilers:** GCC ≥ 13, Clang ≥ 17 or MSVC ≥ 19.38, all in C++20, because `std::format` is required. Warnings are `-Wall -Wextra -Werror` (and `/W4 /WX` on MSVC) through the existing `warning_options` interface target.
+- **Self-contained (requirement T-03).** Apart from the compiler, Linux needs only the low-level system libraries Raylib links against, which the subject explicitly allows: the X11, Xrandr, Xinerama, Xcursor, Xi and OpenGL development packages. Audio needs no development package: miniaudio loads ALSA or PulseAudio at run time. Windows needs Visual Studio 2022 or later with its clang-cl component, and nothing else. A server-only build (`RTYPE_BUILD_CLIENT=OFF`) skips Raylib and needs none of these packages.
+- **Compilers:** GCC ≥ 13 or Clang ≥ 17 on Linux, clang-cl on Windows ([ADR 0006](../decisions/0006-clang-cl-on-windows.md)), all in C++20 without compiler extensions, because `std::format` is required. Warnings are errors: `-Wall -Wextra -Werror`, and `/W4 /WX` under clang-cl, through the `project_options` interface target (`cmake/ProjectOptions.cmake`) that every target of ours links.
 - **CI cost (from the subject's warning):** set `CPM_SOURCE_CACHE` to a cached directory, so dependencies are downloaded once per cache key rather than on every commit. One job each for Linux and Windows. clang-format and clang-tidy run only on changed files.
 - **Packaging:** CPack produces `r-type-<version>-Linux.tar.gz` and `r-type-<version>-win64.zip`, each holding both binaries, `assets/`, the default `config/`, the README and the LICENSE.
 
