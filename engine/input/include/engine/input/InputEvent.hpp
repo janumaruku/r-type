@@ -5,6 +5,8 @@
 ** InputEvent.hpp
 */
 
+#pragma once
+
 #include "Key.hpp"
 #include <cstdint>
 

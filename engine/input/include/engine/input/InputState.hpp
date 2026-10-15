@@ -5,6 +5,8 @@
 ** InputState.hpp
 */
 
+#pragma once
+
 #include "InputEvent.hpp"
 #include <bitset>
 
