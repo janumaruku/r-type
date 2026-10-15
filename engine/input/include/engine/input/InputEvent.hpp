@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2026
+** r-type
+** File description:
+** InputEvent.hpp
+*/
+
 #include "Key.hpp"
 #include <cstdint>
 

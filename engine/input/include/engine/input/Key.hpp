@@ -1,11 +1,19 @@
+/*
+** EPITECH PROJECT, 2026
+** r-type
+** File description:
+** Key.hpp
+*/
+
 #include <cstdint>
 
 namespace engine::input {
 
 enum class Key:std::uint8_t {
     UNKNOWN,
-    A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y,
-    Z,
+    KEY_A, KEY_B, KEY_C, KEY_D, KEY_E, KEY_F, KEY_G, KEY_H, KEY_I, KEY_J,
+    KEY_K, KEY_L, KEY_M, KEY_N, KEY_O, KEY_P, KEY_Q, KEY_R, KEY_S, KEY_T,
+    KEY_U, KEY_V, KEY_W, KEY_X, KEY_Y, KEY_Z,
     NUM0, NUM1, NUM2, NUM3, NUM4, NUM5, NUM6, NUM7, NUM8, NUM9,
     UP, DOWN, LEFT, RIGHT, SPACE, ENTER, ESCAPE, LSHIFT, LCTRL,
     COUNT

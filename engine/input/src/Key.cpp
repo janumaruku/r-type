@@ -1,3 +1,10 @@
+/*
+** EPITECH PROJECT, 2026
+** r-type
+** File description:
+** Key.cpp
+*/
+
 #include "engine/input/Key.hpp"
 #include <optional>
 #include <string_view>
@@ -11,32 +18,32 @@ namespace engine::input
     {
         {
             {Key::UNKNOWN, "UNKNOWN"},
-            {Key::A, "A"},
-            {Key::B, "B"},
-            {Key::C, "C"},
-            {Key::D, "D"},
-            {Key::E, "E"},
-            {Key::F, "F"},
-            {Key::G, "G"},
-            {Key::H, "H"},
-            {Key::I, "I"},
-            {Key::J, "J"},
-            {Key::K, "K"},
-            {Key::L, "L"},
-            {Key::M, "M"},
-            {Key::N, "N"},
-            {Key::O, "O"},
-            {Key::P, "P"},
-            {Key::Q, "Q"},
-            {Key::R, "R"},
-            {Key::S, "S"},
-            {Key::T, "T"},
-            {Key::U, "U"},
-            {Key::V, "V"},
-            {Key::W, "W"},
-            {Key::X, "X"},
-            {Key::Y, "Y"},
-            {Key::Z, "Z"},
+            {Key::KEY_A, "A"},
+            {Key::KEY_B, "B"},
+            {Key::KEY_C, "C"},
+            {Key::KEY_D, "D"},
+            {Key::KEY_E, "E"},
+            {Key::KEY_F, "F"},
+            {Key::KEY_G, "G"},
+            {Key::KEY_H, "H"},
+            {Key::KEY_I, "I"},
+            {Key::KEY_J, "J"},
+            {Key::KEY_K, "K"},
+            {Key::KEY_L, "L"},
+            {Key::KEY_M, "M"},
+            {Key::KEY_N, "N"},
+            {Key::KEY_O, "O"},
+            {Key::KEY_P, "P"},
+            {Key::KEY_Q, "Q"},
+            {Key::KEY_R, "R"},
+            {Key::KEY_S, "S"},
+            {Key::KEY_T, "T"},
+            {Key::KEY_U, "U"},
+            {Key::KEY_V, "V"},
+            {Key::KEY_W, "W"},
+            {Key::KEY_X, "X"},
+            {Key::KEY_Y, "Y"},
+            {Key::KEY_Z, "Z"},
             {Key::NUM0, "NUM0"},
             {Key::NUM1, "NUM1"},
             {Key::NUM2, "NUM2"},
