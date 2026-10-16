@@ -35,7 +35,15 @@ public:
     template <typename... Args>
     C &emplaceAt(const Entity &entity, Args &&... args);
 
-    void erase(const Entity &entity) noexcept override;
+    /*
+    ** Swap-and-pop: the last component moves into the erased one's position.
+    ** - Storage order isn't stable: never rely on it.
+    ** - To erase while iterating, walk entities() from the end, so the element
+    **   moved into the current slot has already been visited.
+    ** - A reference or pointer to the last component is invalidated by erasing
+    **   another entity: never keep one across an erase.
+    */
+    void erase(const Entity &entity) override;
 
     std::span<C> components() noexcept;
 
