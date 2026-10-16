@@ -8,6 +8,7 @@
 #include "engine/ecs/SparseSetBase.hpp"
 
 #include <cassert>
+#include <utility>
 
 namespace engine::ecs {
 bool SparseSetBase::contains(const Entity &entity) const noexcept
@@ -57,7 +58,7 @@ void SparseSetBase::swapAndPop(const Entity &entity) noexcept
 void SparseSetBase::append(const Entity &entity)
 {
     assert(entity != Entity::NONE);
-    assert(contains(entity));
+    assert(entity.index() >= _sparse.size() || _sparse[entity.index()] == NPOS);
 
     if (entity.index() >= _sparse.size())
         _sparse.resize(entity.index() + 1, NPOS);

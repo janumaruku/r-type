@@ -4,5 +4,6 @@ rtype_add_test(engine_ecs_tests
         ComponentTests.cpp
         EntityTests.cpp
         SparseSetBaseTests.cpp
+        SparseSetTests.cpp
         TypeIdTests.cpp
 )

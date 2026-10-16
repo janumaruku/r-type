@@ -8,11 +8,19 @@
 #ifndef SPARSESET_TPP
 #define SPARSESET_TPP
 
-#include <assert.h>
+#include <cassert>
 
 #include "engine/ecs/SparseSet.hpp"
 
 namespace engine::ecs {
+template <Component C>
+C & SparseSet<C>::get(const Entity &entity) noexcept
+{
+    assert(contains(entity));
+
+    return _components[positionOf(entity)];
+}
+
 template <Component C>
 const C &SparseSet<C>::get(const Entity &entity) const noexcept
 {
@@ -22,7 +30,13 @@ const C &SparseSet<C>::get(const Entity &entity) const noexcept
 }
 
 template <Component C>
-C *SparseSet<C>::tryGet(const Entity &entity) const noexcept
+C *SparseSet<C>::tryGet(const Entity &entity) noexcept
+{
+    return contains(entity) ? &_components[positionOf(entity)] : nullptr;
+}
+
+template <Component C>
+const C * SparseSet<C>::tryGet(const Entity &entity) const noexcept
 {
     return contains(entity) ? &_components[positionOf(entity)] : nullptr;
 }
@@ -59,11 +73,11 @@ C &SparseSet<C>::insertAt(const Entity &entity, C &&value)
 
 template <Component C>
 template <typename... Args>
-C &SparseSet<C>::emplaceAt(const Entity &entity, const Args &... args)
+C &SparseSet<C>::emplaceAt(const Entity &entity, Args &&... args)
 {
     if (contains(entity)) {
         C &component = _components[positionOf(entity)];
-        component = C{std::forward<Args>(args)...};
+        component = C(std::forward<Args>(args)...);
         return component;
     }
 
@@ -86,7 +100,13 @@ void SparseSet<C>::erase(const Entity &entity) noexcept
 }
 
 template <Component C>
-std::span<C> SparseSet<C>::components() const noexcept
+std::span<C> SparseSet<C>::components() noexcept
+{
+    return _components;
+}
+
+template <Component C>
+std::span<const C> SparseSet<C>::components() const noexcept
 {
     return _components;
 }
