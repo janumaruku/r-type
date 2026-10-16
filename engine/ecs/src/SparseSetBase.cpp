@@ -57,6 +57,7 @@ void SparseSetBase::swapAndPop(const Entity &entity) noexcept
 void SparseSetBase::append(const Entity &entity)
 {
     assert(entity != Entity::NONE);
+    assert(contains(entity));
 
     if (entity.index() >= _sparse.size())
         _sparse.resize(entity.index() + 1, NPOS);

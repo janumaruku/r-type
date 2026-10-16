@@ -13,13 +13,13 @@
 
 namespace engine::ecs {
 template <Component C>
-class SparseSet: public SparseSetBase{
+class SparseSet: public SparseSetBase {
 public:
     SparseSet() = default;
 
-    C &get(const Entity &entity) const noexcept;
+    const C &get(const Entity &entity) const noexcept;
 
-    C tryGet(const Entity &entity) const noexcept;
+    C *tryGet(const Entity &entity) const noexcept;
 
     C &insertAt(const Entity &entity, const C &value);
 
@@ -28,7 +28,7 @@ public:
     template <typename... Args>
     C &emplaceAt(const Entity &entity, const Args &... args);
 
-    void erase(const Entity &entity) noexcept;
+    void erase(const Entity &entity) noexcept override;
 
     std::span<C> components() const noexcept;
 
