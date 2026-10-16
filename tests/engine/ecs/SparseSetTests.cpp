@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -221,4 +222,130 @@ TEST(SparseSet, InsertingFromAComponentOfTheSameSetIsSafe)
 
     EXPECT_EQ(set.get(entity(1)), longText);
     EXPECT_EQ(set.get(entity(0)), longText);
+}
+
+TEST(SparseSet, ErasingAMiddleElementMovesTheLastIntoItsPlace)
+{
+    SparseSet<int> set;
+    set.insertAt(entity(0), 10);
+    set.insertAt(entity(1), 20);
+    set.insertAt(entity(2), 30);
+
+    set.erase(entity(1));
+
+    EXPECT_FALSE(set.contains(entity(1)));
+    EXPECT_EQ(set.entities()[1], entity(2));
+    EXPECT_EQ(set.get(entity(2)), 30);
+    EXPECT_EQ(set.size(), 2U);
+    EXPECT_TRUE(aligned(set));
+}
+
+TEST(SparseSet, ErasingTheLastElement)
+{
+    SparseSet<int> set;
+    set.insertAt(entity(0), 10);
+    set.insertAt(entity(1), 20);
+
+    set.erase(entity(1));
+
+    EXPECT_FALSE(set.contains(entity(1)));
+    EXPECT_EQ(set.get(entity(0)), 10);
+    EXPECT_TRUE(aligned(set));
+}
+
+TEST(SparseSet, ErasingTheOnlyElement)
+{
+    SparseSet<int> set;
+    set.insertAt(entity(4), 1);
+
+    set.erase(entity(4));
+
+    EXPECT_TRUE(set.empty());
+    EXPECT_TRUE(set.components().empty());
+}
+
+TEST(SparseSet, ErasingAnAbsentEntityDoesNothing)
+{
+    SparseSet<int> set;
+    set.insertAt(entity(0), 10);
+
+    set.erase(entity(9));
+
+    EXPECT_EQ(set.size(), 1U);
+    EXPECT_EQ(set.get(entity(0)), 10);
+}
+
+TEST(SparseSet, ErasingAStaleHandleLeavesTheNewOwnerUntouched)
+{
+    SparseSet<int> set;
+    set.insertAt(entity(2, 1), 5);
+
+    set.erase(entity(2, 0));
+
+    EXPECT_TRUE(set.contains(entity(2, 1)));
+    EXPECT_EQ(set.get(entity(2, 1)), 5);
+}
+
+TEST(SparseSet, ErasingThenReinsertingWithANewGeneration)
+{
+    SparseSet<int> set;
+    set.insertAt(entity(3, 0), 1);
+
+    set.erase(entity(3, 0));
+    set.insertAt(entity(3, 1), 2);
+
+    EXPECT_FALSE(set.contains(entity(3, 0)));
+    EXPECT_EQ(set.get(entity(3, 1)), 2);
+    EXPECT_EQ(set.size(), 1U);
+}
+
+TEST(SparseSet, EraseMakesOneMoveAndNoCopy)
+{
+    SparseSet<Counted> set;
+    for (std::uint32_t index = 0; index < 3; ++index)
+        set.emplaceAt(entity(index), static_cast<int>(index));
+    Counted::reset();
+
+    set.erase(entity(0));
+    EXPECT_EQ(Counted::moves, 1);
+    EXPECT_EQ(Counted::copies, 0);
+
+    Counted::reset();
+    set.erase(entity(1));
+    EXPECT_EQ(Counted::moves, 0);
+}
+
+TEST(SparseSet, EraseWorksOnMoveOnlyComponents)
+{
+    SparseSet<std::unique_ptr<int>> set;
+    set.insertAt(entity(0), std::make_unique<int>(1));
+    set.insertAt(entity(1), std::make_unique<int>(2));
+
+    set.erase(entity(0));
+
+    ASSERT_NE(set.get(entity(1)), nullptr);
+    EXPECT_EQ(*set.get(entity(1)), 2);
+}
+
+TEST(SparseSet, BackwardIterationWhileErasingVisitsEveryEntityOnce)
+{
+    SparseSet<int> set;
+    for (std::uint32_t index = 0; index < 10; ++index)
+        set.insertAt(entity(index), static_cast<int>(index));
+
+    std::map<std::uint32_t, int> visits;
+    bool eraseThisOne = true;
+    for (std::size_t i = set.size(); i-- > 0;) {
+        const Entity current = set.entities()[i];
+        ++visits[current.index()];
+        if (eraseThisOne)
+            set.erase(current);
+        eraseThisOne = !eraseThisOne;
+    }
+
+    EXPECT_EQ(visits.size(), 10U);
+    for (const auto &[index, count] : visits)
+        EXPECT_EQ(count, 1) << "entity " << index;
+    EXPECT_EQ(set.size(), 5U);
+    EXPECT_TRUE(aligned(set));
 }
