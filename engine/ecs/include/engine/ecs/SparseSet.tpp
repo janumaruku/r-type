@@ -14,7 +14,7 @@
 
 namespace engine::ecs {
 template <Component C>
-C & SparseSet<C>::get(const Entity &entity) noexcept
+C &SparseSet<C>::get(const Entity &entity) noexcept
 {
     assert(contains(entity));
 
@@ -36,7 +36,7 @@ C *SparseSet<C>::tryGet(const Entity &entity) noexcept
 }
 
 template <Component C>
-const C * SparseSet<C>::tryGet(const Entity &entity) const noexcept
+const C *SparseSet<C>::tryGet(const Entity &entity) const noexcept
 {
     return contains(entity) ? &_components[positionOf(entity)] : nullptr;
 }
@@ -88,13 +88,15 @@ C &SparseSet<C>::emplaceAt(const Entity &entity, Args &&... args)
 }
 
 template <Component C>
-void SparseSet<C>::erase(const Entity &entity) noexcept
+void SparseSet<C>::erase(const Entity &entity)
 {
     if (!contains(entity))
         return;
 
     const auto position = positionOf(entity);
-    _components[position] = std::move(_components.back());
+    if (position != _components.size() - 1)
+        _components[position] = std::move(_components.back());
+
     _components.pop_back();
     swapAndPop(entity);
 }
