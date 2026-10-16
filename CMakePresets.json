@@ -68,6 +68,18 @@
       }
     },
     {
+      "name": "linux-asan",
+      "displayName": "Linux AddressSanitizer",
+      "inherits": "linux-debug",
+      "cacheVariables": { "RTYPE_SANITIZER": "address" }
+    },
+    {
+      "name": "linux-tsan",
+      "displayName": "Linux ThreadSanitizer",
+      "inherits": "linux-debug",
+      "cacheVariables": { "RTYPE_SANITIZER": "thread" }
+    },
+    {
       "name": "windows-clangcl-debug",
       "displayName": "Windows clang-cl Debug",
       "inherits": "windows"
