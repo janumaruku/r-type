@@ -37,7 +37,7 @@ C &SparseSet<C>::insertAt(const Entity &entity, const C &value)
     }
 
     _components.push_back(value);
-    append(entity);
+    exceptionSafeAppend(entity);
 
     return _components.back();
 }
@@ -52,7 +52,7 @@ C &SparseSet<C>::insertAt(const Entity &entity, C &&value)
     }
 
     _components.push_back(std::move(value));
-    append(entity);
+    exceptionSafeAppend(entity);
 
     return _components.back();
 }
@@ -68,7 +68,7 @@ C &SparseSet<C>::emplaceAt(const Entity &entity, const Args &... args)
     }
 
     _components.emplace_back(std::forward<Args>(args)...);
-    append(entity);
+    exceptionSafeAppend(entity);
 
     return _components.back();
 }
@@ -89,6 +89,17 @@ template <Component C>
 std::span<C> SparseSet<C>::components() const noexcept
 {
     return _components;
+}
+
+template <Component C>
+void SparseSet<C>::exceptionSafeAppend(const Entity &entity)
+{
+    try {
+        append(entity);
+    } catch (...) {
+        _components.pop_back();
+        throw;
+    }
 }
 }
 
