@@ -13,16 +13,26 @@
 #include <span>
 #include <vector>
 
-#include "Entity.hpp"
+#include "engine/ecs/Entity.hpp"
 
 namespace engine::ecs {
 class SparseSetBase {
 public:
-    using size_type = std::size_t; // NOLINT
+    using size_type = std::uint32_t; // NOLINT
 
     static constexpr size_type NPOS = std::numeric_limits<size_type>::max();
 
+    SparseSetBase() = default;
+
+    SparseSetBase(const SparseSetBase &sparse) = delete;
+
+    SparseSetBase(SparseSetBase &&sparse) = delete;
+
     virtual ~SparseSetBase() = default;
+
+    SparseSetBase &operator=(const SparseSetBase &sparse) = delete;
+
+    SparseSetBase &operator=(SparseSetBase &&sparse) = delete;
 
     [[nodiscard]] bool contains(const Entity &entity) const noexcept;
 
@@ -32,9 +42,17 @@ public:
 
     virtual void erase(const Entity &entity) = 0;
 
+    [[nodiscard]] bool empty() const noexcept;
+
 protected:
     std::vector<size_type> _sparse;
     std::vector<Entity> _dense;
+
+    [[nodiscard]] size_type positionOf(const Entity &entity) const noexcept;
+
+    void swapAndPop(const Entity &entity) noexcept;
+
+    void append(const Entity &entity);
 };
 }
 
