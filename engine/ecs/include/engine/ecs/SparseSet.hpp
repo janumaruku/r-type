@@ -34,6 +34,8 @@ public:
 
 private:
     std::vector<C> _components;
+
+    void exceptionSafeAppend(const Entity &entity);
 };
 }
 
