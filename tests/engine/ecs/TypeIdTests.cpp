@@ -18,11 +18,20 @@ using engine::ecs::detail::nextTypeId;
 using engine::ecs::detail::typeId;
 
 namespace {
-struct First {};
-struct Second {};
-struct Third {};
-struct Repeated {};
-struct SharedByThreads {};
+struct First {
+};
+
+struct Second {
+};
+
+struct Third {
+};
+
+struct Repeated {
+};
+
+struct SharedByThreads {
+};
 
 template <class T>
 concept HasTypeId = requires { typeId<T>(); };
@@ -73,11 +82,11 @@ TEST(TypeId, IdsAreBelowTheNumberOfIdsHandedOut)
 
 TEST(TypeId, ThreadsAskingAtTheSameTimeGetTheSameId)
 {
-    constexpr std::size_t THREAD_COUNT = 8;
+    constexpr std::size_t THREAD_COUNT = 8; // NOLINT
     std::array<std::size_t, THREAD_COUNT> ids{};
-    std::latch start{1};
 
     {
+        std::latch start{1};
         std::array<std::jthread, THREAD_COUNT> threads;
 
         for (std::size_t i = 0; i < THREAD_COUNT; ++i)
@@ -88,6 +97,6 @@ TEST(TypeId, ThreadsAskingAtTheSameTimeGetTheSameId)
         start.count_down();
     }
 
-    for (const std::size_t id : ids)
+    for (const std::size_t id: ids)
         EXPECT_EQ(id, ids[0]);
 }
