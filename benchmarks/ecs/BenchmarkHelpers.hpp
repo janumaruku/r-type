@@ -33,6 +33,22 @@ inline std::vector<std::size_t> pickEntities(double density)
     return ids;
 }
 
+// Memory held by a SparseSet<T> of these entities: _sparse (4 bytes per index
+// up to the highest one), _dense (8 bytes per entity) and the components.
+// Spare vector capacity isn't counted.
+template <class T>
+double memoryMB(const std::vector<std::size_t> &ids)
+{
+    if (ids.empty())
+        return 0.0;
+    const std::size_t sparseBytes = (ids.back() + 1) * 4;
+    const std::size_t denseBytes = ids.size() * 8;
+    const std::size_t componentBytes = ids.size() * sizeof(T);
+
+    return static_cast<double>(sparseBytes + denseBytes + componentBytes)
+        / 1'000'000.0;
+}
+
 inline double densityOf(const benchmark::State &state)
 {
     return static_cast<double>(state.range(0)) / 1000.0;
