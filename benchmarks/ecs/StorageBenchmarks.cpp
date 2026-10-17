@@ -86,3 +86,31 @@ static void BM_SparseSet_ContainsSorted(benchmark::State &state) // NOLINT
 }
 BENCHMARK(BM_SparseSet_ContainsSorted)
     ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
+
+// A bullet's life in steady state: each iteration kills the oldest of the N
+// live entities and spawns a new one in its index with the next generation,
+// as the registry will. The oldest is rarely last in storage, so the erase
+// also exercises the swap-and-pop move.
+static void BM_SparseSet_InsertErase(benchmark::State &state) // NOLINT
+{
+    const auto count = static_cast<std::size_t>(state.range(0));
+    SparseSet<Small> set;
+    std::vector<Entity> live;
+    live.reserve(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        live.push_back(EntityAccess::make(static_cast<std::uint32_t>(i), 0));
+        set.emplaceAt(live.back());
+    }
+
+    std::size_t oldest = 0;
+    for (auto _ : state) {
+        const Entity dead = live[oldest];
+        set.erase(dead);
+        live[oldest] = EntityAccess::make(dead.index(), dead.generation() + 1);
+        set.emplaceAt(live[oldest]);
+        oldest = (oldest + 1) % count;
+    }
+
+    state.SetItemsProcessed(state.iterations());
+}
+BENCHMARK(BM_SparseSet_InsertErase)->Arg(1000)->Arg(10000)->Arg(100000);
