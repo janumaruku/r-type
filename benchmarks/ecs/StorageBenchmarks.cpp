@@ -44,18 +44,23 @@ BENCHMARK_TEMPLATE(BM_SparseSet_Iterate, Small)
 BENCHMARK_TEMPLATE(BM_SparseSet_Iterate, Big)
     ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
 
-static void BM_SparseSet_Contains(benchmark::State &state) // NOLINT
+// Half the handles are stale (generation 1), chosen at random so the branch
+// predictor can't learn the pattern in either order.
+static void runContains(benchmark::State &state, bool shuffled)
 {
     SparseSet<Small> set;
     const auto ids = pickEntities(densityOf(state));
+    std::mt19937 rng(7);
+    std::bernoulli_distribution stale(0.5);
     std::vector<Entity> handles;
     handles.reserve(ids.size());
-    for (std::size_t i = 0; i < ids.size(); ++i) {
-        const auto index = static_cast<std::uint32_t>(ids[i]);
+    for (const auto id : ids) {
+        const auto index = static_cast<std::uint32_t>(id);
         set.emplaceAt(EntityAccess::make(index, 0));
-        handles.push_back(EntityAccess::make(index, i % 2 == 0 ? 0 : 1));
+        handles.push_back(EntityAccess::make(index, stale(rng) ? 1 : 0));
     }
-    std::shuffle(handles.begin(), handles.end(), std::mt19937(7));
+    if (shuffled)
+        std::ranges::shuffle(handles, rng);
 
     for (auto _ : state) {
         std::size_t found = 0;
@@ -67,5 +72,17 @@ static void BM_SparseSet_Contains(benchmark::State &state) // NOLINT
     state.SetItemsProcessed(state.iterations()
         * static_cast<std::int64_t>(handles.size()));
 }
+
+static void BM_SparseSet_Contains(benchmark::State &state) // NOLINT
+{
+    runContains(state, true);
+}
 BENCHMARK(BM_SparseSet_Contains)
+    ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
+
+static void BM_SparseSet_ContainsSorted(benchmark::State &state) // NOLINT
+{
+    runContains(state, false);
+}
+BENCHMARK(BM_SparseSet_ContainsSorted)
     ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
