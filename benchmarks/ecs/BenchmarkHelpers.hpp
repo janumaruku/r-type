@@ -8,6 +8,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <random>
 #include <vector>
 #include <benchmark/benchmark.h>
@@ -21,9 +22,10 @@ static_assert(sizeof(Small) == 8);
 static_assert(sizeof(Big) == 64);
 template <std::size_t N> struct Tag {};         // as many distinct types as needed
 
-inline std::vector<std::size_t> pickEntities(double density)
+inline std::vector<std::size_t> pickEntities(double density,
+    std::uint32_t seed = 42)
 {
-    std::mt19937 rng(42);
+    std::mt19937 rng(seed);
     std::bernoulli_distribution owns(density);
     std::vector<std::size_t> ids;
 

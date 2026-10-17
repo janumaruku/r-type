@@ -114,3 +114,39 @@ static void BM_SparseSet_InsertErase(benchmark::State &state) // NOLINT
     state.SetItemsProcessed(state.iterations());
 }
 BENCHMARK(BM_SparseSet_InsertErase)->Arg(1000)->Arg(10000)->Arg(100000);
+
+// The hand-written two-set join that View must stay within 10% of: walk the
+// first set and look each entity up in the second. The second set owns other
+// entities at the same density, so only part of the lookups succeed.
+template <class T>
+static void BM_Join_SparseSetManual(benchmark::State &state) // NOLINT
+{
+    SparseSet<T> first;
+    SparseSet<T> second;
+    const auto firstIds = pickEntities(densityOf(state), 42);
+    const auto secondIds = pickEntities(densityOf(state), 1337);
+    for (const auto id : firstIds)
+        first.emplaceAt(EntityAccess::make(static_cast<std::uint32_t>(id), 0))
+            .value = 1.0F;
+    for (const auto id : secondIds)
+        second.emplaceAt(EntityAccess::make(static_cast<std::uint32_t>(id), 0))
+            .value = 2.0F;
+
+    for (auto _ : state) {
+        const auto entities = first.entities();
+        const auto components = first.components();
+        float sum = 0.0F;
+        for (std::size_t i = 0; i < entities.size(); ++i)
+            if (const T *other = second.tryGet(entities[i]))
+                sum += components[i].value + other->value;
+        benchmark::DoNotOptimize(sum);
+    }
+
+    state.SetItemsProcessed(state.iterations()
+        * static_cast<std::int64_t>(first.size()));
+    state.counters["MB"] = memoryMB<T>(firstIds) + memoryMB<T>(secondIds);
+}
+BENCHMARK_TEMPLATE(BM_Join_SparseSetManual, Small)
+    ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
+BENCHMARK_TEMPLATE(BM_Join_SparseSetManual, Big)
+    ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
