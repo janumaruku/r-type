@@ -16,29 +16,46 @@ namespace engine::input
     template <typename Action>
     class ActionMap {
         public:
-            // bind(Action action, Key key) { _bindings.insert({key, action}); }
-            void bind(Action action, Key key) {
-                _bindings[key].insert(action);
+            void bind(Action action, Key key)
+            {
+                _bindings[action].insert(key);
             }
-            void unbind(Action action, Key key) {
-                auto i = _bindings.find(key);
+
+            void unbind(Action action, Key key)
+            {
+                auto i = _bindings.find(action);
                 if (i != _bindings.end()) {
                     bindings.erase(i);
                 }
             }
-            std::vector<Key> keysFor(Action action) const {
+
+            std::vector<Key> keysFor(Action action) const
+            {
+                std::vector<Key> key;
+                auto i = _bindings.find(action);
+
+                if (i != _bindings.end())
+                    key.assign(i->second.begin(), i.second.end());
+                return key;
+            }
+
+            bool isActive(Action action, InputState const& state) const
+            {
                 
             }
-            bool isActive(Action action, InputState const& state) const {
+
+            bool wasTriggered(Action action, InputState const& state) const
+            {
 
             }
-            bool wasTriggered(Action action, InputState const& state) const {
+
+            bool load(path path)
+            {
 
             }
-            bool load(path path) {
 
-            }
-            bool save(path path) const {
+            bool save(path path) const
+            {
 
             }
 
