@@ -9,6 +9,8 @@
 
 #include "Key.hpp"
 #include "InputState.hpp"
+#include "json.hpp"
+#include <filesystem>
 
 namespace engine::input
 {
@@ -65,14 +67,22 @@ namespace engine::input
                 return false;
             }
 
-            bool load(path path)
+            bool load(std::filesystem::path path)
             {
-                
+                std::ifstream file(path);
+
+
+
+                return false;
             }
 
-            bool save(path path) const
+            bool save(std::filesystem::path path) const
             {
+                
 
+
+
+                return false;
             }
 
         private:
