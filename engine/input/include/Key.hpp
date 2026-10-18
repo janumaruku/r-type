@@ -5,6 +5,8 @@
 ** Key.hpp
 */
 
+#pragma once
+
 #include <cstdint>
 #include <cstddef>
 
@@ -22,5 +24,4 @@ namespace engine::input {
 
     constexpr std::size_t KEY_COUNT = static_cast<std::size_t>(Key::COUNT);
     constexpr std::size_t KEY_MAX_SIZE = 8;
-
 }

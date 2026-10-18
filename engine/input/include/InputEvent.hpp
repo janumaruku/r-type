@@ -5,8 +5,10 @@
 ** InputEvent.hpp
 */
 
+#pragma once
+
 #include "Key.hpp"
-#include <cstdint>
+#include "Vec2.hpp"
 
 namespace engine::input {
 
@@ -22,12 +24,7 @@ namespace engine::input {
 
         Type type{Type::KEY_PRESSED};
         Key key{Key::UNKNOWN};
-        Vec2u size{0, 0};
-    };
-
-    struct Vec2u {
-        std::uint32_t x{0};
-        std::uint32_t y{0};
+        core::Vec2u size{0, 0};
     };
 
 }
