@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "engine/core/include/Vec2.hpp"
+#include "../../core/include/Vec2.hpp"
 #include "Key.hpp"
 #include <cstdint>
 

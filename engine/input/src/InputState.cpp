@@ -5,7 +5,7 @@
 ** InputState.cpp
 */
 
-#include "engine/input/InputState.hpp"
+#include "../include/InputState.hpp"
 
 namespace engine::input {
 
