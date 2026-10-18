@@ -41,17 +41,33 @@ namespace engine::input
 
             bool isActive(Action action, InputState const& state) const
             {
-                
+                auto i = _bindings.find(action);
+
+                if (i == _bindings.end())
+                    return false;
+                for (Key key : i->second) {
+                    if (state.isDown(key))
+                        return true;
+                }
+                return false;
             }
 
             bool wasTriggered(Action action, InputState const& state) const
             {
+                auto i = _bindings.find(action);
 
+                if (i == _bindings.end())
+                    return false;
+                for (Key key : i->second) {
+                    if (state.wasPressed(key))
+                        return true;
+                }
+                return false;
             }
 
             bool load(path path)
             {
-
+                
             }
 
             bool save(path path) const
