@@ -187,12 +187,12 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(googlebenchmark)
 
 add_executable(ecs_benchmarks
-        StorageBenchmarks.cpp       # steps 2, 8
-        RegistryBenchmarks.cpp      # steps 3, 4, 6
-        IterationBenchmarks.cpp     # steps 7, 9
+    StorageBenchmarks.cpp       # steps 2, 8
+    RegistryBenchmarks.cpp      # steps 3, 4, 6
+    IterationBenchmarks.cpp     # steps 7, 9
 )
 target_include_directories(ecs_benchmarks PRIVATE .)
-target_link_libraries(ecs_benchmarks PRIVATE engine_ecs benchmark::benchmark_main)
+target_link_libraries(ecs_benchmarks PRIVATE ecs benchmark::benchmark_main)
 ```
 
 `benchmark::benchmark_main` provides `main()`. Each step below adds its
@@ -1363,7 +1363,7 @@ between control and position. Nothing in the ECS changes.
 find_package(SFML 3.1 REQUIRED COMPONENTS Graphics)
 add_executable(bootstrap main.cpp Systems.cpp)
 target_include_directories(bootstrap PRIVATE include)
-target_link_libraries(bootstrap PRIVATE warning_options engine_ecs SFML::Graphics)
+target_link_libraries(bootstrap PRIVATE warning_options ecs SFML::Graphics)
 set_target_properties(bootstrap PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR})
 ```
 
