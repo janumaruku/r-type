@@ -68,7 +68,7 @@ struct std::hash<engine::ecs::Entity> {
     std::size_t operator()(const engine::ecs::Entity &entity) const noexcept
     {
         const std::uint64_t packed =
-            (static_cast<std::uint64_t>(entity.generation()) << 32) |
+            (static_cast<std::uint64_t>(entity.generation()) << 32U) |
             entity.index();
 
         return std::hash<std::uint64_t>{}(packed);
