@@ -9,6 +9,8 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <optional>
+#include <string_view>
 
 namespace engine::input {
 
@@ -24,4 +26,7 @@ namespace engine::input {
 
     constexpr std::size_t KEY_COUNT = static_cast<std::size_t>(Key::COUNT);
     constexpr std::size_t KEY_MAX_SIZE = 8;
+
+    std::string_view toString(Key key) noexcept;
+    std::optional<Key> keyFromString(std::string_view name) noexcept;
 }
