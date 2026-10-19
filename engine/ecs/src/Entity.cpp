@@ -1,11 +1,13 @@
-//
-// Created by janumaruku on 10/13/26.
-//
+/*
+** EPITECH PROJECT, 2026
+** r-type
+** File description:
+** Entity
+*/
 
-#include "../include/entity.hpp"
+#include "ecs/Entity.hpp"
 
-namespace engine {
-namespace ecs {
+namespace engine::ecs {
 std::uint32_t Entity::index() const noexcept
 {
     return _index;
@@ -25,5 +27,4 @@ Entity::Entity(std::uint32_t index, std::uint32_t generation): _index(index),
     _generation(generation)
 {
 }
-} // ecs
-} // engine
+}
