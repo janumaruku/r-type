@@ -9,7 +9,7 @@
 
 #include <cstddef>
 
-#include "InputState.hpp"
+#include "engine/input/InputState.hpp"
 
 using engine::input::InputEvent;
 using engine::input::InputState;
