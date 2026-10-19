@@ -17,7 +17,7 @@ public:
     using std::runtime_error::runtime_error;
 };
 
-class RessourceError : public EngineError {
+class ResourceError : public EngineError {
 public:
     using EngineError::EngineError;
 };

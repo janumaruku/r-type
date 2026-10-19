@@ -565,7 +565,7 @@ classDiagram
     class Key {
         <<enumeration>>
         UNKNOWN
-        A_TO_Z
+        KEY_A_TO_KEY_Z
         NUM0_TO_NUM9
         UP
         DOWN
@@ -596,7 +596,7 @@ classDiagram
     }
     class ActionMap~Action~ {
         <<template>>
-        -std::unordered_multimap~Action, Key~ _bindings
+        -std::unordered_map~Action, std::unordered_set~Key~~ _bindings
         +bind(Action, Key) void
         +unbind(Action, Key) void
         +keysFor(Action) std::vector~Key~
@@ -614,8 +614,20 @@ classDiagram
 - **Where the events come from.** Raylib has no event queue: it answers questions like `IsKeyPressed(KEY_UP)` about the current frame. `Window::pollEvents()` turns those answers into events. For each engine `Key`, it asks Raylib `IsKeyPressed` and `IsKeyReleased` for the matching `KEY_*` code, through one fixed translation table. It reports `WindowShouldClose()` as `WINDOW_CLOSED`, a change of `IsWindowFocused()` as `FOCUS_LOST` or `FOCUS_GAINED`, and `IsWindowResized()` as `RESIZED`.
 - **Escape is a normal key.** By default Raylib closes the window when Escape is pressed. `Window` calls `SetExitKey(KEY_NULL)` to turn that off, so Escape goes through the `QUIT` action like any other binding.
 - `beginFrame()` clears the pressed and released sets. `apply()` updates all three sets. OS key-repeat events are ignored, and a key counts as pressed only on its first down event.
-- The client defines `enum class Action { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE, TOGGLE_HUD_HELP, QUIT }`. Default bindings are the arrow keys (required by F-09) plus WASD, with `SPACE` and `LCTRL` to fire. Bindings are saved to `config/keybindings.cfg`, one `ACTION=KEY` per line ([accessibility](../architecture/accessibility.md)).
-- **Names in the bindings file.** `engine_input` provides `toString(Key)` and `keyFromString`. Actions belong to the client, so `ActionMap` finds `toString(Action)` and `fromString(std::string_view, Action&)` by ADL, the same pattern as the `Packet` serializers. A missing file keeps the default bindings, and a malformed line is skipped with a warning.
+- The client defines `enum class Action { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE, TOGGLE_HUD_HELP, QUIT }`. Default bindings are the arrow keys (required by F-09) plus WASD, with `SPACE` and `LCTRL` to fire. Bindings are saved to `config/keybindings.cfg` ([accessibility](../architecture/accessibility.md)).
+- **An action has a set of keys.** Binding the same pair twice stores it once, and `unbind` removes one key. A key can belong to several actions.
+- **The bindings file is JSON.** One entry per action, with its name and its keys:
+  ```json
+  {
+    "config": [
+      { "name": "FIRE", "keys": ["SPACE", "LCTRL"] },
+      { "name": "MOVE_UP", "keys": ["UP", "KEY_W"] }
+    ]
+  }
+  ```
+- **Names in the bindings file.** Key names are the enum's: `KEY_A` to `KEY_Z`, `NUM0` to `NUM9`, `UP`, `SPACE`, `LCTRL`, and so on, in any case. `engine_input` provides `toString(Key)` and `keyFromString`. Actions belong to the client, so `ActionMap` finds `toString(Action)` and `fromString(std::string_view, Action&)` by ADL, the same pattern as the `Packet` serializers. `ActionMap` is constrained on a concept that checks both functions exist.
+- **Loading.** A missing file returns `false` and keeps the default bindings. Each action in the file replaces its keys, and actions missing from the file keep theirs. An unknown action or key is skipped with a warning naming the entry, and an action left with no valid key keeps its old keys. A file that isn't valid JSON, or whose fields have the wrong type, is rejected as a whole with a warning, and nothing changes.
+- **Saving** writes every binding, creating the parent folder if needed. The order isn't fixed, because the bindings are stored in hash containers. An I/O error returns `false` with a warning.
 
 ## Audio (`engine_audio`)
 
