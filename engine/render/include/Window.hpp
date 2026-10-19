@@ -31,7 +31,7 @@ struct WindowConfig {
 class Window {
 public:
     explicit Window(WindowConfig const& config);
-    ~Window() = default;
+    ~Window();
 
     [[nodiscard]] bool isOpen() const;
 
