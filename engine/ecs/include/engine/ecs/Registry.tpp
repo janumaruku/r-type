@@ -68,8 +68,8 @@ std::remove_cvref_t<C> &Registry::addComponent(const Entity &entity,
         std::forward<C>(component));
 }
 
-template <Component C, typename ... Args>
-C & Registry::emplaceComponent(const Entity &entity, Args &&...args)
+template <Component C, typename... Args>
+C &Registry::emplaceComponent(const Entity &entity, Args &&... args)
 {
     assert(isAlive(entity));
 
@@ -80,6 +80,24 @@ template <Component C>
 void Registry::removeComponent(const Entity &entity)
 {
     getComponents<C>()->erase(entity);
+}
+
+template <Component C>
+C *Registry::getComponent(const Entity &entity)
+{
+    if (!isAlive(entity))
+        return nullptr;
+
+    return &getComponents<C>()->get(entity);
+}
+
+template <Component C>
+const C * Registry::getComponent(const Entity &entity) const
+{
+    if (!isAlive(entity))
+        return nullptr;
+
+    return &getComponents<C>()->get(entity);
 }
 }
 
