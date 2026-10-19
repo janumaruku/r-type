@@ -46,6 +46,9 @@ public:
 
     [[nodiscard]] std::size_t aliveCount() const noexcept;
 
+    template <Component C>
+    std::remove_cvref_t<C> &addComponent(const Entity &entity, C &&component);
+
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
     std::vector<std::uint32_t> _generations;

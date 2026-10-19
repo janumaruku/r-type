@@ -57,6 +57,16 @@ const SparseSet<C> &Registry::getComponents() const
     assert(dynamic_cast<SparseSet<C> *>(_storages[index].get()) != nullptr);
     return static_cast<SparseSet<C> &>(*_storages[index]);
 }
+
+template <Component C>
+std::remove_cvref_t<C> &Registry::addComponent(const Entity &entity,
+    C &&component)
+{
+    assert(isAlive(entity));
+
+    return getComponents<std::remove_cvref_t<C>>()->insertAt(entity,
+        std::forward<C>(component));
+}
 }
 
 #endif
