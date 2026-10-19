@@ -32,7 +32,7 @@ Nothing below `warn` is logged in the per-datagram path unless `--log-level debu
 | File | Format | Contents |
 | --- | --- | --- |
 | `config/client.cfg` | `key=value` lines, `#` comments | Volumes, `muted`, `fullscreen`, `hudFontSize`, `highContrast`, `reduceFlashes` ([accessibility](../architecture/accessibility.md#settings)) |
-| `config/keybindings.cfg` | `ACTION=KEY` lines | Overrides for the default bindings ([engine: input](../modules/engine.md#input-engine_input)) |
+| `config/keybindings.cfg` | JSON: a `config` array of `{ "name", "keys" }` entries | Overrides for the default bindings ([engine: input](../modules/engine.md#input-engine_input)) |
 
 An unknown key or a value that won't parse logs a warning and falls back to the default for that line. A config file never prevents the game from starting.
 
@@ -77,7 +77,7 @@ Tests show that code is correct; benchmarks show that a design choice was worth 
 
 - **Tool:** Google Benchmark, fetched by CPM only when `RTYPE_BUILD_BENCHMARKS=ON`, with its own tests, install rules and `-Werror` turned off. Each benchmark executable links `benchmark::benchmark_main`.
 - **Layout:** `benchmarks/<module>/`, one `<Topic>Benchmarks.cpp` per area (storage, registry, iteration), shared helpers in a `BenchmarkHelpers.hpp`.
-- **Build:** only in Release. Use the `linux-bench` preset (`linux-release` plus `RTYPE_BUILD_BENCHMARKS=ON`), then run `build/linux-bench/benchmarks/<module>/<module>_benchmarks`. Debug and sanitizer numbers are meaningless, and CMake prints a warning if benchmarks are enabled in another build type. Benchmarks are never registered with `ctest`.
+- **Build:** only in Release. Use the `linux-release` preset with `-DRTYPE_BUILD_BENCHMARKS=ON`; Debug and sanitizer numbers are meaningless.
 - **How to write one, run it, read the output and compare two versions with `compare.py`:** see [Benchmarking with Google Benchmark](../reference/ECS_JOURNEY.md#benchmarking-with-google-benchmark) in the ECS journey.
 
 **Rules for trustworthy numbers** (from the journey):
