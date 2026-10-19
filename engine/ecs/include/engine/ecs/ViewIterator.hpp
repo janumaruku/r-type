@@ -42,19 +42,38 @@ public:
 
     ViewIterator() = default;
 
+    reference operator*() const;
+
+    ViewIterator &operator++();
+
+    ViewIterator operator++(int);
+
+    bool operator==(const ViewIterator &other) const noexcept;
+
 private:
     friend class View<Containers...>;
 
     ViewIterator(const SetsTuple &sets, const SparseSetBase *driver,
         std::size_t remaining);
 
-    SetsTuple _sets;
-    const SparseSetBase *_driver;
-    std::size_t _remaining;
-    std::tuple<ComponentPointerT<Containers>...> _current;
+    void skipIncomplete();
+
+    template <std::size_t... Is>
+    bool fetchAll(const Entity &entity, std::size_t position,
+        std::index_sequence<Is...>);
+
+    template <std::size_t... Is>
+    reference toReference(std::index_sequence<Is...>) const;
+
+    SetsTuple _sets{};
+    const SparseSetBase *_driver = nullptr;
+    std::size_t _remaining = 0;
+    std::tuple<ComponentPointerT<Containers>...> _current{};
     static constexpr std::index_sequence_for<Containers...> _sequence{}; // NOLINT
 };
 } // ecs
 // engine
 
 #endif //R_TYPE_VIEWITERATOR_HPP
+
+#include "engine/ecs/ViewIterator.tpp"
