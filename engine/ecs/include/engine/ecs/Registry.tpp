@@ -46,7 +46,7 @@ SparseSet<C> &Registry::getComponents()
 }
 
 template <Component C>
-const SparseSet<C> & Registry::getComponents() const
+const SparseSet<C> &Registry::getComponents() const
 {
     const auto index = detail::typeId<C>();
 
