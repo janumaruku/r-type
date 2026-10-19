@@ -52,6 +52,9 @@ public:
     template <Component C, typename... Args>
     C &emplaceComponent(const Entity &entity, Args &&... args);
 
+    template <Component C>
+    void removeComponent(const Entity &entity);
+
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
     std::vector<std::uint32_t> _generations;
