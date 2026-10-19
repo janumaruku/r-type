@@ -4,4 +4,4 @@ add_library(engine_render STATIC
 )
 
 target_include_directories(engine_render PUBLIC include)
-target_link_libraries(engine_render PUBLIC project_options engine_core PRIVATE raylib)
+target_link_libraries(engine_render PUBLIC engine_input engine_core project_options PRIVATE raylib)
