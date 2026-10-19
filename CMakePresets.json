@@ -1,97 +1,148 @@
 {
-    "version": 6,
-    "configurePresets": [
-        {
-            "name": "linux-debug",
-            "displayName": "Linux Debug",
-            "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/build/linux-debug",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Debug",
-                "RTYPE_BUILD_TESTS": "ON"
-            }
-        },
-        {
-            "name": "linux-release",
-            "displayName": "Linux Release",
-            "generator": "Unix Makefiles",
-            "binaryDir": "${sourceDir}/build/linux-release",
-            "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release",
-                "RTYPE_BUILD_TESTS": "ON"
-            }
-        },
-        {
-            "name": "windows-msvc-debug",
-            "displayName": "Windows MSVC Debug",
-            "generator": "Visual Studio 17 2022",
-            "architecture": "x64",
-            "binaryDir": "${sourceDir}/build/windows-msvc-debug",
-            "cacheVariables": {
-                "RTYPE_BUILD_TESTS": "ON"
-            }
-        },
-        {
-            "name": "windows-msvc-release",
-            "displayName": "Windows MSVC Release",
-            "generator": "Visual Studio 17 2022",
-            "architecture": "x64",
-            "binaryDir": "${sourceDir}/build/windows-msvc-release",
-            "cacheVariables": {
-                "RTYPE_BUILD_TESTS": "ON"
-            }
-        }
-    ],
-    "buildPresets": [
-        {
-            "name": "linux-debug",
-            "configurePreset": "linux-debug"
-        },
-        {
-            "name": "linux-release",
-            "configurePreset": "linux-release"
-        },
-        {
-            "name": "windows-msvc-debug",
-            "configurePreset": "windows-msvc-debug",
-            "configuration": "Debug"
-        },
-        {
-            "name": "windows-msvc-release",
-            "configurePreset": "windows-msvc-release",
-            "configuration": "Release"
-        }
-    ],
-    "testPresets": [
-        {
-            "name": "linux-debug",
-            "configurePreset": "linux-debug",
-            "output": {
-                "outputOnFailure": true
-            }
-        },
-        {
-            "name": "linux-release",
-            "configurePreset": "linux-release",
-            "output": {
-                "outputOnFailure": true
-            }
-        },
-        {
-            "name": "windows-msvc-debug",
-            "configurePreset": "windows-msvc-debug",
-            "configuration": "Debug",
-            "output": {
-                "outputOnFailure": true
-            }
-        },
-        {
-            "name": "windows-msvc-release",
-            "configurePreset": "windows-msvc-release",
-            "configuration": "Release",
-            "output": {
-                "outputOnFailure": true
-            }
-        }
-    ]
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "CPM_SOURCE_CACHE": "${sourceDir}/.cpm-cache"
+      }
+    },
+    {
+      "name": "linux",
+      "hidden": true,
+      "inherits": "base",
+      "generator": "Unix Makefiles",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "windows",
+      "hidden": true,
+      "inherits": "base",
+      "architecture": "x64",
+      "toolset": "ClangCL",
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug",
+      "inherits": "linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release",
+      "inherits": "linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "RTYPE_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "linux-coverage",
+      "displayName": "Linux Coverage (Clang)",
+      "inherits": "linux",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "WITH_COVERAGE": "ON"
+      }
+    },
+    {
+      "name": "linux-bench",
+      "displayName": "Linux Benchmarks (Release)",
+      "inherits": "linux-release",
+      "cacheVariables": {
+        "RTYPE_BUILD_BENCHMARKS": "ON"
+      }
+    },
+    {
+      "name": "linux-asan",
+      "displayName": "Linux AddressSanitizer",
+      "inherits": "linux-debug",
+      "cacheVariables": { "RTYPE_SANITIZER": "address" }
+    },
+    {
+      "name": "linux-tsan",
+      "displayName": "Linux ThreadSanitizer",
+      "inherits": "linux-debug",
+      "cacheVariables": { "RTYPE_SANITIZER": "thread" }
+    },
+    {
+      "name": "windows-clangcl-debug",
+      "displayName": "Windows clang-cl Debug",
+      "inherits": "windows"
+    },
+    {
+      "name": "windows-clangcl-release",
+      "displayName": "Windows clang-cl Release",
+      "inherits": "windows",
+      "cacheVariables": {
+        "RTYPE_BUILD_TESTS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "linux-debug",
+      "jobs": 0,
+      "configurePreset": "linux-debug"
+    },
+    {
+      "name": "linux-release",
+      "jobs": 0,
+      "configurePreset": "linux-release"
+    },
+    {
+      "name": "linux-coverage",
+      "configurePreset": "linux-coverage",
+      "jobs": 0,
+      "targets": [
+        "coverage"
+      ]
+    },
+    {
+      "name": "linux-bench",
+      "configurePreset": "linux-bench",
+      "jobs": 0
+    },
+    {
+      "name": "windows-clangcl-debug",
+      "configurePreset": "windows-clangcl-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-clangcl-release",
+      "configurePreset": "windows-clangcl-release",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux-debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-clangcl-debug",
+      "configurePreset": "windows-clangcl-debug",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
 }
