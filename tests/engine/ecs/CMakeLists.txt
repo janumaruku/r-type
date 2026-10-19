@@ -3,6 +3,7 @@ rtype_add_test(engine_ecs_tests
         SOURCES
         ComponentTests.cpp
         EntityTests.cpp
+        RegistryComponentTests.cpp
         RegistryEntityTests.cpp
         RegistryTests.cpp
         SparseSetBaseTests.cpp
