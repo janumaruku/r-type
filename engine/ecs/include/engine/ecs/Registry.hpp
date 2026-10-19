@@ -27,7 +27,7 @@ public:
 
     Registry &operator=(const Registry &) = delete;
 
-    Registry & operator=(Registry &&) = default;
+    Registry &operator=(Registry &&) = default;
 
     template <Component C>
     SparseSet<C> &registerComponent();
@@ -45,6 +45,21 @@ public:
     void killEntity(const Entity &entity);
 
     [[nodiscard]] std::size_t aliveCount() const noexcept;
+
+    template <typename C> requires Component<std::remove_cvref_t<C>>
+    std::remove_cvref_t<C> &addComponent(const Entity &entity, C &&component);
+
+    template <Component C, typename... Args>
+    C &emplaceComponent(const Entity &entity, Args &&... args);
+
+    template <Component C>
+    void removeComponent(const Entity &entity);
+
+    template <Component C>
+    C *getComponent(const Entity &entity);
+
+    template <Component C>
+    const C *getComponent(const Entity &entity) const;
 
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
