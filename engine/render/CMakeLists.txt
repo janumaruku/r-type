@@ -1,6 +1,8 @@
 add_library(engine_render STATIC
 	src/RenderQueue.cpp
 	src/Window.cpp
+	src/TextureCache.cpp
+	src/FontCache.cpp
 )
 
 target_include_directories(engine_render PUBLIC include)

@@ -16,19 +16,10 @@
 #include "Rect2.hpp"
 #include "Color.hpp"
 
+#include "TextureCache.hpp"
+#include "FontCache.hpp"
+
 namespace engine::render {
-
-struct TextureId {
-    std::uint32_t value{};
-
-    explicit TextureId(std::uint32_t id) : value{id} {}
-};
-
-struct FontId {
-    std::uint32_t value{};
-
-    explicit FontId(std::uint32_t id) : value{id} {}
-};
 
 struct SpriteCmd {
     TextureId texture;
