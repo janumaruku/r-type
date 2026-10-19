@@ -46,7 +46,7 @@ public:
 
     [[nodiscard]] std::size_t aliveCount() const noexcept;
 
-    template <Component C>
+    template <typename C> requires Component<std::remove_cvref_t<C>>
     std::remove_cvref_t<C> &addComponent(const Entity &entity, C &&component);
 
     template <Component C, typename... Args>
