@@ -10,6 +10,7 @@
 
 #include <tuple>
 
+#include "engine/ecs/SparseSetBase.hpp"
 #include "engine/ecs/ViewIterator.hpp"
 
 namespace engine::ecs {
@@ -25,12 +26,14 @@ public:
     iterator end() const;
 
 private:
-    static std::size_t smallest(Containers &... containers);
+    static const SparseSetBase *smallest(Containers &... containers);
 
     std::tuple<Containers *...> _sets;
-    std::size_t _driver;
+    const SparseSetBase *_driver;
 };
 } // ecs
 // engine
 
 #endif //R_TYPE_VIEW_HPP
+
+#include "engine/ecs/View.tpp"

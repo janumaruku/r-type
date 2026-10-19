@@ -9,6 +9,8 @@
 #define R_TYPE_VIEW_TPP
 
 #include <algorithm>
+#include <array>
+#include <memory>
 
 #include "engine/ecs/View.hpp"
 
@@ -32,12 +34,12 @@ View<Containers...>::iterator View<Containers...>::end() const
 }
 
 template <class... Containers>
-std::size_t View<Containers...>::smallest(Containers &... containers)
+const SparseSetBase *View<Containers...>::smallest(Containers &... containers)
 {
-    std::array<std::size_t, sizeof...(Containers)> sizes(containers.size()...);
+    const std::array<const SparseSetBase *, sizeof...(Containers)> sets{
+        std::addressof(containers)...};
 
-    return static_cast<std::size_t>(std::ranges::min_element(sizes) - sizes.
-        begin());
+    return *std::ranges::min_element(sets, {}, &SparseSetBase::size);
 }
 }
 

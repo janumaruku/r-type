@@ -7,8 +7,15 @@
 
 #ifndef R_TYPE_VIEWITERATOR_HPP
 #define R_TYPE_VIEWITERATOR_HPP
+
+#include <cstddef>
 #include <iterator>
+#include <tuple>
+#include <type_traits>
 #include <utility>
+
+#include "engine/ecs/Entity.hpp"
+#include "engine/ecs/SparseSetBase.hpp"
 
 namespace engine::ecs {
 template <class... Containers>
@@ -17,7 +24,8 @@ class View;
 template <class... Containers>
 class ViewIterator {
     template <class Container>
-    using ComponentReferenceT = decltype(std::declval<Container &>().get(0));
+    using ComponentReferenceT = decltype(std::declval<Container &>().get(
+        std::declval<const Entity &>()));
     template <class Container>
     using ComponentPointerT = std::remove_reference_t<ComponentReferenceT<
         Container>> *;
@@ -32,11 +40,19 @@ public:
 
     using SetsTuple = std::tuple<Containers *...>;
 
+    ViewIterator() = default;
+
 private:
     friend class View<Containers...>;
 
-    ViewIterator(const SetsTuple &sets, std::size_t driver,
+    ViewIterator(const SetsTuple &sets, const SparseSetBase *driver,
         std::size_t remaining);
+
+    SetsTuple _sets;
+    const SparseSetBase *_driver;
+    std::size_t _remaining;
+    std::tuple<ComponentPointerT<Containers>...> _current;
+    static constexpr std::index_sequence_for<Containers...> _sequence{}; // NOLINT
 };
 } // ecs
 // engine
