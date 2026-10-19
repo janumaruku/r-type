@@ -27,7 +27,7 @@ public:
 
     Registry &operator=(const Registry &) = delete;
 
-    Registry & operator=(Registry &&) = default;
+    Registry &operator=(Registry &&) = default;
 
     template <Component C>
     SparseSet<C> &registerComponent();
@@ -54,6 +54,12 @@ public:
 
     template <Component C>
     void removeComponent(const Entity &entity);
+
+    template <Component C>
+    C *getComponent(const Entity &entity);
+
+    template <Component C>
+    const C *getComponent(const Entity &entity) const;
 
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
