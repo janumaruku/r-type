@@ -9,32 +9,17 @@
     #define STOPWATCH_HPP
     #include "Clock.hpp"
 
+namespace engine::runtime {
     class Stopwatch {
         public:
-            Stopwatch() noexcept : _start(MyClock::now()) {}
-
-            double restart() noexcept
-            {
-                TimePoint TimeNow = MyClock::now();
-                std::chrono::duration<double> TimeElapsed = TimeNow - _start;
-
-                _start = now;
-                return TimeElapsed.count();
-            }
-
-            double elapsedSeconds() const noexcept
-            {
-                TimePoint TimeNow = MyClock::now();
-                std::chrono::duration<double> TimeElapsed = TimeNow - _start;
-
-                return TimeElapsed.count();
-            }
+            Stopwatch() noexcept;
+            double restart() noexcept;
+            double elapsedSeconds() const noexcept;
 
         private:
             TimePoint _start;
 
-
     };
-
+}
 
 #endif
