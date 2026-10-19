@@ -12,13 +12,11 @@
 #include <string_view>
 #include <vector>
 
-
-#include <raylib.h>
 #include "Vec2.hpp"
 
-namespace engine::render {
+#include "engine/input/InputEvent.hpp"
 
-class InputEvent;
+namespace engine::render {
 
 struct WindowConfig {
     std::string title;
@@ -31,13 +29,22 @@ struct WindowConfig {
 class Window {
 public:
     explicit Window(WindowConfig const& config);
+
+    Window(Window &) = delete;
+    Window(const Window &) = delete;
+    Window(Window &&) =delete;
+    Window(const Window &&) = delete;
+
+    Window operator=(const Window &) = delete;
+    Window operator=(const Window &&) = delete;
+
     ~Window();
 
     [[nodiscard]] bool isOpen() const;
 
     void close();
 
-    [[nodiscard]] std::vector<InputEvent> pollEvents();
+    [[nodiscard]] std::vector<engine::input::InputEvent> pollEvents();
 
     [[nodiscard]] bool shouldClose() const;
 
@@ -49,10 +56,6 @@ private:
     struct Impl;
     std::unique_ptr<Impl> _impl;
 
-    core::Vec2u _size;
-    std::string _title;
-    bool _fullscreen;
-    bool _vsync;
     bool _shouldClose = false;
     bool _isOpen = false;
 };
