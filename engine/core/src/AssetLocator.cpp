@@ -92,13 +92,13 @@ AssetLocator::AssetLocator(std::optional<std::filesystem::path> overrideRoot)
     std::string message = "Assets directory not found. Tried:";
     for (const auto &candidate : candidates)
         message += " " + candidate.string();
-    throw RessourceError(message);
+    throw ResourceError(message);
 }
 
 [[nodiscard]] std::filesystem::path AssetLocator::resolve(const std::string &relative) const
 {
     if (!std::filesystem::exists(_root / relative) || std::filesystem::is_empty(_root / relative)) {
-        throw RessourceError(std::format("asset not found: <{}>", relative));
+        throw ResourceError(std::format("asset not found: <{}>", relative));
     }
     return _root / relative;
 }
