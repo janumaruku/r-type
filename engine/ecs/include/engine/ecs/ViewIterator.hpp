@@ -15,17 +15,34 @@
 #include <utility>
 
 #include "engine/ecs/Entity.hpp"
+#include "engine/ecs/SparseSet.hpp"
 #include "engine/ecs/SparseSetBase.hpp"
 
 namespace engine::ecs {
 template <class... Containers>
 class View;
 
+namespace detail {
+template <class C>
+struct StorageForT {
+    using Type = SparseSet<C>;
+};
+
+template <class C>
+struct StorageForT<const C> {
+    using Type = const SparseSet<C>;
+};
+
+template <class C>
+using StorageFor = StorageForT<C>::Type;
+}
+
 template <class... Containers>
 class ViewIterator {
     template <class Container>
     using ComponentReferenceT = decltype(std::declval<Container &>().get(
         std::declval<const Entity &>()));
+
     template <class Container>
     using ComponentPointerT = std::remove_reference_t<ComponentReferenceT<
         Container>> *;
