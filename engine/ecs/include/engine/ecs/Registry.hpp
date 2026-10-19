@@ -49,6 +49,9 @@ public:
     template <Component C>
     std::remove_cvref_t<C> &addComponent(const Entity &entity, C &&component);
 
+    template <Component C, typename... Args>
+    C &emplaceComponent(const Entity &entity, Args &&... args);
+
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
     std::vector<std::uint32_t> _generations;

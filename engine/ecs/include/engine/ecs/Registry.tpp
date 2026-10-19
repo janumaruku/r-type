@@ -67,6 +67,14 @@ std::remove_cvref_t<C> &Registry::addComponent(const Entity &entity,
     return getComponents<std::remove_cvref_t<C>>()->insertAt(entity,
         std::forward<C>(component));
 }
+
+template <Component C, typename ... Args>
+C & Registry::emplaceComponent(const Entity &entity, Args &&...args)
+{
+    assert(isAlive(entity));
+
+    return getComponents<C>()->emplace(entity, std::forward<Args>(args)...);
+}
 }
 
 #endif
