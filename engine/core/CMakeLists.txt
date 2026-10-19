@@ -1,4 +1,4 @@
-add_library(engine_core STATIC 
+add_library(engine_core STATIC
     src/Color.cpp
     src/Logger.cpp
     src/Rng.cpp

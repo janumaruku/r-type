@@ -1,5 +1,6 @@
 add_library(engine_render STATIC
 	src/RenderQueue.cpp
+	src/Window.cpp
 )
 
 target_include_directories(engine_render PUBLIC include)
