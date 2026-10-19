@@ -5,9 +5,11 @@ if (RTYPE_BUILD_CLIENT)
             NAME raylib
             GITHUB_REPOSITORY raysan5/raylib
             GIT_TAG 5.5
+            SYSTEM YES
             OPTIONS
             "BUILD_EXAMPLES OFF"
-            "BUILD_GAMES OFF")
+            "BUILD_GAMES OFF"
+            )
 endif ()
 
 if (RTYPE_BUILD_TESTS)
