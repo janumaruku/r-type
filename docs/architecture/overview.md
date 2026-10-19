@@ -138,11 +138,13 @@ Each target is one directory, and its public headers sit under a path named afte
 ```text
 r-type/
 ├── CMakeLists.txt              # top level: options, dependencies, add_subdirectory()
-├── CMakePresets.json           # linux-debug, linux-release, windows-msvc-*
+├── CMakePresets.json           # linux-debug, linux-release, linux-coverage, windows-clangcl-*
 ├── cmake/
-│   ├── CPM.cmake               # pinned package manager bootstrap
+│   ├── CPM.cmake               # the package manager itself, committed at a fixed version
 │   ├── Dependencies.cmake      # Raylib, Asio, GoogleTest via CPMAddPackage
-│   └── ProjectOptions.cmake    # warnings, sanitizers, C++20
+│   ├── ProjectOptions.cmake    # project_options: C++20, warnings as errors, coverage flags
+│   ├── Tests.cmake             # rtype_add_test(): one test executable per module
+│   └── Coverage.cmake          # the coverage target (WITH_COVERAGE, Clang)
 ├── engine/
 │   ├── core/      include/engine/core/*.hpp      src/*.cpp
 │   ├── ecs/       include/engine/ecs/*.hpp *.tpp src/*.cpp
