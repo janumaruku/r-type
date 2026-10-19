@@ -115,7 +115,7 @@ TEST_F(AssetLocatorTest, MissingCandidatesAreListedInException)
     try {
         engine::core::AssetLocator locator(missingOverride);
         FAIL() << "Expected AssetLocator construction to fail";
-    } catch (const engine::core::ResourceError &error) {
+    } catch (const engine::core::RessourceError &error) {
         const std::string message = error.what();
         EXPECT_NE(message.find(missingOverride.string()), std::string::npos);
         EXPECT_NE(message.find(missingEnvironment.string()), std::string::npos);
@@ -141,5 +141,5 @@ TEST_F(AssetLocatorTest, ResolveThrowsForMissingFile)
     std::filesystem::create_directory(assetRoot);
     const engine::core::AssetLocator locator(assetRoot);
 
-    EXPECT_THROW((void)locator.resolve("missing.json"), engine::core::ResourceError);
+    EXPECT_THROW((void)locator.resolve("missing.json"), engine::core::RessourceError);
 }
