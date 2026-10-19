@@ -9,7 +9,6 @@
 #define RECT2_HPP
 
 #include <cstdint>
-#include <initializer_list>
 #include "Vec2.hpp"
 
 namespace engine::core {
