@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <vector>
+#include <cstdint>
 
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/SparseSet.hpp"
@@ -37,8 +38,20 @@ public:
     template <Component C>
     const SparseSet<C> &getComponents() const;
 
+    Entity spawnEntity();
+
+    [[nodiscard]] bool isAlive(const Entity &entity) const noexcept;
+
+    void killEntity(const Entity &entity);
+
+    [[nodiscard]] std::size_t aliveCount() const noexcept;
+
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
+    std::vector<std::uint32_t> _generations;
+    std::vector<bool> _alive;
+    std::vector<std::uint32_t> _freeIndices;
+    std::uint32_t _aliveCount = 0;
 };
 }
 
