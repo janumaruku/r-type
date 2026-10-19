@@ -14,7 +14,7 @@
 #include "DrawCommand.hpp"
 
 namespace engine::render {
-    
+
 class RenderQueue {
 public:
     RenderQueue() = default;
@@ -22,14 +22,14 @@ public:
     void push(DrawCommand command);
     void clear();
     void sortByLayer();
-    
+
     std::span<const DrawCommand> commands();
-    std::size_t capacity() const;
+    [[nodiscard]] std::size_t capacity() const;
 
 private:
     std::vector<DrawCommand> _commands;
 };
 
-}   
+}  
 
 #endif /* !RENDER_QUEUE_HPP */
