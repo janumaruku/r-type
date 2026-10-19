@@ -75,6 +75,12 @@ C & Registry::emplaceComponent(const Entity &entity, Args &&...args)
 
     return getComponents<C>()->emplace(entity, std::forward<Args>(args)...);
 }
+
+template <Component C>
+void Registry::removeComponent(const Entity &entity)
+{
+    getComponents<C>()->erase(entity);
+}
 }
 
 #endif
