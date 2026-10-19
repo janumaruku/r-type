@@ -58,46 +58,49 @@ const SparseSet<C> &Registry::getComponents() const
     return static_cast<SparseSet<C> &>(*_storages[index]);
 }
 
-template <Component C>
+template <typename C> requires Component<std::remove_cvref_t<C>>
 std::remove_cvref_t<C> &Registry::addComponent(const Entity &entity,
     C &&component)
 {
-    assert(isAlive(entity));
+    auto &storage = getComponents<std::remove_cvref_t<C>>();
 
-    return getComponents<std::remove_cvref_t<C>>()->insertAt(entity,
-        std::forward<C>(component));
+    if (!isAlive(entity))
+        throw core::EngineError("can't add a component to a dead entity");
+
+    return storage.insertAt(entity, std::forward<C>(component));
 }
 
 template <Component C, typename... Args>
 C &Registry::emplaceComponent(const Entity &entity, Args &&... args)
 {
-    assert(isAlive(entity));
+    auto &storage = getComponents<C>();
 
-    return getComponents<C>()->emplace(entity, std::forward<Args>(args)...);
+    if (!isAlive(entity))
+        throw core::EngineError("can't add a component to a dead entity");
+
+    return storage.emplaceAt(entity, std::forward<Args>(args)...);
 }
 
 template <Component C>
 void Registry::removeComponent(const Entity &entity)
 {
-    getComponents<C>()->erase(entity);
+    getComponents<C>().erase(entity);
 }
 
 template <Component C>
 C *Registry::getComponent(const Entity &entity)
 {
-    if (!isAlive(entity))
-        return nullptr;
+    auto &storage = getComponents<C>();
 
-    return &getComponents<C>()->get(entity);
+    return isAlive(entity) ? storage.tryGet(entity) : nullptr;
 }
 
 template <Component C>
-const C * Registry::getComponent(const Entity &entity) const
+const C *Registry::getComponent(const Entity &entity) const
 {
-    if (!isAlive(entity))
-        return nullptr;
+    const auto &storage = getComponents<C>();
 
-    return &getComponents<C>()->get(entity);
+    return isAlive(entity) ? storage.tryGet(entity) : nullptr;
 }
 }
 
