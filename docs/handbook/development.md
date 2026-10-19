@@ -32,7 +32,7 @@ Nothing below `warn` is logged in the per-datagram path unless `--log-level debu
 | File | Format | Contents |
 | --- | --- | --- |
 | `config/client.cfg` | `key=value` lines, `#` comments | Volumes, `muted`, `fullscreen`, `hudFontSize`, `highContrast`, `reduceFlashes` ([accessibility](../architecture/accessibility.md#settings)) |
-| `config/keybindings.cfg` | `ACTION=KEY` lines | Overrides for the default bindings ([engine: input](../modules/engine.md#input-engine_input)) |
+| `config/keybindings.cfg` | JSON: a `config` array of `{ "name", "keys" }` entries | Overrides for the default bindings ([engine: input](../modules/engine.md#input-engine_input)) |
 
 An unknown key or a value that won't parse logs a warning and falls back to the default for that line. A config file never prevents the game from starting.
 
