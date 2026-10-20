@@ -10,15 +10,20 @@
 
 #include <cstddef>
 #include <iterator>
+#include <type_traits>
 #include <tuple>
 #include <utility>
 
+#include "engine/ecs/Component.hpp"
 #include "engine/ecs/Entity.hpp"
 #include "engine/ecs/SparseSet.hpp"
 #include "engine/ecs/SparseSetBase.hpp"
 
 namespace engine::ecs {
-template <class... Components>
+template <class Component>
+concept ViewComponentConcept = ComponentConcept<std::remove_const_t<Component>>;
+
+template <ViewComponentConcept... Components>
 class View;
 
 namespace detail {
@@ -36,7 +41,7 @@ template <class Component>
 using StorageFor = StorageForT<Component>::Type;
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 class ViewIterator {
 public:
     using value_type = std::tuple<Components &...>; // NOLINT

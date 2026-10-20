@@ -14,7 +14,7 @@
 #include "engine/ecs/ViewIterator.hpp"
 
 namespace engine::ecs {
-template <class... Components>
+template <ViewComponentConcept... Components>
 ViewIterator<Components...>::ViewIterator(const SetsTuple &sets,
     const SparseSetBase *driver, std::size_t remaining):
     _sets(sets), _driver(driver),
@@ -23,7 +23,7 @@ ViewIterator<Components...>::ViewIterator(const SetsTuple &sets,
     skipIncomplete();
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 ViewIterator<Components...>::reference
     ViewIterator<Components...>::operator*() const
 {
@@ -32,7 +32,7 @@ ViewIterator<Components...>::reference
     return toReference(_sequence);
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 ViewIterator<Components...> &ViewIterator<Components...>::operator++()
 {
     assert(_remaining > 0);
@@ -42,7 +42,7 @@ ViewIterator<Components...> &ViewIterator<Components...>::operator++()
     return *this;
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 ViewIterator<Components...> ViewIterator<Components...>::operator++(int)
 {
     ViewIterator previous = *this;
@@ -51,14 +51,14 @@ ViewIterator<Components...> ViewIterator<Components...>::operator++(int)
     return previous;
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 bool ViewIterator<Components...>::operator==(
     const ViewIterator &other) const noexcept
 {
     return _remaining == other._remaining;
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 void ViewIterator<Components...>::skipIncomplete()
 {
     while (_remaining > 0) {
@@ -70,7 +70,7 @@ void ViewIterator<Components...>::skipIncomplete()
     }
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 template <std::size_t... Is>
 bool ViewIterator<Components...>::fetchAll(const Entity &entity,
     std::size_t position, std::index_sequence<Is...>)
@@ -81,7 +81,7 @@ bool ViewIterator<Components...>::fetchAll(const Entity &entity,
         : std::get<Is>(_sets)->tryGet(entity)) != nullptr) && ...);
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 template <std::size_t... Is>
 ViewIterator<Components...>::reference
     ViewIterator<Components...>::toReference(std::index_sequence<Is...>) const

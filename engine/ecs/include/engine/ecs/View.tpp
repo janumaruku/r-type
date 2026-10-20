@@ -15,25 +15,25 @@
 #include "engine/ecs/View.hpp"
 
 namespace engine::ecs {
-template <class... Components>
+template <ViewComponentConcept... Components>
 View<Components...>::View(detail::StorageFor<Components> &... containers):
     _sets(std::addressof(containers)...), _driver(smallest(containers...))
 {
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 View<Components...>::iterator View<Components...>::begin() const
 {
     return iterator(_sets, _driver, static_cast<std::size_t>(-1));
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 View<Components...>::iterator View<Components...>::end() const
 {
     return iterator(_sets, _driver, 0);
 }
 
-template <class... Components>
+template <ViewComponentConcept... Components>
 const SparseSetBase *View<Components...>::smallest(
     detail::StorageFor<Components> &... containers)
 {

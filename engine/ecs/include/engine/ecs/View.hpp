@@ -8,14 +8,28 @@
 #ifndef R_TYPE_VIEW_HPP
 #define R_TYPE_VIEW_HPP
 
-#include <tuple>
+#include <type_traits>
 
 #include "engine/ecs/SparseSetBase.hpp"
 #include "engine/ecs/ViewIterator.hpp"
 
 namespace engine::ecs {
+namespace detail {
 template <class... Components>
+constexpr bool ALL_DIFFERENT = true;
+
+template <class First, class... Rest>
+constexpr bool ALL_DIFFERENT<First, Rest...> =
+    (!std::is_same_v<First, Rest> && ...) && ALL_DIFFERENT<Rest...>;
+}
+
+template <ViewComponentConcept... Components>
 class View {
+    static_assert(sizeof...(Components) > 0,
+        "a view needs at least one component");
+    static_assert(detail::ALL_DIFFERENT<std::remove_const_t<Components>...>,
+        "a view can't list the same component twice");
+
 public:
     using iterator = ViewIterator<Components...>; // NOLINT
 
