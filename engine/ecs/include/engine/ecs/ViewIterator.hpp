@@ -41,10 +41,11 @@ template <class Component>
 using StorageFor = StorageForT<Component>::Type;
 }
 
-template <ViewComponentConcept... Components>
+template <bool WithEntity, ViewComponentConcept... Components>
 class ViewIterator {
 public:
-    using value_type = std::tuple<Components &...>; // NOLINT
+    using value_type = std::conditional_t<WithEntity,                // NOLINT
+        std::tuple<Entity, Components &...>, std::tuple<Components &...>>;
     using reference = value_type; // NOLINT
     using pointer = void; // NOLINT
     using difference_type = std::ptrdiff_t; // NOLINT

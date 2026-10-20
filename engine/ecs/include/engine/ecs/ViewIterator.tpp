@@ -14,8 +14,8 @@
 #include "engine/ecs/ViewIterator.hpp"
 
 namespace engine::ecs {
-template <ViewComponentConcept... Components>
-ViewIterator<Components...>::ViewIterator(const SetsTuple &sets,
+template <bool WithEntity, ViewComponentConcept... Components>
+ViewIterator<WithEntity, Components...>::ViewIterator(const SetsTuple &sets,
     const SparseSetBase *driver, std::size_t driverIndex,
     std::size_t remaining):
     _sets(sets), _driver(driver), _driverIndex(driverIndex),
@@ -24,17 +24,18 @@ ViewIterator<Components...>::ViewIterator(const SetsTuple &sets,
     skipIncomplete();
 }
 
-template <ViewComponentConcept... Components>
-ViewIterator<Components...>::reference
-    ViewIterator<Components...>::operator*() const
+template <bool WithEntity, ViewComponentConcept... Components>
+ViewIterator<WithEntity, Components...>::reference
+    ViewIterator<WithEntity, Components...>::operator*() const
 {
     assert(_remaining > 0);
 
     return toReference(_sequence);
 }
 
-template <ViewComponentConcept... Components>
-ViewIterator<Components...> &ViewIterator<Components...>::operator++()
+template <bool WithEntity, ViewComponentConcept... Components>
+ViewIterator<WithEntity, Components...> &
+ViewIterator<WithEntity, Components...>::operator++()
 {
     assert(_remaining > 0);
 
@@ -43,8 +44,9 @@ ViewIterator<Components...> &ViewIterator<Components...>::operator++()
     return *this;
 }
 
-template <ViewComponentConcept... Components>
-ViewIterator<Components...> ViewIterator<Components...>::operator++(int)
+template <bool WithEntity, ViewComponentConcept... Components>
+ViewIterator<WithEntity, Components...>
+    ViewIterator<WithEntity, Components...>::operator++(int)
 {
     ViewIterator previous = *this;
 
@@ -52,15 +54,15 @@ ViewIterator<Components...> ViewIterator<Components...>::operator++(int)
     return previous;
 }
 
-template <ViewComponentConcept... Components>
-bool ViewIterator<Components...>::operator==(
+template <bool WithEntity, ViewComponentConcept... Components>
+bool ViewIterator<WithEntity, Components...>::operator==(
     const ViewIterator &other) const noexcept
 {
     return _remaining == other._remaining;
 }
 
-template <ViewComponentConcept... Components>
-void ViewIterator<Components...>::skipIncomplete()
+template <bool WithEntity, ViewComponentConcept... Components>
+void ViewIterator<WithEntity, Components...>::skipIncomplete()
 {
     while (_remaining > 0) {
         const std::size_t position = _remaining - 1;
@@ -71,9 +73,9 @@ void ViewIterator<Components...>::skipIncomplete()
     }
 }
 
-template <ViewComponentConcept... Components>
+template <bool WithEntity, ViewComponentConcept... Components>
 template <std::size_t... Is>
-bool ViewIterator<Components...>::fetchAll(const Entity &entity,
+bool ViewIterator<WithEntity, Components...>::fetchAll(const Entity &entity,
     std::size_t position, std::index_sequence<Is...>)
 {
     return (((std::get<Is>(_current) =
@@ -82,12 +84,17 @@ bool ViewIterator<Components...>::fetchAll(const Entity &entity,
         : std::get<Is>(_sets)->tryGet(entity)) != nullptr) && ...);
 }
 
-template <ViewComponentConcept... Components>
+template <bool WithEntity, ViewComponentConcept... Components>
 template <std::size_t... Is>
-ViewIterator<Components...>::reference
-    ViewIterator<Components...>::toReference(std::index_sequence<Is...>) const
+ViewIterator<WithEntity, Components...>::reference
+    ViewIterator<WithEntity, Components...>::toReference(
+        std::index_sequence<Is...>) const
 {
-    return reference(*std::get<Is>(_current)...);
+    if constexpr (WithEntity)
+        return reference(_driver->entities()[_remaining - 1],
+            *std::get<Is>(_current)...);
+    else
+        return reference(*std::get<Is>(_current)...);
 }
 }
 

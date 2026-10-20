@@ -32,7 +32,7 @@ class View {
         "a view can't list the same component twice");
 
 public:
-    using iterator = ViewIterator<Components...>; // NOLINT
+    using iterator = ViewIterator<false, Components...>; // NOLINT
 
     explicit View(detail::StorageFor<Components> &... containers);
 
