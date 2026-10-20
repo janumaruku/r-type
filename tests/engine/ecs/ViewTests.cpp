@@ -14,10 +14,12 @@
 #include <type_traits>
 #include <vector>
 
+#include "engine/ecs/IndexedView.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "engine/ecs/View.hpp"
 
 using engine::ecs::Entity;
+using engine::ecs::IndexedView;
 using engine::ecs::Registry;
 using engine::ecs::SparseSet;
 using engine::ecs::View;
@@ -56,6 +58,13 @@ protected:
     View<Components...> makeView()
     {
         return View<Components...>(
+            _registry.getComponents<std::remove_const_t<Components>>()...);
+    }
+
+    template <class... Components>
+    IndexedView<Components...> makeIndexedView()
+    {
+        return IndexedView<Components...>(
             _registry.getComponents<std::remove_const_t<Components>>()...);
     }
 
@@ -246,4 +255,45 @@ TEST_F(ViewTest, AStaleHandleOnAReusedIndexIsNotYielded)
 
     EXPECT_EQ(visitedIds(View<Tag, Speed>(tags, speeds)), (std::vector{2}));
     EXPECT_EQ(countVisits(View<Speed, Tag>(speeds, tags)), 1U);
+}
+
+TEST_F(ViewTest, AnIndexedViewYieldsTheEntityOwningTheComponents)
+{
+    std::vector<Entity> killed;
+    for (int i = 0; i < 4; ++i)
+        killed.push_back(_registry.spawnEntity());
+    for (const Entity &entity: killed)
+        _registry.killEntity(entity);
+    spawnTagged(10);
+    for (int id = 0; id < 10; id += 2)
+        _registry.addComponent(_entities[id], Speed{id});
+
+    std::vector<int> visited;
+    for (auto &&[entity, tag, speed]: makeIndexedView<Tag, const Speed>()) {
+        visited.push_back(tag.id);
+        EXPECT_EQ(entity, _entities[tag.id]);
+        EXPECT_EQ(_registry.getComponent<Tag>(entity), &tag);
+        EXPECT_EQ(_registry.getComponent<Speed>(entity), &speed);
+    }
+    std::ranges::sort(visited);
+
+    EXPECT_EQ(visited, (std::vector{0, 2, 4, 6, 8}));
+    EXPECT_EQ(_entities[0].generation(), 1U);
+}
+
+TEST_F(ViewTest, KillingTheYieldedEntityVisitsEveryOtherEntityOnce)
+{
+    spawnTagged(10);
+    for (const Entity &entity: _entities)
+        _registry.addComponent(entity, Speed{0});
+
+    std::vector<int> visited;
+    for (auto &&[entity, tag, speed]: makeIndexedView<Tag, Speed>()) {
+        visited.push_back(tag.id);
+        _registry.killEntity(entity);
+    }
+    std::ranges::sort(visited);
+
+    EXPECT_EQ(visited, (std::vector{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
+    EXPECT_EQ(_registry.aliveCount(), 0U);
 }
