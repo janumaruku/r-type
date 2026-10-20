@@ -22,19 +22,18 @@ constexpr bool ALL_DIFFERENT = true;
 template <class First, class... Rest>
 constexpr bool ALL_DIFFERENT<First, Rest...> =
     (!std::is_same_v<First, Rest> && ...) && ALL_DIFFERENT<Rest...>;
-}
 
-template <ViewComponentConcept... Components>
-class View {
+template <bool WithEntity, ViewComponentConcept... Components>
+class BasicView {
     static_assert(sizeof...(Components) > 0,
         "a view needs at least one component");
     static_assert(detail::ALL_DIFFERENT<std::remove_const_t<Components>...>,
         "a view can't list the same component twice");
 
 public:
-    using iterator = ViewIterator<false, Components...>; // NOLINT
+    using iterator = ViewIterator<WithEntity, Components...>; // NOLINT
 
-    explicit View(detail::StorageFor<Components> &... containers);
+    explicit BasicView(StorageFor<Components> &... containers);
 
     iterator begin() const;
 
@@ -43,7 +42,8 @@ public:
 private:
     using Bases = std::array<const SparseSetBase *, sizeof...(Components)>;
 
-    explicit View(const Bases &bases, detail::StorageFor<Components> &...containers);
+    explicit BasicView(const Bases &bases,
+        StorageFor<Components> &...containers);
 
     static std::size_t smallest(const Bases &bases);
 
@@ -51,6 +51,10 @@ private:
     std::size_t _driverIndex;
     const SparseSetBase *_driver;
 };
+}
+
+template <ViewComponentConcept... Components>
+using View = detail::BasicView<false, Components...>;
 } // ecs
 // engine
 
