@@ -113,6 +113,14 @@ TEST_F(ViewTest, ConstComponentYieldsAConstReference)
         ViewType::iterator>()), std::tuple<Tag &, const Speed &>>);
 }
 
+TEST_F(ViewTest, AnIteratorWithTheEntityYieldsItFirst)
+{
+    using Iterator = engine::ecs::ViewIterator<true, Tag, const Speed>;
+
+    static_assert(std::is_same_v<std::iter_reference_t<Iterator>,
+        std::tuple<Entity, Tag &, const Speed &>>);
+}
+
 TEST_F(ViewTest, WritesThroughTheViewAreVisibleInTheStorage)
 {
     spawnTagged(4);
