@@ -67,7 +67,7 @@ private:
     friend class View<Components...>;
 
     ViewIterator(const SetsTuple &sets, const SparseSetBase *driver,
-        std::size_t remaining);
+        std::size_t driverIndex, std::size_t remaining);
 
     void skipIncomplete();
 
@@ -80,6 +80,7 @@ private:
 
     SetsTuple _sets{};
     const SparseSetBase *_driver = nullptr;
+    std::size_t _driverIndex = 0;
     std::size_t _remaining = 0;
     std::tuple<Components *...> _current{};
     static constexpr std::index_sequence_for<Components...> _sequence{}; // NOLINT

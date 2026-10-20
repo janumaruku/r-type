@@ -8,6 +8,7 @@
 #ifndef R_TYPE_VIEW_HPP
 #define R_TYPE_VIEW_HPP
 
+#include <array>
 #include <type_traits>
 
 #include "engine/ecs/SparseSetBase.hpp"
@@ -40,10 +41,14 @@ public:
     iterator end() const;
 
 private:
-    static const SparseSetBase *smallest(
-        detail::StorageFor<Components> &... containers);
+    using Bases = std::array<const SparseSetBase *, sizeof...(Components)>;
+
+    explicit View(const Bases &bases, detail::StorageFor<Components> &...containers);
+
+    static std::size_t smallest(const Bases &bases);
 
     iterator::SetsTuple _sets;
+    std::size_t _driverIndex;
     const SparseSetBase *_driver;
 };
 } // ecs

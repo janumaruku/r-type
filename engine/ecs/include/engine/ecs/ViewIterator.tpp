@@ -16,8 +16,9 @@
 namespace engine::ecs {
 template <ViewComponentConcept... Components>
 ViewIterator<Components...>::ViewIterator(const SetsTuple &sets,
-    const SparseSetBase *driver, std::size_t remaining):
-    _sets(sets), _driver(driver),
+    const SparseSetBase *driver, std::size_t driverIndex,
+    std::size_t remaining):
+    _sets(sets), _driver(driver), _driverIndex(driverIndex),
     _remaining(std::min(remaining, driver->size()))
 {
     skipIncomplete();
@@ -76,7 +77,7 @@ bool ViewIterator<Components...>::fetchAll(const Entity &entity,
     std::size_t position, std::index_sequence<Is...>)
 {
     return (((std::get<Is>(_current) =
-        static_cast<const SparseSetBase *>(std::get<Is>(_sets)) == _driver
+        Is == _driverIndex
         ? &std::get<Is>(_sets)->components()[position]
         : std::get<Is>(_sets)->tryGet(entity)) != nullptr) && ...);
 }
