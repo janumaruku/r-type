@@ -326,7 +326,7 @@ _components:   [C3,   C1]                        position → component
 | Strong exception guarantee on insert | If inserting throws, the three arrays are left exactly as before. The order of operations is in the journey, step 8 ("Design decisions"). |
 | `get` vs `tryGet` | `get` asserts the component exists (a bug otherwise); `tryGet` returns `nullptr` when it doesn't. |
 | Spans, not vectors | `entities()` and `components()` return `std::span`, so callers can't resize the arrays and break the invariants. |
-| Components | Any type satisfying the `Component` concept: an object type, not `const`, movable (move-constructible and move-assignable). Move-only components (holding a `std::unique_ptr`) are allowed. |
+| Components | Any type satisfying the `ComponentConcept` concept: an object type, not `const`, movable (move-constructible and move-assignable). Move-only components (holding a `std::unique_ptr`) are allowed. |
 
 ### Registry
 
