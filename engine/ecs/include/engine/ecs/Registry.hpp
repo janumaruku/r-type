@@ -15,6 +15,7 @@
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/SparseSet.hpp"
 #include "engine/ecs/SparseSetBase.hpp"
+#include "engine/ecs/View.hpp"
 
 namespace engine::ecs {
 class Registry {
@@ -62,6 +63,12 @@ public:
 
     template <ComponentConcept Component>
     const Component *getComponent(const Entity &entity) const;
+
+    template <ViewComponentConcept... Components>
+    View<Components...> view();
+
+    template <ViewComponentConcept... Components>
+    View<Components...> view() const;
 
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;

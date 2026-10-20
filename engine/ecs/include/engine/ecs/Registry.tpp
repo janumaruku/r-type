@@ -108,6 +108,23 @@ const Component *Registry::getComponent(const Entity &entity) const
 
     return isAlive(entity) ? storage.tryGet(entity) : nullptr;
 }
+
+template <ViewComponentConcept... Components>
+View<Components...> Registry::view()
+{
+    return View<Components...>(
+        getComponents<std::remove_const_t<Components>>()...);
+}
+
+template <ViewComponentConcept... Components>
+View<Components...> Registry::view() const
+{
+    static_assert((std::is_const_v<Components> && ...),
+        "a const Registry can only give views of const components");
+
+    return View<Components...>(
+        getComponents<std::remove_const_t<Components>>()...);
+}
 }
 
 #endif
