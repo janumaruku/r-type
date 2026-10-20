@@ -14,8 +14,8 @@
 #include "engine/ecs/ViewIterator.hpp"
 
 namespace engine::ecs {
-template <class... Containers>
-ViewIterator<Containers...>::ViewIterator(const SetsTuple &sets,
+template <class... Components>
+ViewIterator<Components...>::ViewIterator(const SetsTuple &sets,
     const SparseSetBase *driver, std::size_t remaining):
     _sets(sets), _driver(driver),
     _remaining(std::min(remaining, driver->size()))
@@ -23,17 +23,17 @@ ViewIterator<Containers...>::ViewIterator(const SetsTuple &sets,
     skipIncomplete();
 }
 
-template <class... Containers>
-typename ViewIterator<Containers...>::reference
-ViewIterator<Containers...>::operator*() const
+template <class... Components>
+ViewIterator<Components...>::reference
+    ViewIterator<Components...>::operator*() const
 {
     assert(_remaining > 0);
 
     return toReference(_sequence);
 }
 
-template <class... Containers>
-ViewIterator<Containers...> &ViewIterator<Containers...>::operator++()
+template <class... Components>
+ViewIterator<Components...> &ViewIterator<Components...>::operator++()
 {
     assert(_remaining > 0);
 
@@ -42,8 +42,8 @@ ViewIterator<Containers...> &ViewIterator<Containers...>::operator++()
     return *this;
 }
 
-template <class... Containers>
-ViewIterator<Containers...> ViewIterator<Containers...>::operator++(int)
+template <class... Components>
+ViewIterator<Components...> ViewIterator<Components...>::operator++(int)
 {
     ViewIterator previous = *this;
 
@@ -51,15 +51,15 @@ ViewIterator<Containers...> ViewIterator<Containers...>::operator++(int)
     return previous;
 }
 
-template <class... Containers>
-bool ViewIterator<Containers...>::operator==(
+template <class... Components>
+bool ViewIterator<Components...>::operator==(
     const ViewIterator &other) const noexcept
 {
     return _remaining == other._remaining;
 }
 
-template <class... Containers>
-void ViewIterator<Containers...>::skipIncomplete()
+template <class... Components>
+void ViewIterator<Components...>::skipIncomplete()
 {
     while (_remaining > 0) {
         const std::size_t position = _remaining - 1;
@@ -70,21 +70,21 @@ void ViewIterator<Containers...>::skipIncomplete()
     }
 }
 
-template <class... Containers>
+template <class... Components>
 template <std::size_t... Is>
-bool ViewIterator<Containers...>::fetchAll(const Entity &entity,
+bool ViewIterator<Components...>::fetchAll(const Entity &entity,
     std::size_t position, std::index_sequence<Is...>)
 {
     return (((std::get<Is>(_current) =
         static_cast<const SparseSetBase *>(std::get<Is>(_sets)) == _driver
-            ? &std::get<Is>(_sets)->components()[position]
-            : std::get<Is>(_sets)->tryGet(entity)) != nullptr) && ...);
+        ? &std::get<Is>(_sets)->components()[position]
+        : std::get<Is>(_sets)->tryGet(entity)) != nullptr) && ...);
 }
 
-template <class... Containers>
+template <class... Components>
 template <std::size_t... Is>
-ViewIterator<Containers...>::reference
-ViewIterator<Containers...>::toReference(std::index_sequence<Is...>) const
+ViewIterator<Components...>::reference
+    ViewIterator<Components...>::toReference(std::index_sequence<Is...>) const
 {
     return reference(*std::get<Is>(_current)...);
 }
