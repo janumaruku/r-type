@@ -15,28 +15,29 @@
 #include "engine/ecs/View.hpp"
 
 namespace engine::ecs {
-template <class... Containers>
-View<Containers...>::View(Containers &... containers):
+template <class... Components>
+View<Components...>::View(detail::StorageFor<Components> &... containers):
     _sets(std::addressof(containers)...), _driver(smallest(containers...))
 {
 }
 
-template <class... Containers>
-View<Containers...>::iterator View<Containers...>::begin() const
+template <class... Components>
+View<Components...>::iterator View<Components...>::begin() const
 {
     return iterator(_sets, _driver, static_cast<std::size_t>(-1));
 }
 
-template <class... Containers>
-View<Containers...>::iterator View<Containers...>::end() const
+template <class... Components>
+View<Components...>::iterator View<Components...>::end() const
 {
     return iterator(_sets, _driver, 0);
 }
 
-template <class... Containers>
-const SparseSetBase *View<Containers...>::smallest(Containers &... containers)
+template <class... Components>
+const SparseSetBase *View<Components...>::smallest(
+    detail::StorageFor<Components> &... containers)
 {
-    const std::array<const SparseSetBase *, sizeof...(Containers)> sets{
+    const std::array<const SparseSetBase *, sizeof...(Components)> sets{
         std::addressof(containers)...};
 
     return *std::ranges::min_element(sets, {}, &SparseSetBase::size);

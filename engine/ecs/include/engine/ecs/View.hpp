@@ -14,21 +14,22 @@
 #include "engine/ecs/ViewIterator.hpp"
 
 namespace engine::ecs {
-template <class... Containers>
+template <class... Components>
 class View {
 public:
-    using iterator = ViewIterator<Containers...>; // NOLINT
+    using iterator = ViewIterator<Components...>; // NOLINT
 
-    explicit View(Containers &... containers);
+    explicit View(detail::StorageFor<Components> &... containers);
 
     iterator begin() const;
 
     iterator end() const;
 
 private:
-    static const SparseSetBase *smallest(Containers &... containers);
+    static const SparseSetBase *smallest(
+        detail::StorageFor<Components> &... containers);
 
-    std::tuple<Containers *...> _sets;
+    iterator::SetsTuple _sets;
     const SparseSetBase *_driver;
 };
 } // ecs
