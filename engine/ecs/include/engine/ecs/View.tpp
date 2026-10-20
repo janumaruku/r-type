@@ -14,35 +14,38 @@
 
 #include "engine/ecs/View.hpp"
 
-namespace engine::ecs {
-template <ViewComponentConcept... Components>
-View<Components...>::View(detail::StorageFor<Components> &... containers):
-    View(Bases{std::addressof(containers)...}, containers...)
+namespace engine::ecs::detail {
+template <bool WithEntity, ViewComponentConcept... Components>
+BasicView<WithEntity, Components...>::BasicView(
+    StorageFor<Components> &... containers):
+    BasicView(Bases{std::addressof(containers)...}, containers...)
 {
 }
 
-template <ViewComponentConcept... Components>
-View<Components...>::iterator View<Components...>::begin() const
+template <bool WithEntity, ViewComponentConcept... Components>
+BasicView<WithEntity, Components...>::iterator
+    BasicView<WithEntity, Components...>::begin() const
 {
     return iterator(_sets, _driver, _driverIndex, static_cast<std::size_t>(-1));
 }
 
-template <ViewComponentConcept... Components>
-View<Components...>::iterator View<Components...>::end() const
+template <bool WithEntity, ViewComponentConcept... Components>
+BasicView<WithEntity, Components...>::iterator
+    BasicView<WithEntity, Components...>::end() const
 {
     return iterator(_sets, _driver, _driverIndex, 0);
 }
 
-template <ViewComponentConcept ... Components>
-View<Components...>::View(const Bases &bases,
-    detail::StorageFor<Components> &... containers):
+template <bool WithEntity, ViewComponentConcept... Components>
+BasicView<WithEntity, Components...>::BasicView(const Bases &bases,
+    StorageFor<Components> &... containers):
     _sets(std::addressof(containers)...), _driverIndex(smallest(bases)),
     _driver(bases[_driverIndex])
 {
 }
 
-template <ViewComponentConcept ... Components>
-std::size_t View<Components...>::smallest(const Bases &bases)
+template <bool WithEntity, ViewComponentConcept... Components>
+std::size_t BasicView<WithEntity, Components...>::smallest(const Bases &bases)
 {
     return static_cast<std::size_t>(std::ranges::min_element(bases, {},
         &SparseSetBase::size) - bases.begin());

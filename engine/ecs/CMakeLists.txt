@@ -5,6 +5,7 @@ add_library(engine_ecs STATIC src/Entity.cpp
         src/Registry.cpp
         include/engine/ecs/View.hpp
         include/engine/ecs/ViewIterator.hpp
+        include/engine/ecs/IndexedView.hpp
 )
 
 target_include_directories(engine_ecs PUBLIC include)

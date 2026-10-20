@@ -23,8 +23,10 @@ namespace engine::ecs {
 template <class Component>
 concept ViewComponentConcept = ComponentConcept<std::remove_const_t<Component>>;
 
-template <ViewComponentConcept... Components>
-class View;
+namespace detail {
+template <bool WithEntity, ViewComponentConcept... Components>
+class BasicView;
+}
 
 namespace detail {
 template <class Component>
@@ -44,7 +46,7 @@ using StorageFor = StorageForT<Component>::Type;
 template <bool WithEntity, ViewComponentConcept... Components>
 class ViewIterator {
 public:
-    using value_type = std::conditional_t<WithEntity,                // NOLINT
+    using value_type = std::conditional_t<WithEntity, // NOLINT
         std::tuple<Entity, Components &...>, std::tuple<Components &...>>;
     using reference = value_type; // NOLINT
     using pointer = void; // NOLINT
@@ -65,7 +67,7 @@ public:
     bool operator==(const ViewIterator &other) const noexcept;
 
 private:
-    friend class View<Components...>;
+    friend class detail::BasicView<WithEntity, Components...>;
 
     ViewIterator(const SetsTuple &sets, const SparseSetBase *driver,
         std::size_t driverIndex, std::size_t remaining);
