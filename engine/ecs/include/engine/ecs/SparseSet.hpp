@@ -15,25 +15,25 @@
 #include "engine/ecs/Component.hpp"
 
 namespace engine::ecs {
-template <Component C>
+template <ComponentConcept Component>
 class SparseSet final: public SparseSetBase {
 public:
     SparseSet() = default;
 
-    C &get(const Entity &entity) noexcept;
+    Component &get(const Entity &entity) noexcept;
 
-    const C &get(const Entity &entity) const noexcept;
+    const Component &get(const Entity &entity) const noexcept;
 
-    C *tryGet(const Entity &entity) noexcept;
+    Component *tryGet(const Entity &entity) noexcept;
 
-    const C *tryGet(const Entity &entity) const noexcept;
+    const Component *tryGet(const Entity &entity) const noexcept;
 
-    C &insertAt(const Entity &entity, const C &value);
+    Component &insertAt(const Entity &entity, const Component &value);
 
-    C &insertAt(const Entity &entity, C &&value);
+    Component &insertAt(const Entity &entity, Component &&value);
 
     template <typename... Args>
-    C &emplaceAt(const Entity &entity, Args &&... args);
+    Component &emplaceAt(const Entity &entity, Args &&... args);
 
     /*
     ** Swap-and-pop: the last component moves into the erased one's position.
@@ -45,12 +45,12 @@ public:
     */
     void erase(const Entity &entity) override;
 
-    std::span<C> components() noexcept;
+    std::span<Component> components() noexcept;
 
-    std::span<const C> components() const noexcept;
+    std::span<const Component> components() const noexcept;
 
 private:
-    std::vector<C> _components;
+    std::vector<Component> _components;
 
     void exceptionSafeAppend(const Entity &entity);
 };

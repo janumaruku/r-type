@@ -9,4 +9,5 @@ rtype_add_test(engine_ecs_tests
         SparseSetBaseTests.cpp
         SparseSetTests.cpp
         TypeIdTests.cpp
+        ViewTests.cpp
 )
