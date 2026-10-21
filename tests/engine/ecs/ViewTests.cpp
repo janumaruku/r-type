@@ -14,10 +14,12 @@
 #include <type_traits>
 #include <vector>
 
+#include "Errors.hpp"
 #include "engine/ecs/IndexedView.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "engine/ecs/View.hpp"
 
+using engine::core::EngineError;
 using engine::ecs::Entity;
 using engine::ecs::IndexedView;
 using engine::ecs::Registry;
@@ -34,6 +36,10 @@ struct Speed {
 };
 
 struct Mark {
+    int value;
+};
+
+struct Unregistered {
     int value;
 };
 
@@ -296,4 +302,53 @@ TEST_F(ViewTest, KillingTheYieldedEntityVisitsEveryOtherEntityOnce)
 
     EXPECT_EQ(visited, (std::vector{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
     EXPECT_EQ(_registry.aliveCount(), 0U);
+}
+
+TEST_F(ViewTest, RegistryViewVisitsTheSameEntitiesAsAHandBuiltView)
+{
+    spawnTagged(10);
+    for (int id = 0; id < 10; id += 3)
+        _registry.addComponent(_entities[id], Speed{id});
+
+    EXPECT_EQ(visitedIds(_registry.view<Tag, Speed>()),
+        visitedIds(makeView<Tag, Speed>()));
+    EXPECT_EQ(visitedIds(_registry.view<Tag, Speed>()),
+        (std::vector{0, 3, 6, 9}));
+}
+
+TEST_F(ViewTest, RegistryViewOfConstComponentsWorksOnAConstRegistry)
+{
+    spawnTagged(3);
+    const Registry &registry = _registry;
+
+    auto view = registry.view<const Tag>();
+    static_assert(std::is_same_v<std::iter_reference_t<decltype(view.begin())>,
+        std::tuple<const Tag &>>);
+
+    EXPECT_EQ(visitedIds(view), (std::vector{0, 1, 2}));
+}
+
+TEST_F(ViewTest, RegistryViewsOfAConstAndANonConstTypeShareTheStorage)
+{
+    spawnTagged(4);
+    for (const Entity &entity: _entities)
+        _registry.addComponent(entity, Speed{0});
+
+    for (auto &&[tag, speed]: _registry.view<const Tag, Speed>())
+        speed.value = tag.id + 100;
+
+    std::vector<int> read;
+    for (auto &&[speed]: _registry.view<const Speed>())
+        read.push_back(speed.value);
+    std::ranges::sort(read);
+
+    EXPECT_EQ(read, (std::vector{100, 101, 102, 103}));
+}
+
+TEST_F(ViewTest, RegistryViewOfAnUnregisteredTypeThrows)
+{
+    EXPECT_THROW(static_cast<void>(_registry.view<Unregistered>()),
+        EngineError);
+    EXPECT_THROW(static_cast<void>(_registry.view<Tag, const Unregistered>()),
+        EngineError);
 }
