@@ -352,3 +352,48 @@ TEST_F(ViewTest, RegistryViewOfAnUnregisteredTypeThrows)
     EXPECT_THROW(static_cast<void>(_registry.view<Tag, const Unregistered>()),
         EngineError);
 }
+
+TEST_F(ViewTest, RegistryIndexedViewYieldsTheSameEntitiesAsAHandBuiltOne)
+{
+    spawnTagged(10);
+    for (int id = 0; id < 10; id += 3)
+        _registry.addComponent(_entities[id], Speed{id});
+
+    std::vector<Entity> fromRegistry;
+    for (auto &&[entity, tag, speed]: _registry.indexedView<Tag, Speed>()) {
+        EXPECT_EQ(entity, _entities[tag.id]);
+        fromRegistry.push_back(entity);
+    }
+    std::vector<Entity> handBuilt;
+    for (auto &&[entity, tag, speed]: makeIndexedView<Tag, Speed>())
+        handBuilt.push_back(entity);
+
+    EXPECT_EQ(fromRegistry, handBuilt);
+    EXPECT_EQ(fromRegistry.size(), 4U);
+}
+
+TEST_F(ViewTest, RegistryIndexedViewOfConstComponentsWorksOnAConstRegistry)
+{
+    spawnTagged(3);
+    const Registry &registry = _registry;
+
+    auto view = registry.indexedView<const Tag>();
+    static_assert(std::is_same_v<std::iter_reference_t<decltype(view.begin())>,
+        std::tuple<Entity, const Tag &>>);
+
+    std::size_t visits = 0;
+    for (auto &&[entity, tag]: view) {
+        EXPECT_EQ(entity, _entities[tag.id]);
+        ++visits;
+    }
+    EXPECT_EQ(visits, 3U);
+}
+
+TEST_F(ViewTest, RegistryIndexedViewOfAnUnregisteredTypeThrows)
+{
+    EXPECT_THROW(static_cast<void>(_registry.indexedView<Unregistered>()),
+        EngineError);
+    EXPECT_THROW(
+        static_cast<void>(_registry.indexedView<Tag, const Unregistered>()),
+        EngineError);
+}
