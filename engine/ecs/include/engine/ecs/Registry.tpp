@@ -125,6 +125,23 @@ View<Components...> Registry::view() const
     return View<Components...>(
         getComponents<std::remove_const_t<Components>>()...);
 }
+
+template <ViewComponentConcept ... Components>
+IndexedView<Components...> Registry::indexedView()
+{
+    return IndexedView<Components...>(
+        getComponents<std::remove_const_t<Components>>()...);
+}
+
+template <ViewComponentConcept ... Components>
+IndexedView<Components...> Registry::indexedView() const
+{
+    static_assert((std::is_const_v<Components> && ...),
+        "a const Registry can only give views of const components");
+
+    return IndexedView<Components...>(
+        getComponents<std::remove_const_t<Components>>()...);
+}
 }
 
 #endif

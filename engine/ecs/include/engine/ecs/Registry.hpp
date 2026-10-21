@@ -13,6 +13,7 @@
 #include <cstdint>
 
 #include "engine/ecs/Component.hpp"
+#include "engine/ecs/IndexedView.hpp"
 #include "engine/ecs/SparseSet.hpp"
 #include "engine/ecs/SparseSetBase.hpp"
 #include "engine/ecs/View.hpp"
@@ -69,6 +70,12 @@ public:
 
     template <ViewComponentConcept... Components>
     View<Components...> view() const;
+
+    template <ViewComponentConcept... Components>
+    IndexedView<Components...> indexedView();
+
+    template <ViewComponentConcept... Components>
+    IndexedView<Components...> indexedView() const;
 
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
