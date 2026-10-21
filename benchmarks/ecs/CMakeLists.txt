@@ -1,5 +1,6 @@
 add_executable(ecs_benchmarks SetupBenchmarks.cpp
-        StorageBenchmarks.cpp)
+        StorageBenchmarks.cpp
+        RegistryBenchmarks.cpp)
 
 target_include_directories(ecs_benchmarks PRIVATE .)
 
