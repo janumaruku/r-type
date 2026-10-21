@@ -11,7 +11,7 @@
 
 #include "engine/ecs/Component.hpp"
 
-using engine::ecs::Component;
+using engine::ecs::ComponentConcept;
 
 namespace {
 struct Position {
@@ -41,16 +41,16 @@ struct Abstract {
 };
 } // namespace
 
-static_assert(Component<Position>);
-static_assert(Component<Tag>);
-static_assert(Component<Named>);
-static_assert(Component<MoveOnly>);
+static_assert(ComponentConcept<Position>);
+static_assert(ComponentConcept<Tag>);
+static_assert(ComponentConcept<Named>);
+static_assert(ComponentConcept<MoveOnly>);
 static_assert(!std::copyable<MoveOnly>);
 
-static_assert(!Component<const Position>);
-static_assert(!Component<volatile Position>);
-static_assert(!Component<Position &>);
-static_assert(!Component<void>);
-static_assert(!Component<int[3]>);
-static_assert(!Component<NoMoveAssignment>);
-static_assert(!Component<Abstract>);
+static_assert(!ComponentConcept<const Position>);
+static_assert(!ComponentConcept<volatile Position>);
+static_assert(!ComponentConcept<Position &>);
+static_assert(!ComponentConcept<void>);
+static_assert(!ComponentConcept<int[3]>);
+static_assert(!ComponentConcept<NoMoveAssignment>);
+static_assert(!ComponentConcept<Abstract>);
