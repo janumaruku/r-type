@@ -72,3 +72,24 @@ static void BM_Registry_IsAlive(benchmark::State &state) // NOLINT
 }
 
 BENCHMARK(BM_Registry_IsAlive)->Arg(1000)->Arg(100000)->Arg(1000000);
+
+// The life of a bullet, minus the game. A kill erases the entity from every
+// registered storage, so the cost should grow linearly with the type count.
+template <std::size_t Types>
+static void BM_Registry_SpawnKill(benchmark::State &state) // NOLINT
+{
+    Registry registry;
+    [&registry]<std::size_t... I>(std::index_sequence<I...>) {
+        (registry.registerComponent<Tag<I>>(), ...);
+    }(std::make_index_sequence<Types>{});
+    registry.registerComponent<Position>();
+
+    for (auto _ : state) {
+        const Entity entity = registry.spawnEntity();
+        registry.addComponent(entity, Position{1.0F, 2.0F});
+        registry.killEntity(entity);
+    }
+}
+BENCHMARK_TEMPLATE(BM_Registry_SpawnKill, 1);
+BENCHMARK_TEMPLATE(BM_Registry_SpawnKill, 8);
+BENCHMARK_TEMPLATE(BM_Registry_SpawnKill, 32);
