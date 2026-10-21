@@ -13,39 +13,41 @@
 #include "engine/ecs/SparseSet.hpp"
 
 namespace engine::ecs {
-template <Component C>
-C &SparseSet<C>::get(const Entity &entity) noexcept
+template <ComponentConcept Component>
+Component &SparseSet<Component>::get(const Entity &entity) noexcept
 {
     assert(contains(entity));
 
     return _components[positionOf(entity)];
 }
 
-template <Component C>
-const C &SparseSet<C>::get(const Entity &entity) const noexcept
+template <ComponentConcept Component>
+const Component &SparseSet<Component>::get(const Entity &entity) const noexcept
 {
     assert(contains(entity));
 
     return _components[positionOf(entity)];
 }
 
-template <Component C>
-C *SparseSet<C>::tryGet(const Entity &entity) noexcept
+template <ComponentConcept Component>
+Component *SparseSet<Component>::tryGet(const Entity &entity) noexcept
 {
     return contains(entity) ? &_components[positionOf(entity)] : nullptr;
 }
 
-template <Component C>
-const C *SparseSet<C>::tryGet(const Entity &entity) const noexcept
+template <ComponentConcept Component>
+const Component *SparseSet<Component>::tryGet(
+    const Entity &entity) const noexcept
 {
     return contains(entity) ? &_components[positionOf(entity)] : nullptr;
 }
 
-template <Component C>
-C &SparseSet<C>::insertAt(const Entity &entity, const C &value)
+template <ComponentConcept Component>
+Component &SparseSet<Component>::insertAt(const Entity &entity,
+    const Component &value)
 {
     if (contains(entity)) {
-        C &component = _components[positionOf(entity)];
+        Component &component = _components[positionOf(entity)];
         component = value;
         return component;
     }
@@ -56,11 +58,12 @@ C &SparseSet<C>::insertAt(const Entity &entity, const C &value)
     return _components.back();
 }
 
-template <Component C>
-C &SparseSet<C>::insertAt(const Entity &entity, C &&value)
+template <ComponentConcept Component>
+Component &SparseSet<Component>::insertAt(const Entity &entity,
+    Component &&value)
 {
     if (contains(entity)) {
-        C &component = _components[positionOf(entity)];
+        Component &component = _components[positionOf(entity)];
         component = std::move(value);
         return component;
     }
@@ -71,13 +74,14 @@ C &SparseSet<C>::insertAt(const Entity &entity, C &&value)
     return _components.back();
 }
 
-template <Component C>
+template <ComponentConcept Component>
 template <typename... Args>
-C &SparseSet<C>::emplaceAt(const Entity &entity, Args &&... args)
+Component &SparseSet<Component>::emplaceAt(const Entity &entity,
+    Args &&... args)
 {
     if (contains(entity)) {
-        C &component = _components[positionOf(entity)];
-        component = C(std::forward<Args>(args)...);
+        Component &component = _components[positionOf(entity)];
+        component = Component(std::forward<Args>(args)...);
         return component;
     }
 
@@ -87,8 +91,8 @@ C &SparseSet<C>::emplaceAt(const Entity &entity, Args &&... args)
     return _components.back();
 }
 
-template <Component C>
-void SparseSet<C>::erase(const Entity &entity)
+template <ComponentConcept Component>
+void SparseSet<Component>::erase(const Entity &entity)
 {
     if (!contains(entity))
         return;
@@ -101,20 +105,20 @@ void SparseSet<C>::erase(const Entity &entity)
     swapAndPop(entity);
 }
 
-template <Component C>
-std::span<C> SparseSet<C>::components() noexcept
+template <ComponentConcept Component>
+std::span<Component> SparseSet<Component>::components() noexcept
 {
     return _components;
 }
 
-template <Component C>
-std::span<const C> SparseSet<C>::components() const noexcept
+template <ComponentConcept Component>
+std::span<const Component> SparseSet<Component>::components() const noexcept
 {
     return _components;
 }
 
-template <Component C>
-void SparseSet<C>::exceptionSafeAppend(const Entity &entity)
+template <ComponentConcept Component>
+void SparseSet<Component>::exceptionSafeAppend(const Entity &entity)
 {
     try {
         append(entity);

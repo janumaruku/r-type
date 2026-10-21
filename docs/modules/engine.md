@@ -270,12 +270,15 @@ classDiagram
         +getResource~T~() T&
         +tryGetResource~T~() T*
     }
-    class View~Cs~ {
-        -std::tuple~SparseSet~Cs~*...~ _sets
+    class BasicView~Cs~ {
+        <<detail>>
+        -std::tuple~StorageFor~Cs~*...~ _sets
+        -size_t _driverIndex
         -SparseSetBase const* _driver
         +begin() iterator
         +end() iterator
     }
+    note for BasicView "View: WithEntity = false. IndexedView: WithEntity = true, yields the Entity first"
     class CommandBuffer {
         -std::vector~Command~ _commands
         +kill(Entity) void
@@ -288,8 +291,8 @@ classDiagram
     SparseSetBase <|-- SparseSet
     Registry "1" *-- "many" SparseSetBase : one storage per component type
     Registry *-- CommandBuffer
-    Registry ..> View : creates
-    View ..> SparseSet : iterates
+    Registry ..> BasicView : creates
+    BasicView ..> SparseSet : iterates
     SparseSetBase o-- Entity
 ```
 
@@ -326,7 +329,7 @@ _components:   [C3,   C1]                        position → component
 | Strong exception guarantee on insert | If inserting throws, the three arrays are left exactly as before. The order of operations is in the journey, step 8 ("Design decisions"). |
 | `get` vs `tryGet` | `get` asserts the component exists (a bug otherwise); `tryGet` returns `nullptr` when it doesn't. |
 | Spans, not vectors | `entities()` and `components()` return `std::span`, so callers can't resize the arrays and break the invariants. |
-| Components | Any type satisfying the `Component` concept: an object type, not `const`, movable (move-constructible and move-assignable). Move-only components (holding a `std::unique_ptr`) are allowed. |
+| Components | Any type satisfying the `ComponentConcept` concept: an object type, not `const`, movable (move-constructible and move-assignable). Move-only components (holding a `std::unique_ptr`) are allowed. |
 
 ### Registry
 
@@ -349,8 +352,10 @@ for (auto&& [entity, health] : registry.indexedView<Health>()) …
 
 | Rule | Detail |
 | --- | --- |
-| Driver | The **smallest** of the listed sets drives the iteration, held as a `const SparseSetBase*`. Every other set is checked with `contains`. Cost follows the smallest set, not the number of entities. |
+| Driver | The **smallest** of the listed sets drives the iteration, chosen once when the view is built and held as a `const SparseSetBase*` plus its position in the list. Every other set is checked with `contains`. Cost follows the smallest set, not the number of entities. |
 | Backwards | The driver is walked from its last element to its first, so erasing the **current** entity is safe: swap-and-pop brings in an element that was already visited. |
+| Types | Each listed type is a component, possibly `const`, and a `const` type yields a `const` reference. A view needs at least one type and can't list the same one twice (checked at compile time). On a `const Registry&`, every type must be `const`. |
+| `indexedView` | Same iteration as `view`, through the same iterator. The `Entity` yielded is the full handle, generation included, so it can be passed to `killEntity` directly. |
 | Performance target | Within 10% of a hand-written join at every density, with GCC and Clang (see [handbook: benchmarks](../handbook/development.md#benchmarks)). |
 
 ### Systems and stages

@@ -13,8 +13,10 @@
 #include <cstdint>
 
 #include "engine/ecs/Component.hpp"
+#include "engine/ecs/IndexedView.hpp"
 #include "engine/ecs/SparseSet.hpp"
 #include "engine/ecs/SparseSetBase.hpp"
+#include "engine/ecs/View.hpp"
 
 namespace engine::ecs {
 class Registry {
@@ -29,14 +31,14 @@ public:
 
     Registry &operator=(Registry &&) = default;
 
-    template <Component C>
-    SparseSet<C> &registerComponent();
+    template <ComponentConcept Component>
+    SparseSet<Component> &registerComponent();
 
-    template <Component C>
-    SparseSet<C> &getComponents();
+    template <ComponentConcept Component>
+    SparseSet<Component> &getComponents();
 
-    template <Component C>
-    const SparseSet<C> &getComponents() const;
+    template <ComponentConcept Component>
+    const SparseSet<Component> &getComponents() const;
 
     Entity spawnEntity();
 
@@ -46,20 +48,34 @@ public:
 
     [[nodiscard]] std::size_t aliveCount() const noexcept;
 
-    template <typename C> requires Component<std::remove_cvref_t<C>>
-    std::remove_cvref_t<C> &addComponent(const Entity &entity, C &&component);
+    template <typename Component>
+        requires ComponentConcept<std::remove_cvref_t<Component>>
+    std::remove_cvref_t<Component> &addComponent(const Entity &entity,
+        Component &&component);
 
-    template <Component C, typename... Args>
-    C &emplaceComponent(const Entity &entity, Args &&... args);
+    template <ComponentConcept Component, typename... Args>
+    Component &emplaceComponent(const Entity &entity, Args &&... args);
 
-    template <Component C>
+    template <ComponentConcept Component>
     void removeComponent(const Entity &entity);
 
-    template <Component C>
-    C *getComponent(const Entity &entity);
+    template <ComponentConcept Component>
+    Component *getComponent(const Entity &entity);
 
-    template <Component C>
-    const C *getComponent(const Entity &entity) const;
+    template <ComponentConcept Component>
+    const Component *getComponent(const Entity &entity) const;
+
+    template <ViewComponentConcept... Components>
+    View<Components...> view();
+
+    template <ViewComponentConcept... Components>
+    View<Components...> view() const;
+
+    template <ViewComponentConcept... Components>
+    IndexedView<Components...> indexedView();
+
+    template <ViewComponentConcept... Components>
+    IndexedView<Components...> indexedView() const;
 
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
