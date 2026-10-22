@@ -13,8 +13,11 @@
 
 TEST(Logger, Trace)
 {
+    const auto saved = engine::core::log::level();
+    engine::core::log::setLevel(engine::core::log::Level::EG_TRACE);
     engine::core::log::Logger logger("Test");
     auto logLine = logger.trace() << "This is a trace message";
+    engine::core::log::setLevel(saved);
     EXPECT_EQ(logLine.level, engine::core::log::Level::EG_TRACE);
     EXPECT_EQ(logLine.context, "Test");
     EXPECT_TRUE(logLine.active);
@@ -23,8 +26,11 @@ TEST(Logger, Trace)
 
 TEST(Logger, Debug)
 {
+    const auto saved = engine::core::log::level();
+    engine::core::log::setLevel(engine::core::log::Level::EG_DEBUG);
     engine::core::log::Logger logger("Test");
     auto logLine = logger.debug() << "This is a debug message";
+    engine::core::log::setLevel(saved);
     EXPECT_EQ(logLine.level, engine::core::log::Level::EG_DEBUG);
     EXPECT_EQ(logLine.context, "Test");
     EXPECT_TRUE(logLine.active);

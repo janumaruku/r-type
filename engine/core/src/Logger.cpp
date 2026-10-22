@@ -166,29 +166,34 @@ void Logger::setThreadName(const std::string &name) noexcept
     threadName = name;
 }
 
+LogLine Logger::makeLine(Level lineLevel)
+{
+    return LogLine{lineLevel, _context, isEnabled(lineLevel)};
+}
+
 LogLine Logger::trace()
 {
-    return LogLine{Level::EG_TRACE, _context, true};
+    return makeLine(Level::EG_TRACE);
 }
 
 LogLine Logger::debug()
 {
-    return LogLine{Level::EG_DEBUG, _context, true};
+    return makeLine(Level::EG_DEBUG);
 }
 
 LogLine Logger::info()
 {
-    return LogLine{Level::EG_INFO, _context, true};
+    return makeLine(Level::EG_INFO);
 }
 
 LogLine Logger::warn()
 {
-    return LogLine{Level::EG_WARN, _context, true};
+    return makeLine(Level::EG_WARN);
 }
 
 LogLine Logger::error()
 {
-    return LogLine{Level::EG_ERROR, _context, true};
+    return makeLine(Level::EG_ERROR);
 }
 
 
