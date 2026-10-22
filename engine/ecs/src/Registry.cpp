@@ -81,6 +81,12 @@ Registry::RunGuard::~RunGuard()
     running = false;
 }
 
+/*
+** Systems are re-indexed on each pass: with NDEBUG a system can still add
+** another one, and the reallocation would leave an iterator dangling.
+** TODO(RTP-61): apply the commands recorded by each system right after it
+** runs, before its duration is logged.
+*/
 void Registry::runStageAt(const std::uint8_t stage)
 {
     assert(!_running);
@@ -89,19 +95,12 @@ void Registry::runStageAt(const std::uint8_t stage)
 
     RunGuard guard(_running);
 
-    /*
-    ** Re-indexed on each pass: with NDEBUG a system can still add another
-    ** one, and the reallocation would leave an iterator dangling.
-    */
     for (std::size_t i = 0; i < _stages[stage].size(); ++i) {
         const auto start = std::chrono::steady_clock::now();
         _stages[stage][i].run(*this);
         const std::chrono::duration<double, std::micro> elapsed =
             std::chrono::steady_clock::now() - start;
 
-        /*
-        ** RTP-61: apply the commands recorded by this system here.
-        */
         _logger.trace("{} took {:.1f} us", _stages[stage][i].name,
             elapsed.count());
     }
