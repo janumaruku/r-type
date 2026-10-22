@@ -15,6 +15,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "Logger.hpp"
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/IndexedView.hpp"
 #include "engine/ecs/Resources.hpp"
@@ -120,6 +121,9 @@ public:
         class System>
     void addSystem(Stage stage, const std::string &name, System system);
 
+    template <StageConcept Stage>
+    void runStage(Stage stage);
+
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
     std::vector<std::uint32_t> _generations;
@@ -129,6 +133,21 @@ private:
     std::vector<std::unique_ptr<detail::ResourceBase>> _resources;
     std::vector<std::vector<SystemEntry>> _stages;
     bool _running = false;
+    core::log::Logger _logger{"ecs"};
+
+    struct RunGuard {
+        explicit RunGuard(bool &value);
+
+        RunGuard(const RunGuard &) = delete;
+
+        RunGuard &operator=(const RunGuard &) = delete;
+
+        ~RunGuard();
+
+        bool &running;
+    };
+
+    void runStageAt(std::uint8_t stage);
 };
 }
 

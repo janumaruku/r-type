@@ -257,6 +257,12 @@ void Registry::addSystem(Stage stage, const std::string &name, System system)
         _stages.resize(index + 1);
     _stages[index].push_back({.name = name, .run = std::move(item)});
 }
+
+template <StageConcept Stage>
+void Registry::runStage(Stage stage)
+{
+    runStageAt(static_cast<std::uint8_t>(stage));
+}
 }
 
 #endif
