@@ -247,7 +247,7 @@ classDiagram
         -std::vector~std::unique_ptr~SparseSetBase~~ _storages
         -std::vector~uint32_t~ _generations
         -std::vector~uint32_t~ _freeIndices
-        -ResourceMap _resources
+        -std::vector~std::unique_ptr~ResourceBase~~ _resources
         -std::vector~Stage~ _stages
         -CommandBuffer _commands
         +spawnEntity() Entity
@@ -269,6 +269,13 @@ classDiagram
         +setResource~T~(T value) T&
         +getResource~T~() T&
         +tryGetResource~T~() T*
+        +emplaceResource~T~(Args&&...) T&
+    }
+    class ResourceBase {
+        <<abstract>>
+    }
+    class ResourceHolder~T~ {
+        +T value
     }
     class BasicView~Cs~ {
         <<detail>>
@@ -294,6 +301,8 @@ classDiagram
     Registry ..> BasicView : creates
     BasicView ..> SparseSet : iterates
     SparseSetBase o-- Entity
+    ResourceBase <|-- ResourceHolder
+    Registry "1" *-- "many" ResourceBase : one per resource type
 ```
 
 ### Entities
@@ -391,14 +400,19 @@ Structural changes requested while iterating are recorded in `registry.commands(
 
 ### Resources
 
-Objects that every system may need but that aren't components: the game's random generator, rules, event outbox, `dt`. One instance per type, stored by `detail::typeId<T>()` like the storages.
+Objects that every system may need but that aren't components: the game's random generator, rules, event outbox, `dt`. There is one instance per type, found through `detail::typeId<T>()` like the storages, but kept in a **separate vector**: a type used both as a component and as a resource gets two independent objects.
+
+Each resource lives in a `detail::ResourceHolder<T>`, behind a `std::unique_ptr` to a small base with a virtual destructor (`Resources.hpp`). So a resource never moves in memory: setting other resource types, or moving the registry, leaves references to it valid.
 
 | Function | Behaviour |
 | --- | --- |
-| `setResource<T>(T value) -> T&` | Creates or replaces the resource |
-| `getResource<T>() -> T&` (+ `const`) | Throws `EngineError` naming the type if it was never set |
-| `tryGetResource<T>() -> T*` | `nullptr` if never set |
-| `DeltaTime` | A resource type provided by the ECS (`{ float seconds; }`). The caller sets it before `runStage`; systems never read a clock. |
+| `setResource<T>(T value) -> T&` | Creates the resource, or **move-assigns** the new value into the existing one, so references taken earlier stay valid. `T` must be movable. |
+| `emplaceResource<T>(Args&&...) -> T&` | Builds the resource in place from the arguments, for types that can't be moved (a mutex) or are costly to move. Replacing an existing one **destroys it**, so earlier references dangle. The new object is built before the old one is destroyed: if its constructor throws, the old resource is kept. |
+| `getResource<T>() -> T&` (+ `const`) | Throws `EngineError("resource not set: <type>")` if it was never set. The `const` overload returns `const T&`. |
+| `tryGetResource<T>() -> T*` (+ `const`) | `nullptr` if never set. The `const` overload returns `const T*`. |
+
+- `T` is any non-`const`, non-reference object type (`ResourceConcept`, the same rule as type ids). Unlike components, a resource doesn't have to be movable.
+- `DeltaTime` is the only resource the ECS defines: `{ float seconds = 0; }`. Whoever runs a stage sets it first. Systems read it and never read a clock (requirement F-08).
 
 ### Contract
 
