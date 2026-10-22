@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <typeinfo>
@@ -41,6 +42,16 @@ struct NeverSet {
 template <std::size_t N>
 struct Extra {
     int value;
+};
+
+struct ThrowsOnDemand {
+    int value;
+
+    ThrowsOnDemand(int initial, bool shouldThrow): value(initial)
+    {
+        if (shouldThrow)
+            throw std::runtime_error("ThrowsOnDemand");
+    }
 };
 
 class RegistryResource: public testing::Test {
@@ -171,4 +182,51 @@ TEST_F(RegistryResource, ReferencesSurviveMovingTheRegistry)
 
     EXPECT_EQ(&kept, &moved.getResource<DeltaTime>());
     EXPECT_EQ(moved.getResource<DeltaTime>().seconds, 0.5F);
+}
+
+TEST_F(RegistryResource, EmplaceBuildsAMoveOnlyResourceInPlace)
+{
+    MoveOnly &stored =
+        _registry.emplaceResource<MoveOnly>(std::make_unique<int>(4));
+
+    ASSERT_NE(stored.value, nullptr);
+    EXPECT_EQ(*stored.value, 4);
+    EXPECT_EQ(&stored, &_registry.getResource<MoveOnly>());
+}
+
+TEST_F(RegistryResource, EmplaceAcceptsATypeThatCannotBeMoved)
+{
+    std::mutex &stored = _registry.emplaceResource<std::mutex>();
+
+    EXPECT_EQ(&stored, &_registry.getResource<std::mutex>());
+    EXPECT_TRUE(_registry.getResource<std::mutex>().try_lock());
+    _registry.getResource<std::mutex>().unlock();
+}
+
+TEST_F(RegistryResource, EmplaceAgainReplacesTheResource)
+{
+    _registry.emplaceResource<DeltaTime>(0.5F);
+
+    const DeltaTime &replaced = _registry.emplaceResource<DeltaTime>(1.0F);
+
+    EXPECT_EQ(&replaced, &_registry.getResource<DeltaTime>());
+    EXPECT_EQ(_registry.getResource<DeltaTime>().seconds, 1.0F);
+}
+
+TEST_F(RegistryResource, EmplaceBuildsAnAggregateFromItsFields)
+{
+    _registry.emplaceResource<Extra<0>>(7);
+
+    EXPECT_EQ(_registry.getResource<Extra<0>>().value, 7);
+}
+
+TEST_F(RegistryResource, AThrowingEmplaceKeepsTheOldResource)
+{
+    _registry.emplaceResource<ThrowsOnDemand>(3, false);
+
+    EXPECT_THROW(_registry.emplaceResource<ThrowsOnDemand>(4, true),
+        std::runtime_error);
+
+    ASSERT_NE(_registry.tryGetResource<ThrowsOnDemand>(), nullptr);
+    EXPECT_EQ(_registry.getResource<ThrowsOnDemand>().value, 3);
 }

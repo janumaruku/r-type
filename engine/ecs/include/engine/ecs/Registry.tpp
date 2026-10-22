@@ -216,6 +216,22 @@ const Resource *Registry::tryGetResource() const
     return &static_cast<const detail::ResourceHolder<Resource> &>
         (*_resources[index]).value;
 }
+
+template <ResourceConcept Resource, class... Args>
+    requires std::constructible_from<Resource, Args...>
+Resource &Registry::emplaceResource(Args &&... args)
+{
+    const auto index = detail::typeId<Resource>();
+    if (index >= _resources.size())
+        _resources.resize(index + 1);
+
+    auto holder = std::make_unique<detail::ResourceHolder<Resource>>(
+        std::forward<Args>(args)...);
+    Resource &stored = holder->value;
+    _resources[index] = std::move(holder);
+
+    return stored;
+}
 }
 
 #endif
