@@ -14,6 +14,7 @@
 
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/IndexedView.hpp"
+#include "engine/ecs/Resources.hpp"
 #include "engine/ecs/SparseSet.hpp"
 #include "engine/ecs/SparseSetBase.hpp"
 #include "engine/ecs/View.hpp"
@@ -77,12 +78,29 @@ public:
     template <ViewComponentConcept... Components>
     IndexedView<Components...> indexedView() const;
 
+    template <ResourceConcept Resource>
+        requires std::movable<Resource>
+    Resource &setResource(Resource resource);
+
+    template <ResourceConcept Resource>
+    Resource &getResource();
+
+    template <ResourceConcept Resource>
+    const Resource &getResource() const;
+
+    template <ResourceConcept Resource>
+    Resource *tryGetResource();
+
+    template <ResourceConcept Resource>
+    const Resource *tryGetResource() const;
+
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
     std::vector<std::uint32_t> _generations;
     std::vector<bool> _alive;
     std::vector<std::uint32_t> _freeIndices;
     std::uint32_t _aliveCount = 0;
+    std::vector<std::unique_ptr<detail::ResourceBase>> _resources;
 };
 }
 
