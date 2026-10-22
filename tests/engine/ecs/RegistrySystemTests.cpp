@@ -8,13 +8,17 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <iostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <vector>
 
+#include "Logger.hpp"
 #include "engine/ecs/Registry.hpp"
 
+using engine::core::log::Level;
 using engine::ecs::Entity;
 using engine::ecs::Registry;
 using engine::ecs::SparseSet;
@@ -51,6 +55,28 @@ class RegistrySystem: public testing::Test {
 protected:
     Registry _registry;
     std::vector<std::string> _calls;
+};
+
+/*
+** The log level and output are process-wide: each test captures the output
+** and gets the level and std::cerr back when it ends.
+*/
+class RegistrySystemLog: public RegistrySystem {
+protected:
+    void SetUp() override
+    {
+        _saved = engine::core::log::level();
+        engine::core::log::setOutput(_output);
+    }
+
+    void TearDown() override
+    {
+        engine::core::log::setLevel(_saved);
+        engine::core::log::setOutput(std::cerr);
+    }
+
+    Level _saved = Level::EG_INFO;
+    std::ostringstream _output;
 };
 
 void movement(Registry &, SparseSet<Position> &positions,
@@ -224,6 +250,34 @@ TEST_F(RegistrySystem, SystemsSurviveMovingTheRegistry)
     moved.runStage(Stage::SIMULATION);
 
     EXPECT_EQ(_calls, (std::vector<std::string>{"simulation"}));
+}
+
+TEST_F(RegistrySystemLog, AtTraceEachSystemLogsItsNameInOrder)
+{
+    engine::core::log::setLevel(Level::EG_TRACE);
+    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION,
+        "movement", movement);
+    _registry.addSystem<>(Stage::SIMULATION, "collision", [](Registry &) {});
+
+    _registry.runStage(Stage::SIMULATION);
+
+    const std::string text = _output.str();
+    const auto movementLine = text.find("[ecs] movement took ");
+    const auto collisionLine = text.find("[ecs] collision took ");
+    ASSERT_NE(movementLine, std::string::npos);
+    ASSERT_NE(collisionLine, std::string::npos);
+    EXPECT_LT(movementLine, collisionLine);
+}
+
+TEST_F(RegistrySystemLog, BelowTraceNothingIsLogged)
+{
+    engine::core::log::setLevel(Level::EG_DEBUG);
+    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION,
+        "movement", movement);
+
+    _registry.runStage(Stage::SIMULATION);
+
+    EXPECT_TRUE(_output.str().empty());
 }
 
 #ifndef NDEBUG
