@@ -84,6 +84,8 @@ Registry::RunGuard::~RunGuard()
 /*
 ** Systems are re-indexed on each pass: with NDEBUG a system can still add
 ** another one, and the reallocation would leave an iterator dangling.
+** The level is read once per stage, and the clock only at TRACE, so timing
+** costs nothing otherwise.
 ** TODO(RTP-61): apply the commands recorded by each system right after it
 ** runs, before its duration is logged.
 */
@@ -94,8 +96,13 @@ void Registry::runStageAt(const std::uint8_t stage)
         return;
 
     RunGuard guard(_running);
+    const bool timed = core::log::isEnabled(core::log::Level::EG_TRACE);
 
     for (std::size_t i = 0; i < _stages[stage].size(); ++i) {
+        if (!timed) {
+            _stages[stage][i].run(*this);
+            continue;
+        }
         const auto start = std::chrono::steady_clock::now();
         _stages[stage][i].run(*this);
         const std::chrono::duration<double, std::micro> elapsed =
