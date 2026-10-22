@@ -5,6 +5,10 @@
 ** Registry
 */
 
+#include <cassert>
+#include <chrono>
+#include <cstddef>
+
 #include "engine/ecs/Registry.hpp"
 
 namespace engine::ecs {
@@ -65,5 +69,41 @@ void Registry::killEntity(const Entity &entity)
 std::size_t Registry::aliveCount() const noexcept
 {
     return _aliveCount;
+}
+
+Registry::RunGuard::RunGuard(bool &value): running(value)
+{
+    running = true;
+}
+
+Registry::RunGuard::~RunGuard()
+{
+    running = false;
+}
+
+void Registry::runStageAt(const std::uint8_t stage)
+{
+    assert(!_running);
+    if (stage >= _stages.size())
+        return;
+
+    RunGuard guard(_running);
+
+    /*
+    ** Re-indexed on each pass: with NDEBUG a system can still add another
+    ** one, and the reallocation would leave an iterator dangling.
+    */
+    for (std::size_t i = 0; i < _stages[stage].size(); ++i) {
+        const auto start = std::chrono::steady_clock::now();
+        _stages[stage][i].run(*this);
+        const std::chrono::duration<double, std::micro> elapsed =
+            std::chrono::steady_clock::now() - start;
+
+        /*
+        ** RTP-61: apply the commands recorded by this system here.
+        */
+        _logger.trace("{} took {:.1f} us", _stages[stage][i].name,
+            elapsed.count());
+    }
 }
 }
