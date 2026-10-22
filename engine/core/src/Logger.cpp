@@ -6,13 +6,16 @@
 */
 
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <format>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #ifdef _WIN32
@@ -63,6 +66,74 @@ bool isTerminal() noexcept
 #else
     return isatty(fileno(stderr)) != 0;
 #endif
+}
+
+/*
+** Built on first use, so a Logger used during static initialization never
+** sees it uninitialized. The level is read without the lock on every call;
+** the output and the colours are only touched under the mutex.
+*/
+struct State {
+    std::atomic<Level> level{Level::EG_INFO};
+    std::mutex mutex;
+    std::ostream *output = &std::cerr;
+    bool colors = isTerminal();
+};
+
+State &state()
+{
+    static State instance;
+
+    return instance;
+}
+
+void setLevel(Level threshold) noexcept
+{
+    state().level.store(threshold, std::memory_order_relaxed);
+}
+
+Level level() noexcept
+{
+    return state().level.load(std::memory_order_relaxed);
+}
+
+bool isEnabled(Level lineLevel) noexcept
+{
+    return lineLevel != Level::EG_OFF && lineLevel >= level();
+}
+
+std::optional<Level> parseLevel(std::string_view name) noexcept
+{
+    static constexpr std::pair<std::string_view, Level> NAMES[]{
+        {"trace", Level::EG_TRACE},
+        {"debug", Level::EG_DEBUG},
+        {"info", Level::EG_INFO},
+        {"warn", Level::EG_WARN},
+        {"error", Level::EG_ERROR},
+        {"off", Level::EG_OFF},
+    };
+
+    for (const auto &[text, value]: NAMES)
+        if (text == name)
+            return value;
+    return std::nullopt;
+}
+
+void setOutput(std::ostream &stream)
+{
+    State &shared = state();
+    const std::lock_guard lock(shared.mutex);
+
+    shared.output = &stream;
+    shared.colors = &stream == &std::cerr && isTerminal();
+}
+
+void setColors(bool enabled)
+{
+    State &shared = state();
+    const std::lock_guard lock(shared.mutex);
+
+    shared.colors = enabled;
 }
 
 Logger::Logger(const std::string &context) noexcept : _context(context)
