@@ -125,6 +125,10 @@ public:
     template <StageConcept Stage>
     void runStage(Stage stage);
 
+    [[nodiscard]] CommandBuffer &commands() noexcept;
+
+    void applyCommands();
+
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
     std::vector<std::uint32_t> _generations;
@@ -134,6 +138,7 @@ private:
     std::vector<std::unique_ptr<detail::ResourceBase>> _resources;
     std::vector<std::vector<SystemEntry>> _stages;
     bool _running = false;
+    CommandBuffer _commands;
     core::log::Logger _logger{"ecs"};
 
     struct RunGuard {
