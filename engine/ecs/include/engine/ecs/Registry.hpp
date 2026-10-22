@@ -8,9 +8,12 @@
 #ifndef R_TYPE_REGISTRY_HPP
 #define R_TYPE_REGISTRY_HPP
 
-#include <memory>
-#include <vector>
 #include <cstdint>
+#include <functional>
+#include <memory>
+#include <string>
+#include <type_traits>
+#include <vector>
 
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/IndexedView.hpp"
@@ -20,6 +23,17 @@
 #include "engine/ecs/View.hpp"
 
 namespace engine::ecs {
+template <class Stage>
+concept StageConcept = std::is_enum_v<Stage> &&
+    std::is_same_v<std::underlying_type_t<Stage>, std::uint8_t>;
+
+class Registry;
+
+struct SystemEntry {
+    std::string name;
+    std::function<void(Registry &)> run;
+};
+
 class Registry {
 public:
     Registry() = default;
@@ -94,11 +108,17 @@ public:
     template <ResourceConcept Resource>
     const Resource *tryGetResource() const;
 
-    // Replacing an existing resource destroys it, so references and pointers
-    // to the old one dangle. setResource keeps the same object instead.
+    /*
+    ** Replacing an existing resource destroys it, so references and pointers
+    ** to the old one dangle. setResource keeps the same object instead.
+    */
     template <ResourceConcept Resource, class... Args>
         requires std::constructible_from<Resource, Args...>
     Resource &emplaceResource(Args &&... args);
+
+    template <ViewComponentConcept... Components, StageConcept Stage,
+        class System>
+    void addSystem(Stage stage, const std::string &name, System system);
 
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
@@ -107,6 +127,8 @@ private:
     std::vector<std::uint32_t> _freeIndices;
     std::uint32_t _aliveCount = 0;
     std::vector<std::unique_ptr<detail::ResourceBase>> _resources;
+    std::vector<std::vector<SystemEntry>> _stages;
+    bool _running = false;
 };
 }
 
