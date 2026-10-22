@@ -232,6 +232,37 @@ Resource &Registry::emplaceResource(Args &&... args)
 
     return stored;
 }
+
+template <ViewComponentConcept... Components, StageConcept Stage, class System>
+void Registry::addSystem(Stage stage, const std::string &name, System system)
+{
+    static_assert(std::is_invocable_v<System &, Registry &,
+        detail::StorageFor<Components> &...>,
+        "a system must be callable as f(Registry &, storages...) "
+        "in the listed order, with const for each const component");
+    static_assert(std::is_copy_constructible_v<System>,
+        "systems are stored in std::function, so they must "
+        "be copyable; put move-only state in a resource");
+
+    assert(!_running);
+    (registerComponent<std::remove_const_t<Components>>(), ...);
+
+    auto item = [system = std::move(system)](Registry &registry) mutable {
+        system(registry,
+            registry.getComponents<std::remove_const_t<Components>>()...);
+    };
+
+    const auto index = static_cast<std::uint8_t>(stage);
+    if (index >= _stages.size())
+        _stages.resize(index + 1);
+    _stages[index].push_back({.name = name, .run = std::move(item)});
+}
+
+template <StageConcept Stage>
+void Registry::runStage(Stage stage)
+{
+    runStageAt(static_cast<std::uint8_t>(stage));
+}
 }
 
 #endif
