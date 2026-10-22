@@ -211,7 +211,7 @@ The ECS stores game data as components in **sparse sets**, one per component typ
 
 The design follows the journey written while building the bootstrap ECS ([ECS journey](../reference/ECS_JOURNEY.md)), taken directly to its final form: the sparse sets and views of its steps 8–9, plus its steps 10 (own type erasure, no `std::any`), 11 (generational entities) and 12 (command buffer, resources, stages). Parallel scheduling of systems is left for Part 2. The reasons are in [ADR 0005](../decisions/0005-ecs-design.md).
 
-Namespace `engine::ecs`, headers in `../../engine/ecs/include/ecs` (template definitions in `.tpp` files included at the end of their header), non-template code in `engine/ecs/src/`. It knows no game type: the game registers its components, systems and resources at start-up.
+Namespace `engine::ecs`, headers in `../../engine/ecs/include/engine/ecs` (template definitions in `.tpp` files included at the end of their header), non-template code in `engine/ecs/src/`. It knows no game type: the game registers its components, systems and resources at start-up.
 
 ```mermaid
 classDiagram
@@ -248,7 +248,9 @@ classDiagram
         -std::vector~uint32_t~ _generations
         -std::vector~uint32_t~ _freeIndices
         -std::vector~std::unique_ptr~ResourceBase~~ _resources
-        -std::vector~Stage~ _stages
+        -std::vector~std::vector~SystemEntry~~ _stages
+        -bool _running
+        -Logger _logger
         -CommandBuffer _commands
         +spawnEntity() Entity
         +killEntity(Entity) void
@@ -270,6 +272,11 @@ classDiagram
         +getResource~T~() T&
         +tryGetResource~T~() T*
         +emplaceResource~T~(Args&&...) T&
+        -runStageAt(uint8_t) void
+    }
+    class SystemEntry {
+        +std::string name
+        +std::function run
     }
     class ResourceBase {
         <<abstract>>
@@ -298,6 +305,7 @@ classDiagram
     SparseSetBase <|-- SparseSet
     Registry "1" *-- "many" SparseSetBase : one storage per component type
     Registry *-- CommandBuffer
+    Registry "1" *-- "many" SystemEntry : per stage, in insertion order
     Registry ..> BasicView : creates
     BasicView ..> SparseSet : iterates
     SparseSetBase o-- Entity
@@ -378,11 +386,12 @@ registry.runStage(Stage::FIXED_UPDATE);   // runs that stage's systems in insert
 
 | Rule | Detail |
 | --- | --- |
-| Signature | A system receives the `Registry&` first, then one storage per listed component, in the listed order. A `const` component gives a `const SparseSet<C>&`. Checked at compile time with a readable `static_assert` message. |
-| Stages | Systems belong to a stage: any `enum class` whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`). `runStage` runs one stage's systems in the order they were added. The server never adds render systems. |
-| Names | Each system has a name, logged at `trace` level with its run time, which makes the tick order and its cost visible. |
+| Signature | A system receives the `Registry&` first, then one storage per listed component, in the listed order. A `const` component gives a `const SparseSet<C>&`, and a system taking a non-`const` storage for it doesn't compile. Checked at compile time with a readable `static_assert` message. |
+| Stages | Systems belong to a stage: any enumeration (`enum class` or plain `enum`) whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`), checked by `StageConcept`. Systems are kept in a vector indexed by the stage's value, so stages use small values starting at 0. `runStage` runs one stage's systems in the order they were added. A stage with no systems does nothing. The server never adds render systems. |
+| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time (`<name> took <µs> us`), which makes the tick order and its cost visible. Until the logger has a global level, this line is written on every run. |
 | Registration | Adding a system registers its component types. Adding a system while a stage is running is a programming error, caught with an `assert`. |
-| Callables | Stored in `std::function`, so systems must be copyable callables (free functions and lambdas without move-only captures). |
+| Callables | Stored in `std::function`, so systems must be copyable callables (free functions and lambdas without move-only captures). Move-only state goes in a resource. The registry keeps one copy and calls it on every run, so a `mutable` lambda keeps its state across runs. |
+| Running guard | A flag is set for the whole stage and reset by an RAII object. Calling `runStage` from inside a system is a programming error, caught with an `assert`. If a system throws, the exception reaches the caller of `runStage`, the rest of that stage doesn't run, and the next `runStage` works normally. |
 
 ### Command buffer
 
@@ -425,6 +434,7 @@ Unit tests check every rule. Each one maps to a "Check yourself" list in the jou
 5. **Iteration order is unspecified.** Systems must not depend on it.
 6. **Type ids are process-local.** Never serialize them.
 7. **Single-threaded.** Only the game thread uses the registry.
+8. **Stages don't nest.** A system never calls `runStage` or `addSystem`. Both are checked with an `assert`.
 
 ### Benchmarks
 
