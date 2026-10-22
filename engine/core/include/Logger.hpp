@@ -74,6 +74,12 @@ public:
     LogLine error(const std::string &format, Args... args);
 
 private:
+    LogLine makeLine(Level lineLevel);
+
+    template<typename... Args>
+    LogLine formatted(Level lineLevel, const std::string &format,
+        Args &... args);
+
     std::string _context;
     std::string _threadName;
 };
