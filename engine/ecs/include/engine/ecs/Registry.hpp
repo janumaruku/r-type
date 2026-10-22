@@ -94,6 +94,12 @@ public:
     template <ResourceConcept Resource>
     const Resource *tryGetResource() const;
 
+    // Replacing an existing resource destroys it, so references and pointers
+    // to the old one dangle. setResource keeps the same object instead.
+    template <ResourceConcept Resource, class... Args>
+        requires std::constructible_from<Resource, Args...>
+    Resource &emplaceResource(Args &&... args);
+
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
     std::vector<std::uint32_t> _generations;
