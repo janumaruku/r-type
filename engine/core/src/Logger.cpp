@@ -61,11 +61,11 @@ const char *levelColor(Level level) noexcept
 
 bool isTerminal() noexcept
 {
-#ifdef _WIN32
+    #ifdef _WIN32
     return _isatty(_fileno(stderr)) != 0;
-#else
+    #else
     return isatty(fileno(stderr)) != 0;
-#endif
+    #endif
 }
 
 /*
@@ -136,23 +136,28 @@ void setColors(bool enabled)
     shared.colors = enabled;
 }
 
-Logger::Logger(const std::string &context) noexcept : _context(context)
-{}
+Logger::Logger(const std::string &context) noexcept: _context(context)
+{
+}
 
-Logger::Logger(Logger &&other)  noexcept : _context(std::move(other._context))
-{}
+Logger::Logger(Logger &&other) noexcept: _context(std::move(other._context))
+{
+}
 
 Logger &Logger::operator=(Logger &&other)
- noexcept {
+    noexcept
+{
     if (this != &other) {
         _context = std::move(other._context);
     }
     return *this;
 }
 
-LogLine::LogLine(Level lineLevel, const std::string &lineContext, bool lineActive) noexcept
+LogLine::LogLine(Level lineLevel, const std::string &lineContext,
+    bool lineActive) noexcept
     : level(lineLevel), context(lineContext), active(lineActive)
-{}
+{
+}
 
 LogLine::LogLine(LogLine &&other) noexcept
     : level(other.level), context(other.context), active(other.active),
@@ -211,6 +216,11 @@ LogLine &&LogLine::operator<<(const std::string &message) &&
     return std::move(*this);
 }
 
+/*
+** One write per line, under the lock, so lines from the network and game
+** threads never mix. ERR is red from start to end; the other levels colour
+** the prefix only.
+*/
 LogLine::~LogLine() noexcept
 {
     if (!active)
@@ -218,21 +228,26 @@ LogLine::~LogLine() noexcept
 
     try {
         const auto now = std::chrono::system_clock::now();
-        const auto timestamp = std::chrono::floor<std::chrono::milliseconds>(now);
-        const std::string contextPart = context.empty() ? "" : std::format(" [{}]", context);
-        const std::string line = std::format("[{:%T}] [{}] [{}]{} {}",
-            timestamp, levelName(level), threadName, contextPart, buffer.str());
+        const auto timestamp = std::chrono::floor<
+            std::chrono::milliseconds>(now);
+        const std::string contextPart = context.empty()
+            ? ""
+            : std::format(" [{}]", context);
+        const std::string prefix = std::format("[{:%T}] [{}] [{}]{}",
+            timestamp, levelName(level), threadName, contextPart);
+        const std::string message = buffer.str();
+        State &shared = state();
+        const std::lock_guard lock(shared.mutex);
 
-        if (!isTerminal()) {
-            std::cerr << line << '\n';
-        } else {
-            const char *color = levelColor(level);
-            std::cerr << std::format("[{:%T}] [", timestamp)
-                      << '\033' << "[" << color << "m"
-                      << levelName(level) << "\033[37m] ["
-                      << threadName << "]" << contextPart << " "
-                      << buffer.str() << "\033[0m\n";
-        }
-    } catch (...) {}
+        if (!shared.colors)
+            *shared.output << std::format("{} {}\n", prefix, message);
+        else if (level == Level::EG_ERROR)
+            *shared.output << std::format("\033[{}m{} {}\033[0m\n",
+                levelColor(level), prefix, message);
+        else
+            *shared.output << std::format("\033[{}m{}\033[0m {}\n",
+                levelColor(level), prefix, message);
+    } catch (...) {
+    }
 }
 }
