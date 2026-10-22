@@ -53,33 +53,36 @@ classDiagram
     class NetworkError
     class Level {
         <<enumeration>>
-        TRACE
-        DEBUG
-        INFO
-        WARN
-        ERR
-        OFF
+        EG_TRACE
+        EG_DEBUG
+        EG_INFO
+        EG_WARN
+        EG_ERROR
+        EG_OFF
     }
     class Logger {
         -std::string _context
-        +Logger(std::string context)
+        +Logger(std::string const& context)
         +trace() LogLine
         +debug() LogLine
         +info() LogLine
         +warn() LogLine
         +error() LogLine
-        +trace(format_string fmt, Args... args) void
-        +debug(format_string fmt, Args... args) void
-        +info(format_string fmt, Args... args) void
-        +warn(format_string fmt, Args... args) void
-        +error(format_string fmt, Args... args) void
+        +trace(std::string const& format, Args... args) LogLine
+        +debug(std::string const& format, Args... args) LogLine
+        +info(std::string const& format, Args... args) LogLine
+        +warn(std::string const& format, Args... args) LogLine
+        +error(std::string const& format, Args... args) LogLine
+        +setThreadName(std::string const& name) void
+        -makeLine(Level level) LogLine
+        -formatted(Level level, std::string const& format, Args&... args) LogLine
     }
     class LogLine {
-        -Level _level
-        -std::string_view _context
-        -bool _active
-        -std::ostringstream _buffer
-        +operator<<(T const& value) LogLine&
+        +Level level
+        +std::string const& context
+        +bool active
+        +std::ostringstream buffer
+        +operator<<(std::string const& message) LogLine&
         +~LogLine()
     }
     Logger ..> LogLine : creates
@@ -112,7 +115,7 @@ classDiagram
 | --- | --- |
 | `Vec2<T>`, `Rect<T>` | Plain aggregates, `constexpr` where possible. Aliases: `Vec2f`, `Vec2i`, `Vec2u`, `FloatRect`, `IntRect`. Coordinates use a y-down screen convention, in **logical units** ([game rules](game.md#rules-and-tuning-values)). |
 | `Rng` | The only source of randomness in the game. The server seeds it from `std::random_device` unless `--seed` is given, which makes test runs reproducible. Never use `std::rand`. |
-| `Logger`, `LogLine`, `log::*` | Thread-safe logging with a stream style and a `std::format` style, one line at a time, to `std::cerr`, coloured per level. See [Logging](#logging) below. |
+| `Logger`, `LogLine`, `log::*` | Thread-safe logging with a stream style and a `std::format` style, filtered by a global level, one line at a time, to `std::cerr` by default, coloured per level. See [Logging](#logging) below. |
 | Error types | Thrown only during start-up or for a fatal, unrecoverable state. Per-frame code never throws on bad input; it returns `bool` or `std::optional`. The one exception is `net::PacketError`, which is thrown and caught inside the packet decode boundary ([network](network.md#netpacket), [handbook](../handbook/development.md#error-handling-policy)). |
 | `ICommand<Args...>` | Generic command interface: `execute(Args...)` returns `false` when the command could not be carried out, and `operator()` is a non-virtual member that forwards to `execute`, so commands only implement `execute`. Used for the server's and client's message commands. |
 | `FactoryTemplate<Base, Key, Args...>` | Maps a key to a creator. `registerCreator<Concrete>(key)` only compiles if `Concrete::create(Args...)` returns `std::unique_ptr<Base>` (enforced by the `HasCreateMethod` concept). `create(key, args...)` throws `std::runtime_error` for an unknown key, so callers check `hasKey` first on untrusted keys. The key type needs `std::hash` and `operator<<` (used in that error message). Copy and move are deleted. |
@@ -120,90 +123,96 @@ classDiagram
 
 ### Logging
 
-One logging facility for the whole project, in `engine/core/include/engine/core/Log.hpp` and `src/Log.cpp`. It looks like `std::cout`, can also be used like `std::format`, and is safe to call from the network IO thread and the game thread at the same time.
+One logging facility for the whole project, in `engine/core/include/Logger.hpp` (format-style templates in `Logger.tpp`) and `engine/core/src/Logger.cpp`, namespace `engine::core::log`. It looks like `std::cout`, can also be used like `std::format`, and is safe to call from the network IO thread and the game thread at the same time.
 
 #### Usage
 
 ```cpp
-using namespace engine::core;
+using namespace engine::core::log;   // not `engine::core`: `log::` would clash with ::log from <cmath>
+
+// One Logger per module or class, the context is printed on every line
+Logger netLog{"net"};
+netLog.setThreadName("net-io");           // names the calling thread, once
 
 // std::format style (same syntax as std::format and C++23's std::println)
-log::info("player {} joined from {}", id, endpoint);
-log::error("cannot bind UDP port {}: {}", port, reason);
+netLog.warn("dropped {} datagrams", count);
 
 // Stream style, like std::cout: the line is written when the statement ends
-log::info() << "player " << id << " joined from " << endpoint;
+netLog.debug() << "received " << std::to_string(bytes) << " bytes";
 
-// With a context: one Logger per module or class, the context is printed on every line
-Logger netLog{"net"};
-netLog.warn("dropped {} datagrams", count);
-netLog.debug() << "received " << bytes << " bytes from " << endpoint;
+// Global settings, usually set once at start-up
+setLevel(parseLevel(levelFlag).value_or(Level::EG_INFO));
 ```
 
 ```text
-[14:02:07.415] [INFO] [main] player 2 joined from 10.0.0.5:51234
+[14:02:07.415] [INFO] [main] [server] player 2 joined from 10.0.0.5:51234
 [14:02:07.416] [WARN] [net-io] [net] dropped 3 datagrams
 ```
-
-The free functions `log::trace()` … `log::error()` use a default `Logger` with no context.
 
 #### API
 
 ```cpp
-namespace engine::core {
+namespace engine::core::log {
 
-enum class Level : std::uint8_t { TRACE, DEBUG, INFO, WARN, ERR, OFF };
+enum class Level : std::uint8_t { EG_TRACE, EG_DEBUG, EG_INFO, EG_WARN, EG_ERROR, EG_OFF };
 
-class LogLine {                       // a single line being built
-public:
-    LogLine(Level level, std::string_view context);
-    ~LogLine();                       // writes the whole line, once
-    LogLine(LogLine&&) noexcept;      // movable, not copyable
-    LogLine(const LogLine&) = delete;
+struct LogLine {                      // a single line being built
+    Level level;
+    const std::string &context;
+    bool active;                      // false when the level is filtered out
+    std::ostringstream buffer;
 
-    template <typename T>
-    LogLine& operator<<(const T& value);
+    LogLine(Level level, const std::string &context, bool active) noexcept;
+    LogLine(LogLine &&other) noexcept;     // movable, not copyable
+    LogLine &operator<<(const std::string &message) &;
+    LogLine &&operator<<(const std::string &message) &&;
+    ~LogLine() noexcept;              // writes the whole line, once
 };
 
 class Logger {
 public:
-    explicit Logger(std::string context = "");
+    explicit Logger(const std::string &context) noexcept;
 
-    [[nodiscard]] LogLine info() const;                                // stream style
+    LogLine info();                                                     // stream style
     template <typename... Args>
-    void info(std::format_string<Args...> fmt, Args&&... args) const;  // format style
+    LogLine info(const std::string &format, Args... args);              // format style
     // same pair for trace, debug, warn and error
+
+    void setThreadName(const std::string &name) noexcept;               // e.g. "main", "net-io"
 };
 
-namespace log {
-    void setLevel(Level level);
-    Level level();
-    std::optional<Level> parseLevel(std::string_view name);   // "trace" | "debug" | "info" | "warn" | "error"
-    void setThreadName(std::string_view name);                // e.g. "main", "net-io"
-    void setOutput(std::ostream& stream);                     // std::cerr by default; tests redirect it
-    void setColors(bool enabled);                             // default: on only if the output is a terminal
-
-    LogLine info();                                           // and trace, debug, warn, error
-    template <typename... Args>
-    void info(std::format_string<Args...> fmt, Args&&... args);
-}
+void setLevel(Level threshold) noexcept;                                // default EG_INFO
+Level level() noexcept;
+bool isEnabled(Level lineLevel) noexcept;
+std::optional<Level> parseLevel(std::string_view name) noexcept;        // "trace" | "debug" | "info" | "warn" | "error" | "off"
+void setOutput(std::ostream &stream);                                   // std::cerr by default; tests redirect it
+void setColors(bool enabled);
 
 }
 ```
+
+| Function | Behaviour |
+| --- | --- |
+| `setLevel` / `level` | Set and read the global threshold, a `std::atomic<Level>`. |
+| `isEnabled(level)` | `true` when a line at that level would be written: `level >= threshold` and `level != EG_OFF`. Used to skip work done only for a log line, like timing. |
+| `parseLevel(name)` | Lowercase names only. Anything else, `"INFO"` included, gives `std::nullopt`. Meant for a `--log-level` flag. |
+| `setOutput(stream)` | Sends every following line to `stream`. Turns colours off unless `stream` is `std::cerr` on a terminal, so a captured or redirected log has no escape codes. |
+| `setColors(enabled)` | Forces colours on or off. Call it after `setOutput`. |
 
 #### Rules
 
 | Rule | Detail |
 | --- | --- |
-| Level order | `TRACE < DEBUG < INFO < WARN < ERR < OFF`. A message is printed when its level is **≥** the threshold set with `setLevel` (default `INFO`). `OFF` silences everything. |
-| `ERR`, not `ERROR` | Windows' `wingdi.h` defines `ERROR` as a macro, which breaks the name even inside an enum. The method `error()` is fine: it's lowercase. |
-| One stream | Every level goes to the same stream: `std::cerr`. It's unbuffered, so a line reaches the terminal immediately, even just before a crash. Diagnostics stay off `std::cout`, so `./r-type_server 2> server.log` captures the whole log. |
+| Level order | `EG_TRACE < EG_DEBUG < EG_INFO < EG_WARN < EG_ERROR < EG_OFF`. A line is written when its level is **≥** the threshold (default `EG_INFO`). `EG_OFF` silences everything. The level is checked by the `Logger` itself: callers just log. |
+| `EG_` prefix | Windows headers define `ERROR` (and other short names) as macros, which breaks them even inside an enum. The prefix avoids every clash. The methods (`error()`) are fine: they're lowercase. The printed name of `EG_ERROR` is `ERR`. |
+| One stream | Every level goes to the same stream, `std::cerr` by default. It's unbuffered, so a line reaches the terminal immediately, even just before a crash. Diagnostics stay off `std::cout`, so `./r-type_server 2> server.log` captures the whole log. `setOutput` redirects it, for tests. |
 | One line, written once | A `LogLine` builds its text in its own buffer, and its destructor writes the full line to the stream in a single call, under one global mutex. Lines from two threads never mix, and there is no end marker to forget: the line ends with the statement. |
-| Colours per level | `TRACE` grey, `DEBUG` cyan, `INFO` green, `WARN` yellow, `ERR` red. For every level except `ERR`, the colour applies to the prefix only (`[time] [LEVEL] [thread] [context]`) and the message stays in the terminal's normal colour, so long messages stay readable. For `ERR`, the **whole line** is red, so errors stand out when scrolling. A reset code ends the coloured part. Colours are on by default only when the output is a terminal (`isatty` on Linux, `_isatty` on Windows), so CI logs and files stay free of escape codes. |
+| Shared state | The level, the output and the colour flag live in one object built on first use, so a `Logger` used during static initialization never sees them uninitialized. The output and the colour flag are only read or changed under the mutex. |
+| Colours per level | `TRACE` grey, `DEBUG` cyan, `INFO` green, `WARN` yellow, `ERR` red. For every level except `ERR`, the colour applies to the prefix only (`[time] [LEVEL] [thread] [context]`) and the message stays in the terminal's normal colour, so long messages stay readable. For `ERR`, the **whole line** is red, so errors stand out when scrolling. A reset code ends the coloured part. Colours are on by default only when the output is a terminal (`isatty` on Linux, `_isatty` on Windows), decided when the state is built and again on each `setOutput`, so CI logs and files stay free of escape codes. |
 | Line format | `[HH:MM:SS.mmm] [LEVEL] [thread] [context] message`. The `[context]` part is omitted when the context is empty. The time is UTC, written with `std::format("{:%T}", std::chrono::floor<std::chrono::milliseconds>(now))`, which works on GCC 13 and MSVC without time-zone support. The thread name is a `thread_local`, `"?"` until `setThreadName` is called. |
-| Cost when filtered out | The format style checks the level before calling `std::format`, so a disabled call costs one comparison. A filtered-out `LogLine` ignores its `<<` calls, but the expressions on the right of `<<` are still evaluated: don't put expensive computations in a log line. The threshold is a `std::atomic<Level>`. |
+| Cost when filtered out | A filtered-out line is created inactive. The format style checks it before calling `std::vformat`, so a disabled call costs one atomic load and one comparison. A filtered-out `LogLine` ignores its `<<` calls, but the expressions on the right of `<<` are still evaluated: don't put expensive computations in a log line. |
 | No `printf` style | `"%d"`-style formatting isn't offered: it isn't type-safe, and `std::format` covers the same need. `std::println` is C++23, and we build in C++20, so the format style uses `std::format` with the same syntax. |
-| `[[nodiscard]]` | The stream-style methods are `[[nodiscard]]`, so `log::info();` alone (a line that would print nothing) triggers a compiler warning, which `-Werror` turns into an error. |
+| Not done yet | Free functions `log::info(...)` with no context, `[[nodiscard]]` on the stream-style methods, and a compile-time checked `std::format_string`. The format string is a `const std::string &`, checked at run time by `std::vformat`. |
 
 ## ECS (`engine_ecs`)
 
@@ -388,7 +397,7 @@ registry.runStage(Stage::FIXED_UPDATE);   // runs that stage's systems in insert
 | --- | --- |
 | Signature | A system receives the `Registry&` first, then one storage per listed component, in the listed order. A `const` component gives a `const SparseSet<C>&`, and a system taking a non-`const` storage for it doesn't compile. Checked at compile time with a readable `static_assert` message. |
 | Stages | Systems belong to a stage: any enumeration (`enum class` or plain `enum`) whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`), checked by `StageConcept`. Systems are kept in a vector indexed by the stage's value, so stages use small values starting at 0. `runStage` runs one stage's systems in the order they were added. A stage with no systems does nothing. The server never adds render systems. |
-| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time (`<name> took <µs> us`), which makes the tick order and its cost visible. Until the logger has a global level, this line is written on every run. |
+| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time (`<name> took <µs> us`), which makes the tick order and its cost visible. The clock is read only when `TRACE` is enabled, checked once per stage, so timing costs nothing otherwise. |
 | Registration | Adding a system registers its component types. Adding a system while a stage is running is a programming error, caught with an `assert`. |
 | Callables | Stored in `std::function`, so systems must be copyable callables (free functions and lambdas without move-only captures). Move-only state goes in a resource. The registry keeps one copy and calls it on every run, so a `mutable` lambda keeps its state across runs. |
 | Running guard | A flag is set for the whole stage and reset by an RAII object. Calling `runStage` from inside a system is a programming error, caught with an `assert`. If a system throws, the exception reaches the caller of `runStage`, the rest of that stage doesn't run, and the next `runStage` works normally. |
