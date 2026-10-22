@@ -6,13 +6,16 @@
 */
 
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <format>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <ostream>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #ifdef _WIN32
@@ -58,30 +61,103 @@ const char *levelColor(Level level) noexcept
 
 bool isTerminal() noexcept
 {
-#ifdef _WIN32
+    #ifdef _WIN32
     return _isatty(_fileno(stderr)) != 0;
-#else
+    #else
     return isatty(fileno(stderr)) != 0;
-#endif
+    #endif
 }
 
-Logger::Logger(const std::string &context) noexcept : _context(context)
-{}
+/*
+** Built on first use, so a Logger used during static initialization never
+** sees it uninitialized. The level is read without the lock on every call;
+** the output and the colours are only touched under the mutex.
+*/
+struct State {
+    std::atomic<Level> level{Level::EG_INFO};
+    std::mutex mutex;
+    std::ostream *output = &std::cerr;
+    bool colors = isTerminal();
+};
 
-Logger::Logger(Logger &&other)  noexcept : _context(std::move(other._context))
-{}
+State &state()
+{
+    static State instance;
+
+    return instance;
+}
+
+void setLevel(Level threshold) noexcept
+{
+    state().level.store(threshold, std::memory_order_relaxed);
+}
+
+Level level() noexcept
+{
+    return state().level.load(std::memory_order_relaxed);
+}
+
+bool isEnabled(Level lineLevel) noexcept
+{
+    return lineLevel != Level::EG_OFF && lineLevel >= level();
+}
+
+std::optional<Level> parseLevel(std::string_view name) noexcept
+{
+    static constexpr std::pair<std::string_view, Level> NAMES[]{
+        {"trace", Level::EG_TRACE},
+        {"debug", Level::EG_DEBUG},
+        {"info", Level::EG_INFO},
+        {"warn", Level::EG_WARN},
+        {"error", Level::EG_ERROR},
+        {"off", Level::EG_OFF},
+    };
+
+    for (const auto &[text, value]: NAMES)
+        if (text == name)
+            return value;
+    return std::nullopt;
+}
+
+void setOutput(std::ostream &stream)
+{
+    State &shared = state();
+    const std::lock_guard lock(shared.mutex);
+
+    shared.output = &stream;
+    shared.colors = &stream == &std::cerr && isTerminal();
+}
+
+void setColors(bool enabled)
+{
+    State &shared = state();
+    const std::lock_guard lock(shared.mutex);
+
+    shared.colors = enabled;
+}
+
+Logger::Logger(const std::string &context) noexcept: _context(context)
+{
+}
+
+Logger::Logger(Logger &&other) noexcept: _context(std::move(other._context))
+{
+}
 
 Logger &Logger::operator=(Logger &&other)
- noexcept {
+    noexcept
+{
     if (this != &other) {
         _context = std::move(other._context);
     }
     return *this;
 }
 
-LogLine::LogLine(Level lineLevel, const std::string &lineContext, bool lineActive) noexcept
+LogLine::LogLine(Level lineLevel, const std::string &lineContext,
+    bool lineActive) noexcept
     : level(lineLevel), context(lineContext), active(lineActive)
-{}
+{
+}
 
 LogLine::LogLine(LogLine &&other) noexcept
     : level(other.level), context(other.context), active(other.active),
@@ -95,29 +171,34 @@ void Logger::setThreadName(const std::string &name) noexcept
     threadName = name;
 }
 
+LogLine Logger::makeLine(Level lineLevel)
+{
+    return LogLine{lineLevel, _context, isEnabled(lineLevel)};
+}
+
 LogLine Logger::trace()
 {
-    return LogLine{Level::EG_TRACE, _context, true};
+    return makeLine(Level::EG_TRACE);
 }
 
 LogLine Logger::debug()
 {
-    return LogLine{Level::EG_DEBUG, _context, true};
+    return makeLine(Level::EG_DEBUG);
 }
 
 LogLine Logger::info()
 {
-    return LogLine{Level::EG_INFO, _context, true};
+    return makeLine(Level::EG_INFO);
 }
 
 LogLine Logger::warn()
 {
-    return LogLine{Level::EG_WARN, _context, true};
+    return makeLine(Level::EG_WARN);
 }
 
 LogLine Logger::error()
 {
-    return LogLine{Level::EG_ERROR, _context, true};
+    return makeLine(Level::EG_ERROR);
 }
 
 
@@ -135,6 +216,11 @@ LogLine &&LogLine::operator<<(const std::string &message) &&
     return std::move(*this);
 }
 
+/*
+** One write per line, under the lock, so lines from the network and game
+** threads never mix. ERR is red from start to end; the other levels colour
+** the prefix only.
+*/
 LogLine::~LogLine() noexcept
 {
     if (!active)
@@ -142,21 +228,26 @@ LogLine::~LogLine() noexcept
 
     try {
         const auto now = std::chrono::system_clock::now();
-        const auto timestamp = std::chrono::floor<std::chrono::milliseconds>(now);
-        const std::string contextPart = context.empty() ? "" : std::format(" [{}]", context);
-        const std::string line = std::format("[{:%T}] [{}] [{}]{} {}",
-            timestamp, levelName(level), threadName, contextPart, buffer.str());
+        const auto timestamp = std::chrono::floor<
+            std::chrono::milliseconds>(now);
+        const std::string contextPart = context.empty()
+            ? ""
+            : std::format(" [{}]", context);
+        const std::string prefix = std::format("[{:%T}] [{}] [{}]{}",
+            timestamp, levelName(level), threadName, contextPart);
+        const std::string message = buffer.str();
+        State &shared = state();
+        const std::lock_guard lock(shared.mutex);
 
-        if (!isTerminal()) {
-            std::cerr << line << '\n';
-        } else {
-            const char *color = levelColor(level);
-            std::cerr << std::format("[{:%T}] [", timestamp)
-                      << '\033' << "[" << color << "m"
-                      << levelName(level) << "\033[37m] ["
-                      << threadName << "]" << contextPart << " "
-                      << buffer.str() << "\033[0m\n";
-        }
-    } catch (...) {}
+        if (!shared.colors)
+            *shared.output << std::format("{} {}\n", prefix, message);
+        else if (level == Level::EG_ERROR)
+            *shared.output << std::format("\033[{}m{} {}\033[0m\n",
+                levelColor(level), prefix, message);
+        else
+            *shared.output << std::format("\033[{}m{}\033[0m {}\n",
+                levelColor(level), prefix, message);
+    } catch (...) {
+    }
 }
 }
