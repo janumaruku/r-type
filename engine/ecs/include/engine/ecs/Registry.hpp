@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "Logger.hpp"
+#include "engine/ecs/CommandBuffer.hpp"
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/IndexedView.hpp"
 #include "engine/ecs/Resources.hpp"
@@ -154,3 +155,4 @@ private:
 #endif //R_TYPE_REGISTRY_HPP
 
 #include "engine/ecs/Registry.tpp"
+#include "engine/ecs/CommandBuffer.tpp"
