@@ -16,7 +16,7 @@
 #include <typeinfo>
 #include <utility>
 
-#include "Errors.hpp"
+#include "../../../engine/core/include/engine/core/Errors.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "engine/ecs/Resources.hpp"
 

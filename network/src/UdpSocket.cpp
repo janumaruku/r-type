@@ -12,8 +12,8 @@
 #include <format>
 #include <utility>
 
-#include "Errors.hpp"
-#include "Logger.hpp"
+#include "../../engine/core/include/engine/core/Errors.hpp"
+#include "../../engine/core/include/engine/core/Logger.hpp"
 
 namespace net {
 

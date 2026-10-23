@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "Errors.hpp"
+#include "../../../engine/core/include/engine/core/Errors.hpp"
 
 TEST(Error, EngineError)
 {

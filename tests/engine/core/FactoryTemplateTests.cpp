@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 
-#include "FactoryTemplate.hpp"
+#include "../../../engine/core/include/engine/core/FactoryTemplate.hpp"
 
 namespace {
 
