@@ -398,11 +398,11 @@ registry.runStage(Stage::FIXED_UPDATE);   // runs that stage's systems in insert
 | Rule | Detail |
 | --- | --- |
 | Signature | A system receives the `Registry&` first, then one storage per listed component, in the listed order. A `const` component gives a `const SparseSet<C>&`, and a system taking a non-`const` storage for it doesn't compile. Checked at compile time with a readable `static_assert` message. |
-| Stages | Systems belong to a stage: any enumeration (`enum class` or plain `enum`) whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`), checked by `StageConcept`. Systems are kept in a vector indexed by the stage's value, so stages use small values starting at 0. `runStage` runs one stage's systems in the order they were added. A stage with no systems does nothing. The server never adds render systems. |
-| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time (`<name> took <µs> us`), which makes the tick order and its cost visible. The clock is read only when `TRACE` is enabled, checked once per stage, so timing costs nothing otherwise. |
+| Stages | Systems belong to a stage: any enumeration (`enum class` or plain `enum`) whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`), checked by `StageConcept`. Systems are kept in a vector indexed by the stage's value, so stages use small values starting at 0. `runStage` runs one stage's systems in the order they were added. A stage with no systems only applies pending commands. The server never adds render systems. |
+| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time and the number of commands it recorded (`<name> took <µs> us and ran <n> commands`), which makes the tick order and its cost visible. The time covers the system only, not the apply of its commands. The clock is read only when `TRACE` is enabled, checked once per stage, so timing costs nothing otherwise. |
 | Registration | Adding a system registers its component types. Adding a system while a stage is running is a programming error, caught with an `assert`. |
 | Callables | Stored in `std::function`, so systems must be copyable callables (free functions and lambdas without move-only captures). Move-only state goes in a resource. The registry keeps one copy and calls it on every run, so a `mutable` lambda keeps its state across runs. |
-| Running guard | A flag is set for the whole stage and reset by an RAII object. Calling `runStage` from inside a system is a programming error, caught with an `assert`. If a system throws, the exception reaches the caller of `runStage`, the rest of that stage doesn't run, and the next `runStage` works normally. |
+| Running guard | A flag is set for the whole stage and reset by an RAII object. Calling `runStage` from inside a system is a programming error, caught with an `assert`. If a system throws, the commands it recorded are discarded (the buffer is cleared), so half of a system's intentions are never applied. The same goes when applying its commands throws (for example, a spawn's `init`). Either way, the exception reaches the caller of `runStage`, the rest of that stage doesn't run, and the next `runStage` works normally. |
 
 ### Command buffer
 
@@ -417,7 +417,12 @@ Structural changes requested while iterating are recorded in `registry.commands(
 
 - Two systems killing the same entity (two colliders hitting each other) is fine: the second `kill` is ignored.
 - An `add` or `remove` of an **unregistered** type throws `EngineError` when the command is *applied*, not when it is recorded, so the error shows up away from the line that caused it.
-- The registry applies the buffer **after each system** in `runStage`, so the next system sees a consistent world (RTP-61). `applyCommands()` applies it on demand, for code outside a stage.
+- `runStage` applies the buffer for the game, which never calls `apply` itself:
+  1. pending commands (recorded outside a stage) are applied **before the first system**, even when the stage has no systems;
+  2. then each system's commands are applied **as soon as it returns**, so the next system sees a consistent world;
+  3. inside a system, nothing is applied yet: the recording system still sees an entity it killed as alive, which is what makes recording from a view loop safe.
+- **Why after each system and not once per stage:** systems depend on each other's kills and spawns. `healthSystem` records kills that `netIdCleanupSystem` must see applied. Applying once per stage would leave every later system working on entities that are already doomed.
+- `applyCommands()` applies the buffer on demand, for code outside a stage.
 - **Order and nesting:** commands run in the order they were recorded. Commands recorded while applying (an `init` that spawns or adds more) run in the same `apply` call, after the ones already queued.
 - **Exceptions:** if a command throws, the rest of the batch is discarded, the buffer is left empty and the exception reaches the caller. A half-applied batch is never replayed.
 - Commands are stored as `std::function`, so a value passed to a deferred `add` must be copyable. A move-only component fails a `static_assert` at compile time; add it immediately, outside any view loop.
@@ -445,7 +450,7 @@ Unit tests check every rule. Each one maps to a "Check yourself" list in the jou
 
 1. **Registration.** The game registers every component type when its world is created. Using an unregistered type throws `EngineError` naming it.
 2. **Inside a view loop, only the current entity may change immediately.** Killing it or removing one of its components is safe. Killing *other* entities, spawning, or adding components goes through `commands()`. Component references taken in the loop dangle after an add, so don't keep them.
-3. **Commands are applied after each system**, in the order they were recorded.
+3. **Commands are applied after each system**, in the order they were recorded, and before the first system for commands recorded outside a stage. Nothing is applied while a system runs.
 4. **Stale handles are detected.** After a kill, the old handle is not alive, `getComponent` through it returns `nullptr`, and adding to it throws.
 5. **Iteration order is unspecified.** Systems must not depend on it.
 6. **Type ids are process-local.** Never serialize them.
