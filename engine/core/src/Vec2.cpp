@@ -5,4 +5,4 @@
 ** Vec2.cpp
 */
 
-#include "../include/engine/core/Vec2.hpp"
+#include "engine/core/Vec2.hpp"

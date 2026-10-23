@@ -7,7 +7,7 @@
 
 
 #include <gtest/gtest.h>
-#include "../../../engine/core/include/engine/core/Color.hpp"
+#include "engine/core/Color.hpp"
 
 TEST(Color, constuct)
 {

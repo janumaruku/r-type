@@ -123,7 +123,7 @@ classDiagram
 
 ### Logging
 
-One logging facility for the whole project, in `../../engine/core/include/engine/core/Logger.hpp` (format-style templates in `Logger.tpp`) and `engine/core/src/Logger.cpp`, namespace `engine::core::log`. It looks like `std::cout`, can also be used like `std::format`, and is safe to call from the network IO thread and the game thread at the same time.
+One logging facility for the whole project, in `engine/core/include/engine/core/Logger.hpp` (format-style templates in `Logger.tpp`) and `engine/core/src/Logger.cpp`, namespace `engine::core::log`. It looks like `std::cout`, can also be used like `std::format`, and is safe to call from the network IO thread and the game thread at the same time.
 
 #### Usage
 

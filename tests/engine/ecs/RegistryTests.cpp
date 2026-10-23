@@ -13,7 +13,7 @@
 #include <type_traits>
 #include <utility>
 
-#include "../../../engine/core/include/engine/core/Errors.hpp"
+#include "engine/core/Errors.hpp"
 #include "engine/ecs/Registry.hpp"
 
 using engine::core::EngineError;
