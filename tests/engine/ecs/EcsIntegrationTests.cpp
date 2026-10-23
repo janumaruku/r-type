@@ -115,7 +115,19 @@ void buildWorld(Registry &registry, std::uint32_t seed)
             }
         });
     registry.addSystem<Lifetime>(Stage::SIMULATION, "lifetime",
-        [](Registry &, SparseSet<Lifetime> &) {
+        [](Registry &registry, SparseSet<Lifetime> &lifetimes) {
+            const float dt = registry.getResource<DeltaTime>().seconds;
+            Counters &counters = registry.getResource<Counters>();
+
+            for (std::size_t i = 0; i < lifetimes.size(); ++i) {
+                Lifetime &lifetime = lifetimes.components()[i];
+
+                lifetime.seconds -= dt;
+                if (lifetime.seconds > 0.0F)
+                    continue;
+                registry.commands().kill(lifetimes.entities()[i]);
+                ++counters.killed;
+            }
         });
     registry.addSystem<const Position, const Radius>(Stage::SIMULATION,
         "collision",
@@ -160,4 +172,17 @@ TEST_F(EcsSimulation, TheFirstStepSpawnsOneEntityThatMovesOnTheNext)
     ASSERT_NE(position, nullptr);
     EXPECT_FLOAT_EQ(position->x, start.x + (velocity.dx * STEP));
     EXPECT_FLOAT_EQ(position->y, start.y + (velocity.dy * STEP));
+}
+
+TEST_F(EcsSimulation, EntitiesDieWhenTheirLifetimeRunsOut)
+{
+    for (int step = 0; step < 240; ++step)
+        _registry.runStage(Stage::SIMULATION);
+
+    const Counters &counters = _registry.getResource<Counters>();
+    EXPECT_GT(counters.killed, 0U);
+    EXPECT_EQ(_registry.aliveCount(), counters.spawned - counters.killed);
+    for (const Lifetime &lifetime:
+        _registry.getComponents<Lifetime>().components())
+        EXPECT_GT(lifetime.seconds, 0.0F);
 }
