@@ -104,7 +104,15 @@ void buildWorld(Registry &registry, std::uint32_t seed)
         });
     registry.addSystem<Position, const Velocity>(Stage::SIMULATION,
         "movement",
-        [](Registry &, SparseSet<Position> &, const SparseSet<Velocity> &) {
+        [](Registry &registry, SparseSet<Position> &,
+            const SparseSet<Velocity> &) {
+            const float dt = registry.getResource<DeltaTime>().seconds;
+
+            for (auto &&[position, velocity]:
+                registry.view<Position, const Velocity>()) {
+                position.x += velocity.dx * dt;
+                position.y += velocity.dy * dt;
+            }
         });
     registry.addSystem<Lifetime>(Stage::SIMULATION, "lifetime",
         [](Registry &, SparseSet<Lifetime> &) {
@@ -132,8 +140,24 @@ TEST_F(EcsSimulation, TheWorldStartsWithOnlyTheSpawner)
     EXPECT_EQ(_registry.aliveCount(), 1U);
     EXPECT_EQ(_registry.getResource<Counters>().spawned, 1U);
     EXPECT_EQ(_registry.getResource<Counters>().killed, 0U);
+}
+
+TEST_F(EcsSimulation, TheFirstStepSpawnsOneEntityThatMovesOnTheNext)
+{
+    _registry.runStage(Stage::SIMULATION);
+
+    EXPECT_EQ(_registry.aliveCount(), 2U);
+    EXPECT_EQ(_registry.getResource<Counters>().spawned, 2U);
+    ASSERT_EQ(_registry.getComponents<Position>().size(), 1U);
+    const Position start = _registry.getComponents<Position>().components()[0];
+    const Velocity velocity =
+        _registry.getComponents<Velocity>().components()[0];
 
     _registry.runStage(Stage::SIMULATION);
 
-    EXPECT_EQ(_registry.aliveCount(), 1U);
+    const Entity moved = _registry.getComponents<Position>().entities()[0];
+    const Position *position = _registry.getComponent<Position>(moved);
+    ASSERT_NE(position, nullptr);
+    EXPECT_FLOAT_EQ(position->x, start.x + (velocity.dx * STEP));
+    EXPECT_FLOAT_EQ(position->y, start.y + (velocity.dy * STEP));
 }
