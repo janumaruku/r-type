@@ -96,30 +96,40 @@ Registry::RunGuard::~RunGuard()
 ** another one, and the reallocation would leave an iterator dangling.
 ** The level is read once per stage, and the clock only at TRACE, so timing
 ** costs nothing otherwise.
-** TODO(RTP-61): apply the commands recorded by each system right after it
-** runs, before its duration is logged.
+** Commands recorded outside a stage are applied first, then each system's
+** commands right after it returns, so the next system sees them. If a system
+** throws, its commands are discarded.
 */
 void Registry::runStageAt(const std::uint8_t stage)
 {
     assert(!_running);
+    _commands.apply(*this);
     if (stage >= _stages.size())
         return;
 
     RunGuard guard(_running);
     const bool timed = core::log::isEnabled(core::log::Level::EG_TRACE);
 
-    for (std::size_t i = 0; i < _stages[stage].size(); ++i) {
-        if (!timed) {
+    try {
+        for (std::size_t i = 0; i < _stages[stage].size(); ++i) {
+            if (!timed) {
+                _stages[stage][i].run(*this);
+                _commands.apply(*this);
+                continue;
+            }
+            const auto start = std::chrono::steady_clock::now();
             _stages[stage][i].run(*this);
-            continue;
-        }
-        const auto start = std::chrono::steady_clock::now();
-        _stages[stage][i].run(*this);
-        const std::chrono::duration<double, std::micro> elapsed =
-            std::chrono::steady_clock::now() - start;
+            const std::chrono::duration<double, std::micro> elapsed =
+                std::chrono::steady_clock::now() - start;
+            const std::size_t recorded = _commands.size();
+            _commands.apply(*this);
 
-        _logger.trace("{} took {:.1f} us", _stages[stage][i].name,
-            elapsed.count());
+            _logger.trace("{} took {:.1f} us and ran {} commands",
+                _stages[stage][i].name, elapsed.count(), recorded);
+        }
+    } catch (...) {
+        _commands.clear();
+        throw;
     }
 }
 }
