@@ -305,12 +305,14 @@ classDiagram
     class CommandBuffer {
         -std::vector~Command~ _commands
         +kill(Entity) void
-        +spawn(init) void
+        +spawn(SpawnInit init) void
         +add~C~(Entity, C value) void
         +remove~C~(Entity) void
         +apply(Registry&) void
         +size() size_t
+        +empty() bool
     }
+    note for CommandBuffer "Both stored as std::function. Command: void(Registry&). SpawnInit: void(Registry&, const Entity&), optional in spawn"
     SparseSetBase <|-- SparseSet
     Registry "1" *-- "many" SparseSetBase : one storage per component type
     Registry *-- CommandBuffer
@@ -409,12 +411,17 @@ Structural changes requested while iterating are recorded in `registry.commands(
 | Command | Effect when applied |
 | --- | --- |
 | `kill(e)` | `killEntity(e)` (ignored if `e` is already dead) |
-| `spawn(init)` | spawns an entity, then calls `init(Registry&, Entity)` to add its components |
-| `add<C>(e, value)` | `addComponent(e, value)` (ignored if `e` died meanwhile) |
-| `remove<C>(e)` | `removeComponent<C>(e)` |
+| `spawn(init)` | spawns an entity, then calls `init(Registry&, Entity)` if it isn't empty. `init` is the only place to add the new entity's components, since its handle doesn't exist when the command is recorded. If `init` throws, the new entity is killed before the exception propagates |
+| `add<C>(e, value)` | `addComponent(e, value)` (ignored if `e` died meanwhile, where an immediate add would throw) |
+| `remove<C>(e)` | `removeComponent<C>(e)` (ignored if `e` is dead) |
 
-- The registry applies the buffer **after each system** in `runStage`, so the next system sees a consistent world. `applyCommands()` applies it on demand, for code outside a stage.
-- Commands are stored as `std::function`, so a value passed to a deferred `add` must be copyable. A move-only component is added immediately, outside any view loop.
+- Two systems killing the same entity (two colliders hitting each other) is fine: the second `kill` is ignored.
+- An `add` or `remove` of an **unregistered** type throws `EngineError` when the command is *applied*, not when it is recorded, so the error shows up away from the line that caused it.
+- The registry applies the buffer **after each system** in `runStage`, so the next system sees a consistent world (RTP-61). `applyCommands()` applies it on demand, for code outside a stage.
+- **Order and nesting:** commands run in the order they were recorded. Commands recorded while applying (an `init` that spawns or adds more) run in the same `apply` call, after the ones already queued.
+- **Exceptions:** if a command throws, the rest of the batch is discarded, the buffer is left empty and the exception reaches the caller. A half-applied batch is never replayed.
+- Commands are stored as `std::function`, so a value passed to a deferred `add` must be copyable. A move-only component fails a `static_assert` at compile time; add it immediately, outside any view loop.
+- `size()` and `empty()` tell how many commands are pending. Including `engine/ecs/Registry.hpp` is enough to use the buffer.
 
 ### Resources
 
