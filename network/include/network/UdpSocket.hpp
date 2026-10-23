@@ -18,7 +18,7 @@
 #include <mutex>
 #include <vector>
 
-#include "Logger.hpp"
+#include "../../../engine/core/include/engine/core/Logger.hpp"
 #include "network/Packet.hpp"
 
 namespace net {

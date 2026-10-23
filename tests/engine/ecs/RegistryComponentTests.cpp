@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include "Errors.hpp"
+#include "../../../engine/core/include/engine/core/Errors.hpp"
 #include "engine/ecs/Registry.hpp"
 
 using engine::core::EngineError;

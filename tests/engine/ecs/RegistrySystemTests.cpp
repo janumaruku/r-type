@@ -15,7 +15,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "Logger.hpp"
+#include "../../../engine/core/include/engine/core/Logger.hpp"
 #include "engine/ecs/Registry.hpp"
 
 using engine::core::log::Level;

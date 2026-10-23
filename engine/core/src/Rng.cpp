@@ -4,7 +4,7 @@
 ** File description:
 ** Rng.cpp
 */
-#include "Rng.hpp"
+#include "../include/engine/core/Rng.hpp"
 
 namespace engine::core {
 

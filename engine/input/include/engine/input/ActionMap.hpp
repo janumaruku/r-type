@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-#include "Logger.hpp"
+#include "../../../../core/include/engine/core/Logger.hpp"
 #include "engine/input/InputState.hpp"
 #include "engine/input/Key.hpp"
 #include "engine/input/json.hpp"

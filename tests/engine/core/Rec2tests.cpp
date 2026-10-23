@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "Rect2.hpp"
+#include "../../../engine/core/include/engine/core/Rect2.hpp"
 
 TEST(Rect2, constuct)
 {
