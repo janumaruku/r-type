@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 
-#include "../../../engine/core/include/engine/core/Rng.hpp"
+#include "engine/core/Rng.hpp"
 
 TEST(Rng, SameSeedProducesSameSequence)
 {

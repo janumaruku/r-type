@@ -13,8 +13,8 @@
 #include <optional>
 #include <string>
 
-#include "../../../engine/core/include/engine/core/AssetLocator.hpp"
-#include "../../../engine/core/include/engine/core/Errors.hpp"
+#include "engine/core/AssetLocator.hpp"
+#include "engine/core/Errors.hpp"
 
 namespace {
 

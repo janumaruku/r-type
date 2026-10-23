@@ -12,7 +12,7 @@
 #include <string>
 #include <typeinfo>
 
-#include "../../../../core/include/engine/core/Errors.hpp"
+#include "engine/core/Errors.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "engine/ecs/TypeId.hpp"
 

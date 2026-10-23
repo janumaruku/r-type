@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "../../../engine/core/include/engine/core/Errors.hpp"
+#include "engine/core/Errors.hpp"
 #include "engine/ecs/CommandBuffer.hpp"
 #include "engine/ecs/Registry.hpp"
 

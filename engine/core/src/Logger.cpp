@@ -24,7 +24,7 @@
 #include <unistd.h>
 #endif
 
-#include "../include/engine/core/Logger.hpp"
+#include "engine/core/Logger.hpp"
 
 namespace engine::core::log {
 

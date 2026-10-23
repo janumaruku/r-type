@@ -8,7 +8,7 @@
 #ifndef RECT2_TPP
 #define RECT2_TPP
 
-#include "Rect2.hpp"
+#include "engine/core/Rect2.hpp"
 
 namespace engine::core {
 

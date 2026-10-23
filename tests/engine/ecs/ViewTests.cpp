@@ -14,7 +14,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "../../../engine/core/include/engine/core/Errors.hpp"
+#include "engine/core/Errors.hpp"
 #include "engine/ecs/IndexedView.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "engine/ecs/View.hpp"

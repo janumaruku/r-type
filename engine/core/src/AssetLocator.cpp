@@ -8,14 +8,14 @@
 #include <cstdlib>
 #include <vector>
 #include <filesystem>
-#include "../include/engine/core/Errors.hpp"
-#include "../include/engine/core/Logger.hpp"
+#include "engine/core/Errors.hpp"
+#include "engine/core/Logger.hpp"
 
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
-#include "../include/engine/core/AssetLocator.hpp"
+#include "engine/core/AssetLocator.hpp"
 
 namespace engine::core {
 

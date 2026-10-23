@@ -13,7 +13,7 @@
 #include <thread>
 #include <vector>
 
-#include "../../engine/core/include/engine/core/Errors.hpp"
+#include "engine/core/Errors.hpp"
 #include "network/UdpSocket.hpp"
 
 namespace {
