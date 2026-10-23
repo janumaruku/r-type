@@ -61,6 +61,8 @@ public:
 
     [[nodiscard]] bool empty() const noexcept;
 
+    void clear() noexcept;
+
 private:
     std::vector<Command> _commands;
 };

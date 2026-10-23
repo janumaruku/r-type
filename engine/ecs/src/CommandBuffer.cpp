@@ -54,10 +54,10 @@ void CommandBuffer::apply(Registry &registry)
             command(registry);
         }
     } catch (...) {
-        _commands.clear();
+        clear();
         throw;
     }
-    _commands.clear();
+    clear();
 }
 
 std::size_t CommandBuffer::size() const noexcept
@@ -68,5 +68,10 @@ std::size_t CommandBuffer::size() const noexcept
 bool CommandBuffer::empty() const noexcept
 {
     return _commands.empty();
+}
+
+void CommandBuffer::clear() noexcept
+{
+    _commands.clear();
 }
 }
