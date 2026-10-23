@@ -1,6 +1,7 @@
 rtype_add_test(engine_ecs_tests
         LIBS engine_ecs
         SOURCES
+        CommandBufferTests.cpp
         ComponentTests.cpp
         EntityTests.cpp
         RegistryComponentTests.cpp

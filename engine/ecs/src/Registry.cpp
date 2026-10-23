@@ -71,6 +71,16 @@ std::size_t Registry::aliveCount() const noexcept
     return _aliveCount;
 }
 
+CommandBuffer &Registry::commands() noexcept
+{
+    return _commands;
+}
+
+void Registry::applyCommands()
+{
+    _commands.apply(*this);
+}
+
 Registry::RunGuard::RunGuard(bool &value): running(value)
 {
     running = true;

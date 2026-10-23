@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "Logger.hpp"
+#include "engine/ecs/CommandBuffer.hpp"
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/IndexedView.hpp"
 #include "engine/ecs/Resources.hpp"
@@ -124,6 +125,10 @@ public:
     template <StageConcept Stage>
     void runStage(Stage stage);
 
+    [[nodiscard]] CommandBuffer &commands() noexcept;
+
+    void applyCommands();
+
 private:
     std::vector<std::unique_ptr<SparseSetBase>> _storages;
     std::vector<std::uint32_t> _generations;
@@ -133,6 +138,7 @@ private:
     std::vector<std::unique_ptr<detail::ResourceBase>> _resources;
     std::vector<std::vector<SystemEntry>> _stages;
     bool _running = false;
+    CommandBuffer _commands;
     core::log::Logger _logger{"ecs"};
 
     struct RunGuard {
@@ -154,3 +160,4 @@ private:
 #endif //R_TYPE_REGISTRY_HPP
 
 #include "engine/ecs/Registry.tpp"
+#include "engine/ecs/CommandBuffer.tpp"
