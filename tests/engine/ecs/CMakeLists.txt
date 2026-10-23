@@ -3,6 +3,7 @@ rtype_add_test(engine_ecs_tests
         SOURCES
         CommandBufferTests.cpp
         ComponentTests.cpp
+        EcsIntegrationTests.cpp
         EntityTests.cpp
         RegistryComponentTests.cpp
         RegistryEntityTests.cpp
