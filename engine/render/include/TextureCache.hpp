@@ -16,6 +16,10 @@
 
 namespace engine::render {
 
+namespace detail {
+struct CacheAccess;
+}
+
 class TextureCache {
 public:
     TextureCache();
@@ -35,6 +39,8 @@ public:
     [[nodiscard]] core::Vec2u size(TextureId id) const;
 
 private:
+    friend struct detail::CacheAccess;
+
     struct Impl;
     std::unique_ptr<Impl> _impl;
 };

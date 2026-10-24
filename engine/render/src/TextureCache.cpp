@@ -9,12 +9,14 @@
 
 #include <raylib.h>
 
+#include <cassert>
 #include <cstdint>
 #include <filesystem>
 #include <limits>
 #include <unordered_map>
 #include <vector>
 
+#include "CacheAccess.hpp"
 #include "Errors.hpp"
 #include "ResourcePath.hpp"
 
@@ -69,6 +71,12 @@ core::Vec2u TextureCache::size(TextureId id) const
 {
     const Texture2D &texture = _impl->textures.at(id.value);
     return {static_cast<unsigned>(texture.width), static_cast<unsigned>(texture.height)};
+}
+
+Texture2D detail::CacheAccess::texture(const TextureCache &cache, TextureId id)
+{
+    assert(id.value < cache._impl->textures.size() && "unknown TextureId");
+    return cache._impl->textures[id.value];
 }
 
 } // namespace engine::render

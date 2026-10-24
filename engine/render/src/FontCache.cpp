@@ -9,11 +9,13 @@
 
 #include <raylib.h>
 
+#include <cassert>
 #include <cstdint>
 #include <filesystem>
 #include <unordered_map>
 #include <vector>
 
+#include "CacheAccess.hpp"
 #include "Errors.hpp"
 #include "ResourcePath.hpp"
 
@@ -70,6 +72,14 @@ FontId FontCache::load(const std::filesystem::path &path)
     _impl->fonts.push_back(font);
     _impl->pathToId.emplace(key, id);
     return id;
+}
+
+Font detail::CacheAccess::font(const FontCache &cache, FontId id)
+{
+    if (id.isDefault())
+        return GetFontDefault();
+    assert(id.value < cache._impl->fonts.size() && "unknown FontId");
+    return cache._impl->fonts[id.value];
 }
 
 }

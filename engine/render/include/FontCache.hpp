@@ -15,6 +15,10 @@
 
 namespace engine::render {
 
+namespace detail {
+struct CacheAccess;
+}
+
 class FontCache {
 public:
     FontCache();
@@ -32,6 +36,8 @@ public:
     FontId load(const std::filesystem::path &path);
 
 private:
+    friend struct detail::CacheAccess;
+
     struct Impl;
     std::unique_ptr<Impl> _impl;
 };
