@@ -6,8 +6,10 @@
 */
 
 #include <gtest/gtest.h>
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <tuple>
 #include <unordered_set>
 #include <vector>
 
@@ -56,6 +58,7 @@ struct Counters {
 };
 
 constexpr std::uint32_t SEED = 42;
+constexpr int STEPS = 600;
 constexpr float STEP = 1.0F / 60.0F;
 constexpr float SPAWN_INTERVAL = 0.1F;
 
@@ -161,6 +164,57 @@ void buildWorld(Registry &registry, std::uint32_t seed)
         });
 }
 
+void runSteps(Registry &registry, int steps)
+{
+    for (int step = 0; step < steps; ++step)
+        registry.runStage(Stage::SIMULATION);
+}
+
+template <class Component>
+bool holdsOnlyLiveEntities(const Registry &registry)
+{
+    for (const Entity &entity: registry.getComponents<Component>().entities())
+        if (!registry.isAlive(entity))
+            return false;
+    return true;
+}
+
+testing::AssertionResult worldIsConsistent(const Registry &registry)
+{
+    for (const Entity &entity: registry.getComponents<Position>().entities())
+        if (registry.getComponent<Velocity>(entity) == nullptr)
+            return testing::AssertionFailure() << "entity " << entity.index()
+                                               << " has no Velocity";
+    if (!holdsOnlyLiveEntities<Position>(registry) ||
+        !holdsOnlyLiveEntities<Velocity>(registry) ||
+        !holdsOnlyLiveEntities<Radius>(registry) ||
+        !holdsOnlyLiveEntities<Lifetime>(registry) ||
+        !holdsOnlyLiveEntities<Spawner>(registry))
+        return testing::AssertionFailure()
+            << "a storage holds a dead or stale entity";
+
+    const Counters &counters = registry.getResource<Counters>();
+    if (registry.aliveCount() != counters.spawned - counters.killed)
+        return testing::AssertionFailure()
+            << "aliveCount is " << registry.aliveCount() << ", expected "
+            << counters.spawned << " - " << counters.killed;
+    return testing::AssertionSuccess();
+}
+
+using Snapshot = std::vector<std::tuple<std::uint32_t, float, float>>;
+
+Snapshot positionsByIndex(const Registry &registry)
+{
+    const SparseSet<Position> &positions = registry.getComponents<Position>();
+    Snapshot snapshot;
+
+    for (std::size_t i = 0; i < positions.size(); ++i)
+        snapshot.emplace_back(positions.entities()[i].index(),
+            positions.components()[i].x, positions.components()[i].y);
+    std::ranges::sort(snapshot);
+    return snapshot;
+}
+
 class EcsSimulation: public testing::Test {
 protected:
     void SetUp() override
@@ -201,8 +255,7 @@ TEST_F(EcsSimulation, TheFirstStepSpawnsOneEntityThatMovesOnTheNext)
 
 TEST_F(EcsSimulation, EntitiesDieWhenTheirLifetimeRunsOut)
 {
-    for (int step = 0; step < 240; ++step)
-        _registry.runStage(Stage::SIMULATION);
+    runSteps(_registry, 240);
 
     const Counters &counters = _registry.getResource<Counters>();
     EXPECT_GT(counters.killed, 0U);
@@ -234,4 +287,40 @@ TEST_F(EcsSimulation, EveryEntityOfAnOverlappingPairDiesOnce)
     const Counters &counters = _registry.getResource<Counters>();
     EXPECT_EQ(counters.killed, 3U);
     EXPECT_EQ(_registry.aliveCount(), counters.spawned - counters.killed);
+}
+
+TEST_F(EcsSimulation, TheWorldStaysConsistentAfterEveryStep)
+{
+    for (int step = 0; step < STEPS; ++step) {
+        _registry.runStage(Stage::SIMULATION);
+        ASSERT_TRUE(worldIsConsistent(_registry)) << "after step " << step;
+    }
+
+    const Counters &counters = _registry.getResource<Counters>();
+    EXPECT_GE(counters.spawned, 100U);
+    EXPECT_GT(counters.killed, 0U);
+}
+
+TEST_F(EcsSimulation, TheSameSeedGivesTheSamePositions)
+{
+    Registry other;
+    buildWorld(other, SEED);
+
+    runSteps(_registry, STEPS);
+    runSteps(other, STEPS);
+
+    const Snapshot positions = positionsByIndex(_registry);
+    EXPECT_FALSE(positions.empty());
+    EXPECT_EQ(positions, positionsByIndex(other));
+}
+
+TEST_F(EcsSimulation, ADifferentSeedGivesDifferentPositions)
+{
+    Registry other;
+    buildWorld(other, SEED + 1);
+
+    runSteps(_registry, STEPS);
+    runSteps(other, STEPS);
+
+    EXPECT_NE(positionsByIndex(_registry), positionsByIndex(other));
 }
