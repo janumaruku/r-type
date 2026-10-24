@@ -8,28 +8,34 @@
 #ifndef FONT_CACHE_HPP
 #define FONT_CACHE_HPP
 
-#include <cstdint>
 #include <filesystem>
-#include <raylib.h>
-#include "Vec2.hpp"
+#include <memory>
+
+#include "DrawCommand.hpp"
 
 namespace engine::render {
-
-struct FontId {
-    std::uint32_t value{};
-
-    explicit FontId(std::uint32_t id) : value{id} {}
-};
 
 class FontCache {
 public:
     FontCache();
+
+    FontCache(const FontCache &) = delete;
+
+    FontCache(FontCache &&) = delete;
+
     ~FontCache();
+
+    FontCache &operator=(const FontCache &) = delete;
+
+    FontCache &operator=(FontCache &&) = delete;
+
     FontId load(const std::filesystem::path &path);
+
 private:
     struct Impl;
     std::unique_ptr<Impl> _impl;
 };
-};
+
+}
 
 #endif

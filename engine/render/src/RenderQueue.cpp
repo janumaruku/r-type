@@ -6,6 +6,7 @@
 */
 
 #include <algorithm>
+#include <utility>
 #include <variant>
 
 #include "RenderQueue.hpp"
@@ -15,13 +16,7 @@ namespace engine::render {
 
 void RenderQueue::push(DrawCommand command)
 {
-    const auto getLayer = [](const DrawCommand &c) {
-        return std::visit([](const auto &cmd) { return cmd.layer; }, c);
-    };
-
-    const auto insertionPoint = std::ranges::upper_bound(_commands,
-        getLayer(command), {}, getLayer);
-    _commands.insert(insertionPoint, std::move(command));
+    _commands.push_back(std::move(command));
 }
 
 void RenderQueue::clear()
@@ -45,7 +40,7 @@ void RenderQueue::sortByLayer()
         });
 }
 
-std::span<const DrawCommand> RenderQueue::commands()
+std::span<const DrawCommand> RenderQueue::commands() const
 {
     return _commands;
 }

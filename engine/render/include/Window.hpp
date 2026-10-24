@@ -8,7 +8,9 @@
 #ifndef WINDOW_HPP
 #define WINDOW_HPP
 
+#include <cstdint>
 #include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -30,13 +32,13 @@ class Window {
 public:
     explicit Window(WindowConfig const& config);
 
-    Window(Window &) = delete;
     Window(const Window &) = delete;
-    Window(Window &&) =delete;
-    Window(const Window &&) = delete;
 
-    Window operator=(const Window &) = delete;
-    Window operator=(const Window &&) = delete;
+    Window(Window &&) = delete;
+
+    Window &operator=(const Window &) = delete;
+
+    Window &operator=(Window &&) = delete;
 
     ~Window();
 
@@ -55,9 +57,6 @@ public:
 private:
     struct Impl;
     std::unique_ptr<Impl> _impl;
-
-    bool _shouldClose = false;
-    bool _isOpen = false;
 };
 
 } // namespace engine::render
