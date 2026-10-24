@@ -8,27 +8,40 @@
 #ifndef RAYLIB_RENDERER_HPP
 #define RAYLIB_RENDERER_HPP
 
+#include <memory>
+
+#include "FontCache.hpp"
 #include "IRenderer.hpp"
+#include "TextureCache.hpp"
 #include "Window.hpp"
 
 namespace engine::render {
 
+/*
+** Draws into an off-screen texture of the logical size, then letterboxes it
+** into the window. It owns GPU state, so like the caches it must be created
+** after the Window and destroyed before it.
+*/
 class RaylibRenderer final : public IRenderer {
 public:
-    RaylibRenderer();
-    RaylibRenderer(const RaylibRenderer &) = delete;
-    RaylibRenderer &operator=(const RaylibRenderer &) = delete;
+    RaylibRenderer(Window &window, TextureCache &textures, FontCache &fonts,
+        core::Vec2f logicalSize);
 
-    ~RaylibRenderer() override = default;
-    void render() override;
-    void beginFrame(Color clear) override;
+    ~RaylibRenderer() override;
+
+    void beginFrame(core::Color clear) override;
+
     void submit(const RenderQueue &queue) override;
+
+    void endFrame() override;
+
+    void setLogicalSize(core::Vec2f size) override;
+
 private:
-    Window &_window;
-    TextureCache &_textures;
-    FontCache &_fonts;
-    RenderTexture2D _target;
+    struct Impl;
+    std::unique_ptr<Impl> _impl;
 };
+
 }
 
 #endif
