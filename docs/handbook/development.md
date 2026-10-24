@@ -17,9 +17,9 @@ Ownership: `std::unique_ptr` for anything owned, references for borrowed objects
 
 ## Logging
 
-Both binaries log to `std::cerr` through `engine::core::Logger` and the `log::` functions ([engine: logging](../modules/engine.md#logging)). Each module or class that logs keeps a `Logger` with a short context name (`"net"`, `"server"`, `"client"`), and each thread names itself with `log::setThreadName` at start-up. Every level has a defined use:
+Both binaries log to `std::cerr` through `engine::core::log::Logger` and the `log::` functions ([engine: logging](../modules/engine.md#logging)). Each module or class that logs keeps a `Logger` with a short context name (`"net"`, `"server"`, `"client"`), and each thread names itself with `setThreadName` on one of its `Logger`s at start-up. Every level has a defined use:
 
-- **error** (`Level::ERR`): an action failed and was abandoned.
+- **error** (`Level::EG_ERROR`): an action failed and was abandoned.
 - **warn:** something was degraded (tick overrun, dropped datagrams, audio disabled).
 - **info:** lifecycle events (start, bind, join, leave, game over, periodic stats).
 - **debug:** per-message traces.
@@ -44,7 +44,7 @@ Part 1 has **unit tests only**, written with GoogleTest. Other kinds of tests ar
 
 | What | Examples of cases |
 | --- | --- |
-| ECS | Every rule of the contract in [engine: ECS](../modules/engine.md#contract): registration, views, commands, stale handles, resources, stages. The journey's "Check yourself" lists ([ECS journey](../reference/ECS_JOURNEY.md)) give the cases |
+| ECS | Every rule of the contract in [engine: ECS](../modules/engine.md#contract): registration, views, commands, stale handles, resources, stages. The journey's "Check yourself" lists ([ECS journey](../reference/ECS_JOURNEY.md)) give the cases. `EcsIntegrationTests.cpp` checks the pieces together: a seeded mini-simulation (spawn, movement, lifetime, collision) checked after each of 600 steps and for determinism, and 10 000 random operations compared with a shadow model |
 | Runtime | `FixedTimestep` step counts and the 0.25 s cap |
 | `net::Packet` | Round trips of every primitive and container, reads past the end, writes past `MAX_SIZE`, forged list counts ([network: tests](../modules/network.md#tests)) |
 | Protocol | Every message round-trips, and every truncated prefix of a valid payload throws `PacketError` |

@@ -43,6 +43,7 @@ add_subdirectory(network)
 add_subdirectory(apps/server)
 if (RTYPE_BUILD_CLIENT)
     add_subdirectory(apps/client)
+    add_subdirectory(apps/ecs_example)
 endif ()
 
 if (RTYPE_BUILD_TESTS)

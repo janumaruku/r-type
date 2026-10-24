@@ -53,33 +53,36 @@ classDiagram
     class NetworkError
     class Level {
         <<enumeration>>
-        TRACE
-        DEBUG
-        INFO
-        WARN
-        ERR
-        OFF
+        EG_TRACE
+        EG_DEBUG
+        EG_INFO
+        EG_WARN
+        EG_ERROR
+        EG_OFF
     }
     class Logger {
         -std::string _context
-        +Logger(std::string context)
+        +Logger(std::string const& context)
         +trace() LogLine
         +debug() LogLine
         +info() LogLine
         +warn() LogLine
         +error() LogLine
-        +trace(format_string fmt, Args... args) void
-        +debug(format_string fmt, Args... args) void
-        +info(format_string fmt, Args... args) void
-        +warn(format_string fmt, Args... args) void
-        +error(format_string fmt, Args... args) void
+        +trace(std::string const& format, Args... args) LogLine
+        +debug(std::string const& format, Args... args) LogLine
+        +info(std::string const& format, Args... args) LogLine
+        +warn(std::string const& format, Args... args) LogLine
+        +error(std::string const& format, Args... args) LogLine
+        +setThreadName(std::string const& name) void
+        -makeLine(Level level) LogLine
+        -formatted(Level level, std::string const& format, Args&... args) LogLine
     }
     class LogLine {
-        -Level _level
-        -std::string_view _context
-        -bool _active
-        -std::ostringstream _buffer
-        +operator<<(T const& value) LogLine&
+        +Level level
+        +std::string const& context
+        +bool active
+        +std::ostringstream buffer
+        +operator<<(std::string const& message) LogLine&
         +~LogLine()
     }
     Logger ..> LogLine : creates
@@ -112,7 +115,7 @@ classDiagram
 | --- | --- |
 | `Vec2<T>`, `Rect<T>` | Plain aggregates, `constexpr` where possible. Aliases: `Vec2f`, `Vec2i`, `Vec2u`, `FloatRect`, `IntRect`. Coordinates use a y-down screen convention, in **logical units** ([game rules](game.md#rules-and-tuning-values)). |
 | `Rng` | The only source of randomness in the game. The server seeds it from `std::random_device` unless `--seed` is given, which makes test runs reproducible. Never use `std::rand`. |
-| `Logger`, `LogLine`, `log::*` | Thread-safe logging with a stream style and a `std::format` style, one line at a time, to `std::cerr`, coloured per level. See [Logging](#logging) below. |
+| `Logger`, `LogLine`, `log::*` | Thread-safe logging with a stream style and a `std::format` style, filtered by a global level, one line at a time, to `std::cerr` by default, coloured per level. See [Logging](#logging) below. |
 | Error types | Thrown only during start-up or for a fatal, unrecoverable state. Per-frame code never throws on bad input; it returns `bool` or `std::optional`. The one exception is `net::PacketError`, which is thrown and caught inside the packet decode boundary ([network](network.md#netpacket), [handbook](../handbook/development.md#error-handling-policy)). |
 | `ICommand<Args...>` | Generic command interface: `execute(Args...)` returns `false` when the command could not be carried out, and `operator()` is a non-virtual member that forwards to `execute`, so commands only implement `execute`. Used for the server's and client's message commands. |
 | `FactoryTemplate<Base, Key, Args...>` | Maps a key to a creator. `registerCreator<Concrete>(key)` only compiles if `Concrete::create(Args...)` returns `std::unique_ptr<Base>` (enforced by the `HasCreateMethod` concept). `create(key, args...)` throws `std::runtime_error` for an unknown key, so callers check `hasKey` first on untrusted keys. The key type needs `std::hash` and `operator<<` (used in that error message). Copy and move are deleted. |
@@ -120,90 +123,96 @@ classDiagram
 
 ### Logging
 
-One logging facility for the whole project, in `engine/core/include/engine/core/Log.hpp` and `src/Log.cpp`. It looks like `std::cout`, can also be used like `std::format`, and is safe to call from the network IO thread and the game thread at the same time.
+One logging facility for the whole project, in `engine/core/include/engine/core/Logger.hpp` (format-style templates in `Logger.tpp`) and `engine/core/src/Logger.cpp`, namespace `engine::core::log`. It looks like `std::cout`, can also be used like `std::format`, and is safe to call from the network IO thread and the game thread at the same time.
 
 #### Usage
 
 ```cpp
-using namespace engine::core;
+using namespace engine::core::log;   // not `engine::core`: `log::` would clash with ::log from <cmath>
+
+// One Logger per module or class, the context is printed on every line
+Logger netLog{"net"};
+netLog.setThreadName("net-io");           // names the calling thread, once
 
 // std::format style (same syntax as std::format and C++23's std::println)
-log::info("player {} joined from {}", id, endpoint);
-log::error("cannot bind UDP port {}: {}", port, reason);
+netLog.warn("dropped {} datagrams", count);
 
 // Stream style, like std::cout: the line is written when the statement ends
-log::info() << "player " << id << " joined from " << endpoint;
+netLog.debug() << "received " << std::to_string(bytes) << " bytes";
 
-// With a context: one Logger per module or class, the context is printed on every line
-Logger netLog{"net"};
-netLog.warn("dropped {} datagrams", count);
-netLog.debug() << "received " << bytes << " bytes from " << endpoint;
+// Global settings, usually set once at start-up
+setLevel(parseLevel(levelFlag).value_or(Level::EG_INFO));
 ```
 
 ```text
-[14:02:07.415] [INFO] [main] player 2 joined from 10.0.0.5:51234
+[14:02:07.415] [INFO] [main] [server] player 2 joined from 10.0.0.5:51234
 [14:02:07.416] [WARN] [net-io] [net] dropped 3 datagrams
 ```
-
-The free functions `log::trace()` … `log::error()` use a default `Logger` with no context.
 
 #### API
 
 ```cpp
-namespace engine::core {
+namespace engine::core::log {
 
-enum class Level : std::uint8_t { TRACE, DEBUG, INFO, WARN, ERR, OFF };
+enum class Level : std::uint8_t { EG_TRACE, EG_DEBUG, EG_INFO, EG_WARN, EG_ERROR, EG_OFF };
 
-class LogLine {                       // a single line being built
-public:
-    LogLine(Level level, std::string_view context);
-    ~LogLine();                       // writes the whole line, once
-    LogLine(LogLine&&) noexcept;      // movable, not copyable
-    LogLine(const LogLine&) = delete;
+struct LogLine {                      // a single line being built
+    Level level;
+    const std::string &context;
+    bool active;                      // false when the level is filtered out
+    std::ostringstream buffer;
 
-    template <typename T>
-    LogLine& operator<<(const T& value);
+    LogLine(Level level, const std::string &context, bool active) noexcept;
+    LogLine(LogLine &&other) noexcept;     // movable, not copyable
+    LogLine &operator<<(const std::string &message) &;
+    LogLine &&operator<<(const std::string &message) &&;
+    ~LogLine() noexcept;              // writes the whole line, once
 };
 
 class Logger {
 public:
-    explicit Logger(std::string context = "");
+    explicit Logger(const std::string &context) noexcept;
 
-    [[nodiscard]] LogLine info() const;                                // stream style
+    LogLine info();                                                     // stream style
     template <typename... Args>
-    void info(std::format_string<Args...> fmt, Args&&... args) const;  // format style
+    LogLine info(const std::string &format, Args... args);              // format style
     // same pair for trace, debug, warn and error
+
+    void setThreadName(const std::string &name) noexcept;               // e.g. "main", "net-io"
 };
 
-namespace log {
-    void setLevel(Level level);
-    Level level();
-    std::optional<Level> parseLevel(std::string_view name);   // "trace" | "debug" | "info" | "warn" | "error"
-    void setThreadName(std::string_view name);                // e.g. "main", "net-io"
-    void setOutput(std::ostream& stream);                     // std::cerr by default; tests redirect it
-    void setColors(bool enabled);                             // default: on only if the output is a terminal
-
-    LogLine info();                                           // and trace, debug, warn, error
-    template <typename... Args>
-    void info(std::format_string<Args...> fmt, Args&&... args);
-}
+void setLevel(Level threshold) noexcept;                                // default EG_INFO
+Level level() noexcept;
+bool isEnabled(Level lineLevel) noexcept;
+std::optional<Level> parseLevel(std::string_view name) noexcept;        // "trace" | "debug" | "info" | "warn" | "error" | "off"
+void setOutput(std::ostream &stream);                                   // std::cerr by default; tests redirect it
+void setColors(bool enabled);
 
 }
 ```
+
+| Function | Behaviour |
+| --- | --- |
+| `setLevel` / `level` | Set and read the global threshold, a `std::atomic<Level>`. |
+| `isEnabled(level)` | `true` when a line at that level would be written: `level >= threshold` and `level != EG_OFF`. Used to skip work done only for a log line, like timing. |
+| `parseLevel(name)` | Lowercase names only. Anything else, `"INFO"` included, gives `std::nullopt`. Meant for a `--log-level` flag. |
+| `setOutput(stream)` | Sends every following line to `stream`. Turns colours off unless `stream` is `std::cerr` on a terminal, so a captured or redirected log has no escape codes. |
+| `setColors(enabled)` | Forces colours on or off. Call it after `setOutput`. |
 
 #### Rules
 
 | Rule | Detail |
 | --- | --- |
-| Level order | `TRACE < DEBUG < INFO < WARN < ERR < OFF`. A message is printed when its level is **≥** the threshold set with `setLevel` (default `INFO`). `OFF` silences everything. |
-| `ERR`, not `ERROR` | Windows' `wingdi.h` defines `ERROR` as a macro, which breaks the name even inside an enum. The method `error()` is fine: it's lowercase. |
-| One stream | Every level goes to the same stream: `std::cerr`. It's unbuffered, so a line reaches the terminal immediately, even just before a crash. Diagnostics stay off `std::cout`, so `./r-type_server 2> server.log` captures the whole log. |
+| Level order | `EG_TRACE < EG_DEBUG < EG_INFO < EG_WARN < EG_ERROR < EG_OFF`. A line is written when its level is **≥** the threshold (default `EG_INFO`). `EG_OFF` silences everything. The level is checked by the `Logger` itself: callers just log. |
+| `EG_` prefix | Windows headers define `ERROR` (and other short names) as macros, which breaks them even inside an enum. The prefix avoids every clash. The methods (`error()`) are fine: they're lowercase. The printed name of `EG_ERROR` is `ERR`. |
+| One stream | Every level goes to the same stream, `std::cerr` by default. It's unbuffered, so a line reaches the terminal immediately, even just before a crash. Diagnostics stay off `std::cout`, so `./r-type_server 2> server.log` captures the whole log. `setOutput` redirects it, for tests. |
 | One line, written once | A `LogLine` builds its text in its own buffer, and its destructor writes the full line to the stream in a single call, under one global mutex. Lines from two threads never mix, and there is no end marker to forget: the line ends with the statement. |
-| Colours per level | `TRACE` grey, `DEBUG` cyan, `INFO` green, `WARN` yellow, `ERR` red. For every level except `ERR`, the colour applies to the prefix only (`[time] [LEVEL] [thread] [context]`) and the message stays in the terminal's normal colour, so long messages stay readable. For `ERR`, the **whole line** is red, so errors stand out when scrolling. A reset code ends the coloured part. Colours are on by default only when the output is a terminal (`isatty` on Linux, `_isatty` on Windows), so CI logs and files stay free of escape codes. |
+| Shared state | The level, the output and the colour flag live in one object built on first use, so a `Logger` used during static initialization never sees them uninitialized. The output and the colour flag are only read or changed under the mutex. |
+| Colours per level | `TRACE` grey, `DEBUG` cyan, `INFO` green, `WARN` yellow, `ERR` red. For every level except `ERR`, the colour applies to the prefix only (`[time] [LEVEL] [thread] [context]`) and the message stays in the terminal's normal colour, so long messages stay readable. For `ERR`, the **whole line** is red, so errors stand out when scrolling. A reset code ends the coloured part. Colours are on by default only when the output is a terminal (`isatty` on Linux, `_isatty` on Windows), decided when the state is built and again on each `setOutput`, so CI logs and files stay free of escape codes. |
 | Line format | `[HH:MM:SS.mmm] [LEVEL] [thread] [context] message`. The `[context]` part is omitted when the context is empty. The time is UTC, written with `std::format("{:%T}", std::chrono::floor<std::chrono::milliseconds>(now))`, which works on GCC 13 and MSVC without time-zone support. The thread name is a `thread_local`, `"?"` until `setThreadName` is called. |
-| Cost when filtered out | The format style checks the level before calling `std::format`, so a disabled call costs one comparison. A filtered-out `LogLine` ignores its `<<` calls, but the expressions on the right of `<<` are still evaluated: don't put expensive computations in a log line. The threshold is a `std::atomic<Level>`. |
+| Cost when filtered out | A filtered-out line is created inactive. The format style checks it before calling `std::vformat`, so a disabled call costs one atomic load and one comparison. A filtered-out `LogLine` ignores its `<<` calls, but the expressions on the right of `<<` are still evaluated: don't put expensive computations in a log line. |
 | No `printf` style | `"%d"`-style formatting isn't offered: it isn't type-safe, and `std::format` covers the same need. `std::println` is C++23, and we build in C++20, so the format style uses `std::format` with the same syntax. |
-| `[[nodiscard]]` | The stream-style methods are `[[nodiscard]]`, so `log::info();` alone (a line that would print nothing) triggers a compiler warning, which `-Werror` turns into an error. |
+| Not done yet | Free functions `log::info(...)` with no context, `[[nodiscard]]` on the stream-style methods, and a compile-time checked `std::format_string`. The format string is a `const std::string &`, checked at run time by `std::vformat`. |
 
 ## ECS (`engine_ecs`)
 
@@ -211,7 +220,7 @@ The ECS stores game data as components in **sparse sets**, one per component typ
 
 The design follows the journey written while building the bootstrap ECS ([ECS journey](../reference/ECS_JOURNEY.md)), taken directly to its final form: the sparse sets and views of its steps 8–9, plus its steps 10 (own type erasure, no `std::any`), 11 (generational entities) and 12 (command buffer, resources, stages). Parallel scheduling of systems is left for Part 2. The reasons are in [ADR 0005](../decisions/0005-ecs-design.md).
 
-Namespace `engine::ecs`, headers in `../../engine/ecs/include/ecs` (template definitions in `.tpp` files included at the end of their header), non-template code in `engine/ecs/src/`. It knows no game type: the game registers its components, systems and resources at start-up.
+Namespace `engine::ecs`, headers in `../../engine/ecs/include/engine/ecs` (template definitions in `.tpp` files included at the end of their header), non-template code in `engine/ecs/src/`. It knows no game type: the game registers its components, systems and resources at start-up.
 
 ```mermaid
 classDiagram
@@ -247,8 +256,10 @@ classDiagram
         -std::vector~std::unique_ptr~SparseSetBase~~ _storages
         -std::vector~uint32_t~ _generations
         -std::vector~uint32_t~ _freeIndices
-        -ResourceMap _resources
-        -std::vector~Stage~ _stages
+        -std::vector~std::unique_ptr~ResourceBase~~ _resources
+        -std::vector~std::vector~SystemEntry~~ _stages
+        -bool _running
+        -Logger _logger
         -CommandBuffer _commands
         +spawnEntity() Entity
         +killEntity(Entity) void
@@ -269,6 +280,18 @@ classDiagram
         +setResource~T~(T value) T&
         +getResource~T~() T&
         +tryGetResource~T~() T*
+        +emplaceResource~T~(Args&&...) T&
+        -runStageAt(uint8_t) void
+    }
+    class SystemEntry {
+        +std::string name
+        +std::function run
+    }
+    class ResourceBase {
+        <<abstract>>
+    }
+    class ResourceHolder~T~ {
+        +T value
     }
     class BasicView~Cs~ {
         <<detail>>
@@ -282,18 +305,23 @@ classDiagram
     class CommandBuffer {
         -std::vector~Command~ _commands
         +kill(Entity) void
-        +spawn(init) void
+        +spawn(SpawnInit init) void
         +add~C~(Entity, C value) void
         +remove~C~(Entity) void
         +apply(Registry&) void
         +size() size_t
+        +empty() bool
     }
+    note for CommandBuffer "Both stored as std::function. Command: void(Registry&). SpawnInit: void(Registry&, const Entity&), optional in spawn"
     SparseSetBase <|-- SparseSet
     Registry "1" *-- "many" SparseSetBase : one storage per component type
     Registry *-- CommandBuffer
+    Registry "1" *-- "many" SystemEntry : per stage, in insertion order
     Registry ..> BasicView : creates
     BasicView ..> SparseSet : iterates
     SparseSetBase o-- Entity
+    ResourceBase <|-- ResourceHolder
+    Registry "1" *-- "many" ResourceBase : one per resource type
 ```
 
 ### Entities
@@ -369,11 +397,12 @@ registry.runStage(Stage::FIXED_UPDATE);   // runs that stage's systems in insert
 
 | Rule | Detail |
 | --- | --- |
-| Signature | A system receives the `Registry&` first, then one storage per listed component, in the listed order. A `const` component gives a `const SparseSet<C>&`. Checked at compile time with a readable `static_assert` message. |
-| Stages | Systems belong to a stage: any `enum class` whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`). `runStage` runs one stage's systems in the order they were added. The server never adds render systems. |
-| Names | Each system has a name, logged at `trace` level with its run time, which makes the tick order and its cost visible. |
+| Signature | A system receives the `Registry&` first, then one storage per listed component, in the listed order. A `const` component gives a `const SparseSet<C>&`, and a system taking a non-`const` storage for it doesn't compile. Checked at compile time with a readable `static_assert` message. |
+| Stages | Systems belong to a stage: any enumeration (`enum class` or plain `enum`) whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`), checked by `StageConcept`. Systems are kept in a vector indexed by the stage's value, so stages use small values starting at 0. `runStage` runs one stage's systems in the order they were added. A stage with no systems only applies pending commands. The server never adds render systems. |
+| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time and the number of commands it recorded (`<name> took <µs> us and ran <n> commands`), which makes the tick order and its cost visible. The time covers the system only, not the apply of its commands. The clock is read only when `TRACE` is enabled, checked once per stage, so timing costs nothing otherwise. |
 | Registration | Adding a system registers its component types. Adding a system while a stage is running is a programming error, caught with an `assert`. |
-| Callables | Stored in `std::function`, so systems must be copyable callables (free functions and lambdas without move-only captures). |
+| Callables | Stored in `std::function`, so systems must be copyable callables (free functions and lambdas without move-only captures). Move-only state goes in a resource. The registry keeps one copy and calls it on every run, so a `mutable` lambda keeps its state across runs. |
+| Running guard | A flag is set for the whole stage and reset by an RAII object. Calling `runStage` from inside a system is a programming error, caught with an `assert`. If a system throws, the commands it recorded are discarded (the buffer is cleared), so half of a system's intentions are never applied. The same goes when applying its commands throws (for example, a spawn's `init`). Either way, the exception reaches the caller of `runStage`, the rest of that stage doesn't run, and the next `runStage` works normally. |
 
 ### Command buffer
 
@@ -382,35 +411,56 @@ Structural changes requested while iterating are recorded in `registry.commands(
 | Command | Effect when applied |
 | --- | --- |
 | `kill(e)` | `killEntity(e)` (ignored if `e` is already dead) |
-| `spawn(init)` | spawns an entity, then calls `init(Registry&, Entity)` to add its components |
-| `add<C>(e, value)` | `addComponent(e, value)` (ignored if `e` died meanwhile) |
-| `remove<C>(e)` | `removeComponent<C>(e)` |
+| `spawn(init)` | spawns an entity, then calls `init(Registry&, Entity)` if it isn't empty. `init` is the only place to add the new entity's components, since its handle doesn't exist when the command is recorded. If `init` throws, the new entity is killed before the exception propagates |
+| `add<C>(e, value)` | `addComponent(e, value)` (ignored if `e` died meanwhile, where an immediate add would throw) |
+| `remove<C>(e)` | `removeComponent<C>(e)` (ignored if `e` is dead) |
 
-- The registry applies the buffer **after each system** in `runStage`, so the next system sees a consistent world. `applyCommands()` applies it on demand, for code outside a stage.
-- Commands are stored as `std::function`, so a value passed to a deferred `add` must be copyable. A move-only component is added immediately, outside any view loop.
+- Two systems killing the same entity (two colliders hitting each other) is fine: the second `kill` is ignored.
+- An `add` or `remove` of an **unregistered** type throws `EngineError` when the command is *applied*, not when it is recorded, so the error shows up away from the line that caused it.
+- `runStage` applies the buffer for the game, which never calls `apply` itself:
+  1. pending commands (recorded outside a stage) are applied **before the first system**, even when the stage has no systems;
+  2. then each system's commands are applied **as soon as it returns**, so the next system sees a consistent world;
+  3. inside a system, nothing is applied yet: the recording system still sees an entity it killed as alive, which is what makes recording from a view loop safe.
+- **Why after each system and not once per stage:** systems depend on each other's kills and spawns. `healthSystem` records kills that `netIdCleanupSystem` must see applied. Applying once per stage would leave every later system working on entities that are already doomed.
+- `applyCommands()` applies the buffer on demand, for code outside a stage.
+- **Order and nesting:** commands run in the order they were recorded. Commands recorded while applying (an `init` that spawns or adds more) run in the same `apply` call, after the ones already queued.
+- **Exceptions:** if a command throws, the rest of the batch is discarded, the buffer is left empty and the exception reaches the caller. A half-applied batch is never replayed.
+- Commands are stored as `std::function`, so a value passed to a deferred `add` must be copyable. A move-only component fails a `static_assert` at compile time; add it immediately, outside any view loop.
+- `size()` and `empty()` tell how many commands are pending. Including `engine/ecs/Registry.hpp` is enough to use the buffer.
 
 ### Resources
 
-Objects that every system may need but that aren't components: the game's random generator, rules, event outbox, `dt`. One instance per type, stored by `detail::typeId<T>()` like the storages.
+Objects that every system may need but that aren't components: the game's random generator, rules, event outbox, `dt`. There is one instance per type, found through `detail::typeId<T>()` like the storages, but kept in a **separate vector**: a type used both as a component and as a resource gets two independent objects.
+
+Each resource lives in a `detail::ResourceHolder<T>`, behind a `std::unique_ptr` to a small base with a virtual destructor (`Resources.hpp`). So a resource never moves in memory: setting other resource types, or moving the registry, leaves references to it valid.
 
 | Function | Behaviour |
 | --- | --- |
-| `setResource<T>(T value) -> T&` | Creates or replaces the resource |
-| `getResource<T>() -> T&` (+ `const`) | Throws `EngineError` naming the type if it was never set |
-| `tryGetResource<T>() -> T*` | `nullptr` if never set |
-| `DeltaTime` | A resource type provided by the ECS (`{ float seconds; }`). The caller sets it before `runStage`; systems never read a clock. |
+| `setResource<T>(T value) -> T&` | Creates the resource, or **move-assigns** the new value into the existing one, so references taken earlier stay valid. `T` must be movable. |
+| `emplaceResource<T>(Args&&...) -> T&` | Builds the resource in place from the arguments, for types that can't be moved (a mutex) or are costly to move. Replacing an existing one **destroys it**, so earlier references dangle. The new object is built before the old one is destroyed: if its constructor throws, the old resource is kept. |
+| `getResource<T>() -> T&` (+ `const`) | Throws `EngineError("resource not set: <type>")` if it was never set. The `const` overload returns `const T&`. |
+| `tryGetResource<T>() -> T*` (+ `const`) | `nullptr` if never set. The `const` overload returns `const T*`. |
+
+- `T` is any non-`const`, non-reference object type (`ResourceConcept`, the same rule as type ids). Unlike components, a resource doesn't have to be movable.
+- `DeltaTime` is the only resource the ECS defines: `{ float seconds = 0; }`. Whoever runs a stage sets it first. Systems read it and never read a clock (requirement F-08).
 
 ### Contract
 
-Unit tests check every rule. Each one maps to a "Check yourself" list in the journey.
+Unit tests check every rule. Each one maps to a "Check yourself" list in the journey. `tests/engine/ecs/EcsIntegrationTests.cpp` checks them together, the way the game uses them:
+
+- **Mini simulation:** spawner, movement, lifetime and collision systems in one stage, with `DeltaTime`, a seeded `Rng` and spawn/kill counters as resources. After each of 600 steps, every entity with a `Position` has a `Velocity`, every storage holds only live entities, and `aliveCount()` equals spawned minus killed. Two worlds with the same seed end with the same positions.
+- **Model check:** 10 000 seeded operations (spawn, kill, add, remove, and kills recorded from a view loop) on live, dead and stale handles, mirrored in a `std::map` shadow model. Liveness, components and view contents are compared after each operation, and a failure prints the seed and the operation index.
+
+Both run under AddressSanitizer (`RTYPE_SANITIZER=address`) with nothing reported.
 
 1. **Registration.** The game registers every component type when its world is created. Using an unregistered type throws `EngineError` naming it.
 2. **Inside a view loop, only the current entity may change immediately.** Killing it or removing one of its components is safe. Killing *other* entities, spawning, or adding components goes through `commands()`. Component references taken in the loop dangle after an add, so don't keep them.
-3. **Commands are applied after each system**, in the order they were recorded.
+3. **Commands are applied after each system**, in the order they were recorded, and before the first system for commands recorded outside a stage. Nothing is applied while a system runs.
 4. **Stale handles are detected.** After a kill, the old handle is not alive, `getComponent` through it returns `nullptr`, and adding to it throws.
 5. **Iteration order is unspecified.** Systems must not depend on it.
 6. **Type ids are process-local.** Never serialize them.
 7. **Single-threaded.** Only the game thread uses the registry.
+8. **Stages don't nest.** A system never calls `runStage` or `addSystem`. Both are checked with an `assert`.
 
 ### Benchmarks
 
