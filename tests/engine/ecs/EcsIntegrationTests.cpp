@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <unordered_set>
+#include <vector>
 
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Entity.hpp"
@@ -131,8 +132,32 @@ void buildWorld(Registry &registry, std::uint32_t seed)
         });
     registry.addSystem<const Position, const Radius>(Stage::SIMULATION,
         "collision",
-        [](Registry &, const SparseSet<Position> &,
-            const SparseSet<Radius> &) {
+        [](Registry &registry, const SparseSet<Position> &positions,
+            const SparseSet<Radius> &radii) {
+            const auto &entities = positions.entities();
+            const auto &components = positions.components();
+            std::unordered_set<Entity> doomed;
+
+            for (std::size_t i = 0; i < entities.size(); ++i) {
+                const Radius *first = radii.tryGet(entities[i]);
+                if (first == nullptr)
+                    continue;
+                for (std::size_t j = i + 1; j < entities.size(); ++j) {
+                    const Radius *second = radii.tryGet(entities[j]);
+                    if (second == nullptr)
+                        continue;
+                    const float dx = components[i].x - components[j].x;
+                    const float dy = components[i].y - components[j].y;
+                    const float reach = first->value + second->value;
+                    if ((dx * dx) + (dy * dy) >= reach * reach)
+                        continue;
+                    registry.commands().kill(entities[i]);
+                    registry.commands().kill(entities[j]);
+                    doomed.insert(entities[i]);
+                    doomed.insert(entities[j]);
+                }
+            }
+            registry.getResource<Counters>().killed += doomed.size();
         });
 }
 
@@ -185,4 +210,28 @@ TEST_F(EcsSimulation, EntitiesDieWhenTheirLifetimeRunsOut)
     for (const Lifetime &lifetime:
         _registry.getComponents<Lifetime>().components())
         EXPECT_GT(lifetime.seconds, 0.0F);
+}
+
+TEST_F(EcsSimulation, EveryEntityOfAnOverlappingPairDiesOnce)
+{
+    std::vector<Entity> colliders;
+    for (const float x: {-50.0F, -49.0F, -48.0F, -10.0F}) {
+        const Entity entity = _registry.spawnEntity();
+        _registry.addComponent(entity, Position{.x = x, .y = -50.0F});
+        _registry.addComponent(entity, Velocity{.dx = 0.0F, .dy = 0.0F});
+        _registry.addComponent(entity, Radius{1.0F});
+        _registry.addComponent(entity, Lifetime{100.0F});
+        colliders.push_back(entity);
+    }
+    _registry.getResource<Counters>().spawned += colliders.size();
+
+    EXPECT_NO_THROW(_registry.runStage(Stage::SIMULATION));
+
+    EXPECT_FALSE(_registry.isAlive(colliders[0]));
+    EXPECT_FALSE(_registry.isAlive(colliders[1]));
+    EXPECT_FALSE(_registry.isAlive(colliders[2]));
+    EXPECT_TRUE(_registry.isAlive(colliders[3]));
+    const Counters &counters = _registry.getResource<Counters>();
+    EXPECT_EQ(counters.killed, 3U);
+    EXPECT_EQ(_registry.aliveCount(), counters.spawned - counters.killed);
 }
