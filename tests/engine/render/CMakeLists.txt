@@ -7,9 +7,10 @@ rtype_add_test(engine_render_tests
 )
 
 rtype_add_test(engine_render_raylib_tests
-    LIBS engine_input raylib
+    LIBS engine_input engine_core raylib
     SOURCES
     KeyTableTests.cpp
+    RaylibConvertTests.cpp
 )
 
 target_include_directories(engine_render_raylib_tests PRIVATE "${PROJECT_SOURCE_DIR}/engine/render/src")

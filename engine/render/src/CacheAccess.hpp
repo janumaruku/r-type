@@ -8,11 +8,11 @@
 #ifndef CACHE_ACCESS_HPP
 #define CACHE_ACCESS_HPP
 
-#include <raylib.h>
-
 #include "DrawCommand.hpp"
 #include "FontCache.hpp"
 #include "TextureCache.hpp"
+
+#include <raylib.h>
 
 namespace engine::render::detail {
 
