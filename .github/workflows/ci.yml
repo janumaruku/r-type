@@ -2,6 +2,7 @@ name: Continuous Integration
 
 env:
   JOB_FAILS: "false"
+  RAYLIB_PACKAGES: libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
 
 on:
   pull_request:
@@ -22,7 +23,7 @@ jobs:
     name: Compilation required
     if: ${{ github.repository != vars.MIRROR_URL }}
     runs-on: ubuntu-latest
-    container: janumaruku/epitest-with-raylib
+    container: epitechcontent/epitest-docker
     timeout-minutes: 10
 
     env:
@@ -32,10 +33,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install cache dependencies
+      - name: Install dependencies
         run: |
           apt update
-          apt install -y tar zstd
+          apt install -y tar zstd $RAYLIB_PACKAGES
 
       - name: Restore CPM cache
         uses: actions/cache@v4
@@ -247,7 +248,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install -y cmake make git python3 clang clang-tidy bear tar zstd
+          apt install -y cmake make git python3 clang clang-tidy bear tar zstd $RAYLIB_PACKAGES
 
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -349,7 +350,7 @@ jobs:
         run: |
           clang --version
           apt update
-          apt install -y llvm python3-full tar zstd
+          apt install -y llvm python3-full tar zstd $RAYLIB_PACKAGES
 
       - name: Checkout Repository
         uses: actions/checkout@v4
