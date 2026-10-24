@@ -1,4 +1,5 @@
 add_library(engine_render STATIC
+	src/Letterbox.cpp
 	src/RenderQueue.cpp
 	src/ResourcePath.cpp
 	src/Window.cpp
