@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <string_view>
 #include <vector>
 
 #include "Actions.hpp"
@@ -120,12 +121,39 @@ Bindings loadBindings(const engine::core::AssetLocator &assets,
 }
 
 /*
+** The cache keys files by their normalised path, so a second load through a
+** different spelling must hand back the first id instead of a new texture.
+*/
+void checkTextureIdsAreShared(engine::render::TextureCache &textures,
+    const engine::core::AssetLocator &assets,
+    const engine::render::TextureId sheet, engine::core::log::Logger &logger)
+{
+    const engine::render::TextureId again =
+        textures.load(assets.root() / "." / "sprites.png");
+
+    if (again != sheet)
+        throw engine::core::EngineError("sprites.png loaded twice gave two ids");
+    logger.info("sprites.png loaded twice: same id {}", sheet.value);
+}
+
+/*
+** --missing-asset skips AssetLocator::resolve on purpose, so the error comes
+** from the cache's own check: the ResourceError names the file, main logs
+** it, and every destructor runs before the exit.
+*/
+void loadMissingAsset(engine::render::TextureCache &textures,
+    const engine::core::AssetLocator &assets)
+{
+    (void)textures.load(assets.root() / "missing.png");
+}
+
+/*
 ** The order matters: the window first, then the caches and the renderer,
 ** which hold GPU resources and must be destroyed before the window closes.
 ** Each frame runs in the order the client will use: events, input state,
 ** game update, then fill, sort and submit the queue.
 */
-void run(engine::core::log::Logger &logger)
+void run(engine::core::log::Logger &logger, const bool missingAsset)
 {
     const engine::core::AssetLocator assets{
         std::filesystem::path{RENDER_DEMO_ASSETS}};
@@ -144,6 +172,9 @@ void run(engine::core::log::Logger &logger)
         .sheet = textures.load(assets.resolve("sprites.png")),
         .font = fonts.load(assets.resolve("DejaVuSansMono.ttf")),
     };
+    checkTextureIdsAreShared(textures, assets, scene.sheet, logger);
+    if (missingAsset)
+        loadMissingAsset(textures, assets);
     const Bindings bindings = loadBindings(assets, logger);
     InputState input;
     engine::render::RenderQueue queue;
@@ -184,12 +215,18 @@ void run(engine::core::log::Logger &logger)
 }
 }
 
-int main()
+int main(int argc, char **argv)
 {
     engine::core::log::Logger logger{"render_demo"};
+    const bool missingAsset =
+        argc == 2 && std::string_view{argv[1]} == "--missing-asset";
 
+    if (argc > 2 || (argc == 2 && !missingAsset)) {
+        logger.error("usage: {} [--missing-asset]", std::string{argv[0]});
+        return EXIT_ERROR;
+    }
     try {
-        run(logger);
+        run(logger, missingAsset);
     } catch (const engine::core::EngineError &error) {
         logger.error("{}", std::string{error.what()});
         return EXIT_ERROR;
