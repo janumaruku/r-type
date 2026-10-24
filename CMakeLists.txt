@@ -55,7 +55,7 @@ endif ()
 add_subdirectory(engine)
 
 if (RTYPE_BUILD_CLIENT AND RTYPE_BUILD_EXAMPLES)
-    add_subdirectory(examples)
+    add_subdirectory(apps/render_demo)
 endif ()
 
 if (RTYPE_BUILD_BENCHMARKS)
