@@ -18,6 +18,7 @@
 #include "Logger.hpp"
 #include "RaylibRenderer.hpp"
 #include "RenderQueue.hpp"
+#include "Scene.hpp"
 #include "TextureCache.hpp"
 #include "Window.hpp"
 #include "engine/input/InputEvent.hpp"
@@ -28,22 +29,16 @@ using engine::core::Vec2f;
 using engine::input::InputEvent;
 using engine::input::InputState;
 using render_demo::Action;
+using render_demo::CELL;
+using render_demo::LOGICAL_SIZE;
+using render_demo::Ship;
 using Bindings = engine::input::ActionMap<Action>;
 
 constexpr int EXIT_ERROR = 84;
-constexpr int CELL = 32;
-constexpr float SHIP_SCALE = 2.0F;
 constexpr float SHIP_SPEED = 400.0F;
+constexpr float BULLET_SPEED = 900.0F;
 constexpr float MAX_FRAME_TIME = 0.05F;
-constexpr std::int16_t SHIP_LAYER = 500;
-const Vec2f LOGICAL_SIZE{1280.0F, 720.0F};
 const engine::core::Color BACKGROUND{12, 18, 40, 255};
-
-struct Ship {
-    Vec2f position;
-    bool facingLeft;
-    bool thrusting;
-};
 
 /*
 ** Feeds the frame's events to the input state. Raylib reports no key
@@ -91,7 +86,7 @@ void moveShip(Ship &ship, const Bindings &bindings, const InputState &input,
         axis(bindings, input, Action::MOVE_LEFT, Action::MOVE_RIGHT),
         axis(bindings, input, Action::MOVE_UP, Action::MOVE_DOWN)};
     const Vec2f moved = ship.position + direction * (SHIP_SPEED * dt);
-    const float margin = CELL * SHIP_SCALE / 2.0F;
+    const float margin = CELL * render_demo::SPRITE_SCALE / 2.0F;
 
     ship.position = Vec2f{
         std::clamp(moved.x(), margin, LOGICAL_SIZE.x() - margin),
@@ -101,25 +96,12 @@ void moveShip(Ship &ship, const Bindings &bindings, const InputState &input,
         ship.facingLeft = direction.x() < 0.0F;
 }
 
-/*
-** Cell 0 is the ship, cell 1 the ship with its flame. A negative source
-** width turns it to face left.
-*/
-void drawShip(engine::render::RenderQueue &queue,
-    const engine::render::TextureId sheet, const Ship &ship)
+void moveBullets(std::vector<Vec2f> &bullets, const float dt)
 {
-    const int cell = ship.thrusting ? 1 : 0;
-
-    queue.push(engine::render::SpriteCmd{
-        .texture = sheet,
-        .source = engine::core::IntRect{engine::core::Vec2i{cell * CELL, 0},
-            ship.facingLeft ? -CELL : CELL, CELL},
-        .position = ship.position,
-        .origin = Vec2f{CELL / 2.0F, CELL / 2.0F},
-        .scale = Vec2f{SHIP_SCALE, SHIP_SCALE},
-        .rotationDeg = 0.0F,
-        .tint = engine::core::Color{255, 255, 255, 255},
-        .layer = SHIP_LAYER,
+    for (Vec2f &bullet: bullets)
+        bullet += Vec2f{BULLET_SPEED * dt, 0.0F};
+    std::erase_if(bullets, [](const Vec2f &bullet) {
+        return bullet.x() > LOGICAL_SIZE.x() + CELL;
     });
 }
 
@@ -158,13 +140,16 @@ void run(engine::core::log::Logger &logger)
     engine::render::FontCache fonts;
     engine::render::RaylibRenderer renderer{window, textures, fonts,
         LOGICAL_SIZE};
-    const engine::render::TextureId sheet =
-        textures.load(assets.resolve("sprites.png"));
+    const render_demo::SceneAssets scene{
+        .sheet = textures.load(assets.resolve("sprites.png")),
+        .font = fonts.load(assets.resolve("DejaVuSansMono.ttf")),
+    };
     const Bindings bindings = loadBindings(assets, logger);
     InputState input;
     engine::render::RenderQueue queue;
     Ship ship{.position = LOGICAL_SIZE * 0.5F, .facingLeft = false,
         .thrusting = false};
+    std::vector<Vec2f> bullets;
     unsigned fired = 0;
     auto previous = std::chrono::steady_clock::now();
 
@@ -174,8 +159,10 @@ void run(engine::core::log::Logger &logger)
             break;
         if (bindings.wasTriggered(Action::QUIT, input))
             break;
-        if (bindings.wasTriggered(Action::FIRE, input))
+        if (bindings.wasTriggered(Action::FIRE, input)) {
             logger.info("FIRE #{}", ++fired);
+            bullets.push_back(ship.position + Vec2f{CELL, 0.0F});
+        }
 
         const auto now = std::chrono::steady_clock::now();
         const float dt = std::min(
@@ -183,9 +170,11 @@ void run(engine::core::log::Logger &logger)
             MAX_FRAME_TIME);
         previous = now;
         moveShip(ship, bindings, input, dt);
+        moveBullets(bullets, dt);
 
         queue.clear();
-        drawShip(queue, sheet, ship);
+        render_demo::fillQueue(queue, scene, render_demo::Frame{
+            .ship = ship, .bullets = bullets, .fired = fired});
         queue.sortByLayer();
         renderer.beginFrame(BACKGROUND);
         renderer.submit(queue);
