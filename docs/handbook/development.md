@@ -44,7 +44,7 @@ Part 1 has **unit tests only**, written with GoogleTest. Other kinds of tests ar
 
 | What | Examples of cases |
 | --- | --- |
-| ECS | Every rule of the contract in [engine: ECS](../modules/engine.md#contract): registration, views, commands, stale handles, resources, stages. The journey's "Check yourself" lists ([ECS journey](../reference/ECS_JOURNEY.md)) give the cases |
+| ECS | Every rule of the contract in [engine: ECS](../modules/engine.md#contract): registration, views, commands, stale handles, resources, stages. The journey's "Check yourself" lists ([ECS journey](../reference/ECS_JOURNEY.md)) give the cases. `EcsIntegrationTests.cpp` checks the pieces together: a seeded mini-simulation (spawn, movement, lifetime, collision) checked after each of 600 steps and for determinism, and 10 000 random operations compared with a shadow model |
 | Runtime | `FixedTimestep` step counts and the 0.25 s cap |
 | `net::Packet` | Round trips of every primitive and container, reads past the end, writes past `MAX_SIZE`, forged list counts ([network: tests](../modules/network.md#tests)) |
 | Protocol | Every message round-trips, and every truncated prefix of a valid payload throws `PacketError` |
