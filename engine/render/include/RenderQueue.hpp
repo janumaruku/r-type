@@ -23,13 +23,13 @@ public:
     void clear();
     void sortByLayer();
 
-    std::span<const DrawCommand> commands();
+    [[nodiscard]] std::span<const DrawCommand> commands() const;
     [[nodiscard]] std::size_t capacity() const;
 
 private:
     std::vector<DrawCommand> _commands;
 };
 
-}  
+}
 
 #endif /* !RENDER_QUEUE_HPP */

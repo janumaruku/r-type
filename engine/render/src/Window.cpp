@@ -9,12 +9,13 @@
 #include <array>
 #include <raylib.h>
 #include <cassert>
-#include <stdexcept>
 #include <cstdarg>
 #include <cstdio>
 #include <string>
 
 #include "Window.hpp"
+#include "Errors.hpp"
+#include "KeyTable.hpp"
 #include "Logger.hpp"
 
 namespace engine::render {
@@ -27,48 +28,6 @@ struct Window::Impl {
 };
 
 namespace {
-
-int toRaylibKey(input::Key key)
-{
-    switch (key) {
-        case input::Key::UP:     return KEY_UP;
-        case input::Key::DOWN:   return KEY_DOWN;
-        case input::Key::LEFT:   return KEY_LEFT;
-        case input::Key::RIGHT:  return KEY_RIGHT;
-        case input::Key::SPACE:  return KEY_SPACE;
-        case input::Key::ENTER:  return KEY_ENTER;
-        case input::Key::ESCAPE: return KEY_ESCAPE;
-        case input::Key::LSHIFT: return KEY_LEFT_SHIFT;
-        case input::Key::LCTRL:  return KEY_LEFT_CONTROL;
-        case input::Key::KEY_A:      return KEY_A;
-        case input::Key::KEY_B:      return KEY_B;
-        case input::Key::KEY_C:      return KEY_C;
-        case input::Key::KEY_D:      return KEY_D;
-        case input::Key::KEY_E:      return KEY_E;
-        case input::Key::KEY_F:      return KEY_F;
-        case input::Key::KEY_G:      return KEY_G;
-        case input::Key::KEY_H:      return KEY_H;
-        case input::Key::KEY_I:      return KEY_I;
-        case input::Key::KEY_J:      return KEY_J;
-        case input::Key::KEY_K:      return KEY_K;
-        case input::Key::KEY_L:      return KEY_L;
-        case input::Key::KEY_M:      return KEY_M;
-        case input::Key::KEY_N:      return KEY_N;
-        case input::Key::KEY_O:      return KEY_O;
-        case input::Key::KEY_P:      return KEY_P;
-        case input::Key::KEY_Q:      return KEY_Q;
-        case input::Key::KEY_R:      return KEY_R;
-        case input::Key::KEY_S:      return KEY_S;
-        case input::Key::KEY_T:      return KEY_T;
-        case input::Key::KEY_U:      return KEY_U;
-        case input::Key::KEY_V:      return KEY_V;
-        case input::Key::KEY_W:      return KEY_W;
-        case input::Key::KEY_X:      return KEY_X;
-        case input::Key::KEY_Y:      return KEY_Y;
-        case input::Key::KEY_Z:      return KEY_Z;
-        default:                 return KEY_NULL;
-    }
-}
 
 void raylibTraceCallback(int logLevel, const char *text, va_list args)
 {
@@ -98,7 +57,7 @@ Window::Window(WindowConfig const& config)
 
     SetTraceLogCallback(raylibTraceCallback);
 
-    std::uint16_t flags = 0;
+    unsigned int flags = FLAG_WINDOW_RESIZABLE;
     if (config.vsync)
         flags |= FLAG_VSYNC_HINT;
     if (config.fullscreen)
@@ -108,10 +67,9 @@ Window::Window(WindowConfig const& config)
     InitWindow(static_cast<int>(config.size.x()), static_cast<int>(config.size.y()),
                config.title.c_str());
 
-    if (!IsWindowReady()) {
-        core::log::Logger("window").error("Cannot open window");
-        throw std::runtime_error("");
-    }
+    if (!IsWindowReady())
+        throw core::EngineError("cannot open the window: no display, or no "
+                                "working OpenGL driver");
     SetExitKey(KEY_NULL);
     if (config.frameLimit > 0)
         SetTargetFPS(static_cast<int>(config.frameLimit));
@@ -156,10 +114,9 @@ std::vector<input::InputEvent> Window::pollEvents()
     using input::InputEvent;
     std::vector<InputEvent> events;
 
-    // Keys
-    for (std::size_t i = 0; i < static_cast<std::size_t>(input::Key::COUNT); ++i) {
-        auto key = static_cast<input::Key>(i);
-        int raylibKey = toRaylibKey(key);
+    for (std::size_t i = detail::keyIndex(input::Key::UNKNOWN) + 1; i < input::KEY_COUNT; ++i) {
+        const auto key = static_cast<input::Key>(i);
+        const int raylibKey = detail::KEY_TABLE[i];
         if (IsKeyPressed(raylibKey))
             events.push_back({.type=InputEvent::Type::KEY_PRESSED, .key=key, .size={}});
         if (IsKeyReleased(raylibKey))

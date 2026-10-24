@@ -1,5 +1,6 @@
 add_library(engine_render STATIC
 	src/RenderQueue.cpp
+	src/ResourcePath.cpp
 	src/Window.cpp
 	src/TextureCache.cpp
 	src/FontCache.cpp

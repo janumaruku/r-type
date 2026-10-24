@@ -2,7 +2,7 @@
 ** EPITECH PROJECT, 2026
 ** r-type
 ** File description:
-** RenderTests.cpp
+** RenderQueueTests.cpp
 */
 
 #include "RenderQueue.hpp"
@@ -14,7 +14,7 @@
 
 #include "DrawCommand.hpp"
 
-TEST(RenderQueueTests, push)
+TEST(RenderQueueTests, sortByLayerOrdersTheLayers)
 {
     const auto getLayers = [](const auto commands) {
         std::vector<std::int16_t> layers;
@@ -46,6 +46,7 @@ TEST(RenderQueueTests, push)
     engine::render::RectCmd d{};
     d.layer = 10;
     queue.push(d);
+    queue.sortByLayer();
     EXPECT_EQ(getLayers(queue.commands()), expected);
 }
 
@@ -63,16 +64,25 @@ TEST(RenderQueueTests, preservesRelativeOrderOnEqualLayers)
     engine::render::SpriteCmd third{
         .texture=engine::render::TextureId{42}, .source={}, .position={}, .origin={}, .scale={}, .rotationDeg={}, .tint={}, .layer=100,};
 
+    engine::render::RectCmd above{};
+    above.layer = 1000;
+    engine::render::RectCmd below{};
+    below.layer = 0;
+
+    queue.push(above);
     queue.push(first);
+    queue.push(below);
     queue.push(second);
+    queue.push(above);
     queue.push(third);
+    queue.sortByLayer();
 
     const auto commands = queue.commands();
-    ASSERT_EQ(commands.size(), 3U);
-    EXPECT_EQ(std::get<engine::render::TextCmd>(commands[0]).text, "first");
-    EXPECT_EQ(std::get<engine::render::RectCmd>(commands[1]).fill,
+    ASSERT_EQ(commands.size(), 6U);
+    EXPECT_EQ(std::get<engine::render::TextCmd>(commands[1]).text, "first");
+    EXPECT_EQ(std::get<engine::render::RectCmd>(commands[2]).fill,
         (engine::core::Color{1, 2, 3, 4}));
-    EXPECT_EQ(std::get<engine::render::SpriteCmd>(commands[2]).texture.value,
+    EXPECT_EQ(std::get<engine::render::SpriteCmd>(commands[3]).texture.value,
         42U);
 }
 
@@ -103,6 +113,7 @@ TEST(RenderQueueTests, preservesCommandTypesAndFields)
     queue.push(text);
     queue.push(sprite);
     queue.push(rect);
+    queue.sortByLayer();
 
     const auto commands = queue.commands();
     ASSERT_EQ(commands.size(), 3U);
@@ -129,3 +140,6 @@ TEST(RenderQueueTests, clearKeepsCapacity)
 
 static_assert(!std::is_convertible_v<engine::render::TextureId,
     engine::render::FontId>);
+static_assert(!std::is_convertible_v<engine::render::FontId,
+    engine::render::TextureId>);
+static_assert(engine::render::FontId{}.isDefault());
