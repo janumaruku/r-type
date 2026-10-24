@@ -15,7 +15,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "Logger.hpp"
+#include "engine/core/Logger.hpp"
 #include "engine/ecs/CommandBuffer.hpp"
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/IndexedView.hpp"

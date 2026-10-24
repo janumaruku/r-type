@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 #include "engine/input/Key.hpp"
 
 namespace engine::input {

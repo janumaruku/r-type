@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 #include <cmath>
 
 TEST(Vec2, constuct)

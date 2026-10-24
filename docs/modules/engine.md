@@ -123,7 +123,7 @@ classDiagram
 
 ### Logging
 
-One logging facility for the whole project, in `engine/core/include/Logger.hpp` (format-style templates in `Logger.tpp`) and `engine/core/src/Logger.cpp`, namespace `engine::core::log`. It looks like `std::cout`, can also be used like `std::format`, and is safe to call from the network IO thread and the game thread at the same time.
+One logging facility for the whole project, in `engine/core/include/engine/core/Logger.hpp` (format-style templates in `Logger.tpp`) and `engine/core/src/Logger.cpp`, namespace `engine::core::log`. It looks like `std::cout`, can also be used like `std::format`, and is safe to call from the network IO thread and the game thread at the same time.
 
 #### Usage
 
@@ -446,7 +446,12 @@ Each resource lives in a `detail::ResourceHolder<T>`, behind a `std::unique_ptr`
 
 ### Contract
 
-Unit tests check every rule. Each one maps to a "Check yourself" list in the journey.
+Unit tests check every rule. Each one maps to a "Check yourself" list in the journey. `tests/engine/ecs/EcsIntegrationTests.cpp` checks them together, the way the game uses them:
+
+- **Mini simulation:** spawner, movement, lifetime and collision systems in one stage, with `DeltaTime`, a seeded `Rng` and spawn/kill counters as resources. After each of 600 steps, every entity with a `Position` has a `Velocity`, every storage holds only live entities, and `aliveCount()` equals spawned minus killed. Two worlds with the same seed end with the same positions.
+- **Model check:** 10 000 seeded operations (spawn, kill, add, remove, and kills recorded from a view loop) on live, dead and stale handles, mirrored in a `std::map` shadow model. Liveness, components and view contents are compared after each operation, and a failure prints the seed and the operation index.
+
+Both run under AddressSanitizer (`RTYPE_SANITIZER=address`) with nothing reported.
 
 1. **Registration.** The game registers every component type when its world is created. Using an unregistered type throws `EngineError` naming it.
 2. **Inside a view loop, only the current entity may change immediately.** Killing it or removing one of its components is safe. Killing *other* entities, spawning, or adding components goes through `commands()`. Component references taken in the loop dangle after an add, so don't keep them.
