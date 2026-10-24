@@ -36,6 +36,12 @@ T Vec2<T>::length() const noexcept
 }
 
 template<typename T>
+T Vec2<T>::lengthSquared() const noexcept
+{
+    return (_x * _x) + (_y * _y);
+}
+
+template<typename T>
 Vec2<T> Vec2<T>::normalized() const noexcept
 {
     if (*this == Vec2<T>{0, 0})
