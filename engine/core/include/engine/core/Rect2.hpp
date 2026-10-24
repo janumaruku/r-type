@@ -10,7 +10,7 @@
 
 #include <cstdint>
 #include <initializer_list>
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 
 namespace engine::core {
 
@@ -44,4 +44,4 @@ using UintRect = Rect2<std::uint32_t>;
 }
 
 #endif
-#include "Rect2.tpp"
+#include "engine/core/Rect2.tpp"

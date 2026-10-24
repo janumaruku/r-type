@@ -16,7 +16,7 @@
 #include <string>
 #include <thread>
 
-#include "Logger.hpp"
+#include "engine/core/Logger.hpp"
 
 using engine::core::log::Level;
 using engine::core::log::Logger;
