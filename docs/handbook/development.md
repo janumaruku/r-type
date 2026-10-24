@@ -70,6 +70,7 @@ A test's kind depends on what it exercises, not on the framework. GoogleTest is 
 | Fuzz | Millions of random or mutated datagrams into the server's decode path: no crash, no memory growth | Partly: a GoogleTest loop with random bytes works; a real fuzzer (libFuzzer, built with Clang) finds far more bugs |
 | Functional / end-to-end | The real `r-type_server` and `r-type_client` binaries started as processes | Not well: a script (Python or shell) run by CTest suits it better |
 | Manual | 4 clients on Linux and Windows, one unplugged, star speed at 30 and 144 FPS | No: a checklist in `docs/how-to/release-check.md`, run before each defence |
+| Manual (engine) | The window, input and rendering: letterbox, focus, rebinding, layers, fonts, caches | No: `render_demo` and its [checklist](../../apps/render_demo/CHECKLIST.md), ticked on Linux and Windows in the PR that changes `engine_render` or `engine_input` |
 
 ## Benchmarks
 

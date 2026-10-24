@@ -6,7 +6,7 @@ Five 32x32 cells, left to right:
 
 The ship faces right, so a negative source width in a SpriteCmd shows it
 facing left. Run it again after changing a cell:
-  python3 examples/render_demo/tools/make_sprites.py
+  python3 apps/render_demo/tools/make_sprites.py
 Needs Pillow (pip install pillow).
 """
 
