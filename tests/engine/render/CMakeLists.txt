@@ -1,6 +1,7 @@
 rtype_add_test(engine_render_tests
     LIBS engine_render
     SOURCES
+    LetterboxTests.cpp
     RenderQueueTests.cpp
     ResourcePathTests.cpp
 )
