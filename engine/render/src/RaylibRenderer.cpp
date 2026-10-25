@@ -37,7 +37,7 @@ RenderTexture2D createTarget(const core::Vec2f &size)
     return target;
 }
 
-std::int16_t layerOf(const DrawCommand &command)
+[[maybe_unused]] std::int16_t layerOf(const DrawCommand &command)
 {
     return std::visit([](const auto &cmd) {
         return cmd.layer;
