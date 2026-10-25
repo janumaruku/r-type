@@ -6,7 +6,7 @@
 */
 
 #include <gtest/gtest.h>
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 #include <cmath>
 
 TEST(Vec2, constuct)
@@ -121,6 +121,14 @@ TEST(Vec2, length)
 {
     engine::core::Vec2f v1{0, 7};
     EXPECT_FLOAT_EQ(v1.length(), 7);
+}
+
+TEST(Vec2, lengthSquared)
+{
+    engine::core::Vec2f v1{3, 4};
+    engine::core::Vec2i v2{-3, 4};
+    EXPECT_FLOAT_EQ(v1.lengthSquared(), 25);
+    EXPECT_EQ(v2.lengthSquared(), 25);
 }
 
 TEST(Vec2, normalized)

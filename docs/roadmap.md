@@ -14,7 +14,7 @@ A gate that fails moves its leftovers to the next week ahead of new work. Week 1
 
 - [x] **Asio flavour.** Standalone Asio 1.30.2, used directly ([ADR 0001](decisions/0001-standalone-asio.md)).
 - [x] **Reliability.** State-based snapshots, no acks ([ADR 0002](decisions/0002-state-based-replication.md)).
-- [x] **Graphics library.** Raylib 5.5 ([ADR 0004](decisions/0004-raylib.md)). The existing CI image `janumaruku/epitest-with-raylib` already has the system packages Raylib needs.
+- [x] **Graphics library.** Raylib 5.5 ([ADR 0004](decisions/0004-raylib.md)). CI runs on `epitechcontent/epitest-docker` and installs the X11 and OpenGL packages Raylib needs (`RAYLIB_PACKAGES` in `ci.yml`).
 - [ ] **Comparative study (D-04).** Still to write: Raylib vs SFML vs SDL, Asio vs raw sockets, state-based vs event-based replication, sparse-set ECS vs archetype ECS, CPM vs vcpkg vs Conan, plus a storage and security section.
 - [ ] **Sprite rectangles.** Measure the frame rectangles in the provided sheets and fill `assets/sprites/catalog.cfg`.
 - [ ] **Snapshot rate.** 30 Hz is the default. Revisit after the week 2 gate if bandwidth or smoothness disappoints.

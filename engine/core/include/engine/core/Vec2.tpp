@@ -10,7 +10,7 @@
 #define VEC2_TPP
 
 #include <cmath>
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 
 namespace engine::core {
 
@@ -33,6 +33,12 @@ template<typename T>
 T Vec2<T>::length() const noexcept
 {
     return std::sqrt((_x * _x) + (_y * _y));
+}
+
+template<typename T>
+T Vec2<T>::lengthSquared() const noexcept
+{
+    return (_x * _x) + (_y * _y);
 }
 
 template<typename T>

@@ -14,32 +14,41 @@
 
 #include "engine/ecs/View.hpp"
 
-namespace engine::ecs {
-template <class... Containers>
-View<Containers...>::View(Containers &... containers):
-    _sets(std::addressof(containers)...), _driver(smallest(containers...))
+namespace engine::ecs::detail {
+template <bool WithEntity, ViewComponentConcept... Components>
+BasicView<WithEntity, Components...>::BasicView(
+    StorageFor<Components> &... containers):
+    BasicView(Bases{std::addressof(containers)...}, containers...)
 {
 }
 
-template <class... Containers>
-View<Containers...>::iterator View<Containers...>::begin() const
+template <bool WithEntity, ViewComponentConcept... Components>
+BasicView<WithEntity, Components...>::iterator
+    BasicView<WithEntity, Components...>::begin() const
 {
-    return iterator(_sets, _driver, static_cast<std::size_t>(-1));
+    return iterator(_sets, _driver, _driverIndex, static_cast<std::size_t>(-1));
 }
 
-template <class... Containers>
-View<Containers...>::iterator View<Containers...>::end() const
+template <bool WithEntity, ViewComponentConcept... Components>
+BasicView<WithEntity, Components...>::iterator
+    BasicView<WithEntity, Components...>::end() const
 {
-    return iterator(_sets, _driver, 0);
+    return iterator(_sets, _driver, _driverIndex, 0);
 }
 
-template <class... Containers>
-const SparseSetBase *View<Containers...>::smallest(Containers &... containers)
+template <bool WithEntity, ViewComponentConcept... Components>
+BasicView<WithEntity, Components...>::BasicView(const Bases &bases,
+    StorageFor<Components> &... containers):
+    _sets(std::addressof(containers)...), _driverIndex(smallest(bases)),
+    _driver(bases[_driverIndex])
 {
-    const std::array<const SparseSetBase *, sizeof...(Containers)> sets{
-        std::addressof(containers)...};
+}
 
-    return *std::ranges::min_element(sets, {}, &SparseSetBase::size);
+template <bool WithEntity, ViewComponentConcept... Components>
+std::size_t BasicView<WithEntity, Components...>::smallest(const Bases &bases)
+{
+    return static_cast<std::size_t>(std::ranges::min_element(bases, {},
+        &SparseSetBase::size) - bases.begin());
 }
 }
 

@@ -3,8 +3,7 @@ add_library(engine_ecs STATIC src/Entity.cpp
         src/SparseSetBase.cpp
         src/SparseSet.cpp
         src/Registry.cpp
-        include/engine/ecs/View.hpp
-        include/engine/ecs/ViewIterator.hpp
+        src/CommandBuffer.cpp
 )
 
 target_include_directories(engine_ecs PUBLIC include)

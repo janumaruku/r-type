@@ -17,9 +17,9 @@ Ownership: `std::unique_ptr` for anything owned, references for borrowed objects
 
 ## Logging
 
-Both binaries log to `std::cerr` through `engine::core::Logger` and the `log::` functions ([engine: logging](../modules/engine.md#logging)). Each module or class that logs keeps a `Logger` with a short context name (`"net"`, `"server"`, `"client"`), and each thread names itself with `log::setThreadName` at start-up. Every level has a defined use:
+Both binaries log to `std::cerr` through `engine::core::log::Logger` and the `log::` functions ([engine: logging](../modules/engine.md#logging)). Each module or class that logs keeps a `Logger` with a short context name (`"net"`, `"server"`, `"client"`), and each thread names itself with `setThreadName` on one of its `Logger`s at start-up. Every level has a defined use:
 
-- **error** (`Level::ERR`): an action failed and was abandoned.
+- **error** (`Level::EG_ERROR`): an action failed and was abandoned.
 - **warn:** something was degraded (tick overrun, dropped datagrams, audio disabled).
 - **info:** lifecycle events (start, bind, join, leave, game over, periodic stats).
 - **debug:** per-message traces.
@@ -44,7 +44,7 @@ Part 1 has **unit tests only**, written with GoogleTest. Other kinds of tests ar
 
 | What | Examples of cases |
 | --- | --- |
-| ECS | Every rule of the contract in [engine: ECS](../modules/engine.md#contract): registration, views, commands, stale handles, resources, stages. The journey's "Check yourself" lists ([ECS journey](../reference/ECS_JOURNEY.md)) give the cases |
+| ECS | Every rule of the contract in [engine: ECS](../modules/engine.md#contract): registration, views, commands, stale handles, resources, stages. The journey's "Check yourself" lists ([ECS journey](../reference/ECS_JOURNEY.md)) give the cases. `EcsIntegrationTests.cpp` checks the pieces together: a seeded mini-simulation (spawn, movement, lifetime, collision) checked after each of 600 steps and for determinism, and 10 000 random operations compared with a shadow model |
 | Runtime | `FixedTimestep` step counts and the 0.25 s cap |
 | `net::Packet` | Round trips of every primitive and container, reads past the end, writes past `MAX_SIZE`, forged list counts ([network: tests](../modules/network.md#tests)) |
 | Protocol | Every message round-trips, and every truncated prefix of a valid payload throws `PacketError` |
@@ -70,6 +70,7 @@ A test's kind depends on what it exercises, not on the framework. GoogleTest is 
 | Fuzz | Millions of random or mutated datagrams into the server's decode path: no crash, no memory growth | Partly: a GoogleTest loop with random bytes works; a real fuzzer (libFuzzer, built with Clang) finds far more bugs |
 | Functional / end-to-end | The real `r-type_server` and `r-type_client` binaries started as processes | Not well: a script (Python or shell) run by CTest suits it better |
 | Manual | 4 clients on Linux and Windows, one unplugged, star speed at 30 and 144 FPS | No: a checklist in `docs/how-to/release-check.md`, run before each defence |
+| Manual (engine) | The window, input and rendering: letterbox, focus, rebinding, layers, fonts, caches | No: `render_demo` and its [checklist](../../apps/render_demo/CHECKLIST.md), ticked on Linux and Windows in the PR that changes `engine_render` or `engine_input` |
 
 ## Benchmarks
 
@@ -105,7 +106,7 @@ A change that claims a speed-up comes with a before/after comparison (`compare.p
 
 - **Self-contained (requirement T-03).** Apart from the compiler, Linux needs only the low-level system libraries Raylib links against, which the subject explicitly allows: the X11, Xrandr, Xinerama, Xcursor, Xi and OpenGL development packages. Audio needs no development package: miniaudio loads ALSA or PulseAudio at run time. Windows needs Visual Studio 2022 or later with its clang-cl component, and nothing else. A server-only build (`RTYPE_BUILD_CLIENT=OFF`) skips Raylib and needs none of these packages.
 - **Compilers:** GCC ≥ 13 or Clang ≥ 17 on Linux, clang-cl on Windows ([ADR 0006](../decisions/0006-clang-cl-on-windows.md)), all in C++20 without compiler extensions, because `std::format` is required. Warnings are errors: `-Wall -Wextra -Werror`, and `/W4 /WX` under clang-cl, through the `project_options` interface target (`cmake/ProjectOptions.cmake`) that every target of ours links.
-- **CI cost (from the subject's warning):** set `CPM_SOURCE_CACHE` to a cached directory, so dependencies are downloaded once per cache key rather than on every commit. One job each for Linux and Windows. clang-format and clang-tidy run only on changed files.
+- **CI cost (from the subject's warning):** set `CPM_SOURCE_CACHE` to a cached directory, so dependencies are downloaded once per cache key rather than on every commit. One job each for Linux and Windows. The Linux jobs run on `epitechcontent/epitest-docker` and install the Raylib packages above with `apt` (the `RAYLIB_PACKAGES` variable in `ci.yml`), so the CI states every system package a fresh machine needs. There is also a server-only job that builds with `RTYPE_BUILD_CLIENT=OFF` on a plain `ubuntu:24.04` image with no X11 or OpenGL packages, so a client-side dependency leaking into the server build fails CI. clang-format and clang-tidy run only on changed files.
 - **Packaging:** CPack produces `r-type-<version>-Linux.tar.gz` and `r-type-<version>-win64.zip`, each holding both binaries, `assets/`, the default `config/`, the README and the LICENSE.
 
 ## Workflow and conventions
