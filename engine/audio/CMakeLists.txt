@@ -1,6 +1,7 @@
 add_library(engine_audio STATIC
         src/IAudio.cpp
         src/Volume.cpp
+        src/NullAudio.cpp
 )
 
 target_include_directories(engine_audio PUBLIC include)
