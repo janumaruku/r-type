@@ -12,8 +12,7 @@
 #include <format>
 #include <utility>
 
-#include "Errors.hpp"
-#include "Logger.hpp"
+#include "engine/core/Errors.hpp"
 
 namespace net {
 
