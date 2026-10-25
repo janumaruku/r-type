@@ -3,6 +3,8 @@ add_library(engine_audio STATIC
         src/Volume.cpp
         src/NullAudio.cpp
         src/Voices.cpp
+        src/MakeAudio.cpp
+        src/raylib/RaylibAudio.cpp
 )
 
 target_include_directories(engine_audio PUBLIC include)

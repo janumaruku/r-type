@@ -4,4 +4,5 @@ rtype_add_test(engine_audio_tests
     VolumeTests.cpp
     NullAudioTests.cpp
     VoicesTests.cpp
+    MakeAudioTests.cpp
 )
