@@ -14,7 +14,7 @@
 #include <string_view>
 #include <vector>
 
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 
 #include "engine/input/InputEvent.hpp"
 

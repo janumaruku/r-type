@@ -15,9 +15,9 @@
 #include <string>
 #include <variant>
 
-#include "Color.hpp"
-#include "Rect2.hpp"
-#include "Vec2.hpp"
+#include "engine/core/Color.hpp"
+#include "engine/core/Rect2.hpp"
+#include "engine/core/Vec2.hpp"
 
 namespace engine::render {
 

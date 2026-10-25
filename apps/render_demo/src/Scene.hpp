@@ -13,7 +13,7 @@
 
 #include "DrawCommand.hpp"
 #include "RenderQueue.hpp"
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 
 namespace render_demo {
 using engine::core::Vec2f;

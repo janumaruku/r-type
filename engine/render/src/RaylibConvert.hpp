@@ -8,9 +8,9 @@
 #ifndef RAYLIB_CONVERT_HPP
 #define RAYLIB_CONVERT_HPP
 
-#include "Color.hpp"
-#include "Rect2.hpp"
-#include "Vec2.hpp"
+#include "engine/core/Color.hpp"
+#include "engine/core/Rect2.hpp"
+#include "engine/core/Vec2.hpp"
 
 #include <raylib.h>
 

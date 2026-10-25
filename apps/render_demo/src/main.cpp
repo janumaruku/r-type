@@ -12,11 +12,11 @@
 #include <vector>
 
 #include "Actions.hpp"
-#include "AssetLocator.hpp"
-#include "Color.hpp"
-#include "Errors.hpp"
+#include "engine/core/AssetLocator.hpp"
+#include "engine/core/Color.hpp"
+#include "engine/core/Errors.hpp"
 #include "FontCache.hpp"
-#include "Logger.hpp"
+#include "engine/core/Logger.hpp"
 #include "RaylibRenderer.hpp"
 #include "RenderQueue.hpp"
 #include "Scene.hpp"

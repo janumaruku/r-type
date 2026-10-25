@@ -14,9 +14,9 @@
 #include <string>
 
 #include "Window.hpp"
-#include "Errors.hpp"
+#include "engine/core/Errors.hpp"
 #include "KeyTable.hpp"
-#include "Logger.hpp"
+#include "engine/core/Logger.hpp"
 
 namespace engine::render {
 
