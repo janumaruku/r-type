@@ -53,4 +53,4 @@ using Vec2u = Vec2<std::uint32_t>;
 
 #endif
 
-#include "../../Vec2.tpp"
+#include "Vec2.tpp"
