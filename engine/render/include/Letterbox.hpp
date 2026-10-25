@@ -8,8 +8,8 @@
 #ifndef LETTERBOX_HPP
 #define LETTERBOX_HPP
 
-#include "Rect2.hpp"
-#include "Vec2.hpp"
+#include "engine/core/Rect2.hpp"
+#include "engine/core/Vec2.hpp"
 
 namespace engine::render {
 

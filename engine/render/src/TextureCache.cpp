@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "CacheAccess.hpp"
-#include "Errors.hpp"
+#include "engine/core/Errors.hpp"
 #include "ResourcePath.hpp"
 
 namespace engine::render {

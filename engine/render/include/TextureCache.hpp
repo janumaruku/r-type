@@ -12,7 +12,7 @@
 #include <memory>
 
 #include "DrawCommand.hpp"
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 
 namespace engine::render {
 

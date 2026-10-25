@@ -10,8 +10,8 @@
 #include <string>
 #include <utility>
 
-#include "Color.hpp"
-#include "Rect2.hpp"
+#include "engine/core/Color.hpp"
+#include "engine/core/Rect2.hpp"
 
 namespace render_demo {
 namespace {

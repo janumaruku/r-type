@@ -8,9 +8,9 @@
 #ifndef IRENDERER_HPP
 #define IRENDERER_HPP
 
-#include "Color.hpp"
+#include "engine/core/Color.hpp"
 #include "RenderQueue.hpp"
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 
 namespace engine::render {
 

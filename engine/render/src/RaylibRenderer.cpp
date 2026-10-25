@@ -13,7 +13,7 @@
 #include <variant>
 
 #include "CacheAccess.hpp"
-#include "Errors.hpp"
+#include "engine/core/Errors.hpp"
 #include "Letterbox.hpp"
 #include "RaylibConvert.hpp"
 
