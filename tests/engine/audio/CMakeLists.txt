@@ -5,4 +5,5 @@ rtype_add_test(engine_audio_tests
     NullAudioTests.cpp
     VoicesTests.cpp
     MakeAudioTests.cpp
+    RaylibAudioTests.cpp
 )
