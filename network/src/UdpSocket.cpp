@@ -13,6 +13,7 @@
 #include <utility>
 
 #include "engine/core/Errors.hpp"
+#include "engine/core/Logger.hpp"
 
 namespace net {
 

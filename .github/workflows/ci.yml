@@ -2,6 +2,7 @@ name: Continuous Integration
 
 env:
   JOB_FAILS: "false"
+  RAYLIB_PACKAGES: libx11-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libgl1-mesa-dev
 
 on:
   pull_request:
@@ -22,7 +23,7 @@ jobs:
     name: Compilation required
     if: ${{ github.repository != vars.MIRROR_URL }}
     runs-on: ubuntu-latest
-    container: janumaruku/epitest-with-raylib
+    container: epitechcontent/epitest-docker
     timeout-minutes: 10
 
     env:
@@ -32,10 +33,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Install cache dependencies
+      - name: Install dependencies
         run: |
           apt update
-          apt install -y tar zstd
+          apt install -y tar zstd $RAYLIB_PACKAGES
 
       - name: Restore CPM cache
         uses: actions/cache@v4
@@ -83,6 +84,73 @@ jobs:
         with:
           name: build-log
           path: build.log
+          if-no-files-found: warn
+
+  # ============================================================
+  # Linux server-only compilation
+  #
+  # A plain Ubuntu image with no X11 or OpenGL packages: if a
+  # client-side target or Raylib leaks into a server-only build,
+  # configuring or linking fails here.
+  # ============================================================
+
+  compilation_server_only:
+    name: Server-only compilation
+    if: ${{ github.repository != vars.MIRROR_URL }}
+    runs-on: ubuntu-latest
+    container: ubuntu:24.04
+    timeout-minutes: 10
+
+    env:
+      CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
+
+    steps:
+      - name: Install dependencies
+        run: |
+          apt update
+          apt install -y --no-install-recommends cmake make g++ git ca-certificates tar zstd
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Restore CPM cache
+        uses: actions/cache@v4
+        with:
+          path: .cpm-cache
+          key: cpm-${{ runner.os }}-${{ hashFiles('cmake/Dependencies.cmake', 'cmake/CPM.cmake') }}
+          restore-keys: |
+            cpm-${{ runner.os }}-
+
+      - name: Build the server only
+        shell: bash
+        run: |
+          set -eo pipefail
+
+          cmake --preset linux-release -DRTYPE_BUILD_CLIENT=OFF
+          cmake --build --preset linux-release 2>&1 | tee build-server-only.log
+
+      - name: Check the server is built and nothing client-side is
+        shell: bash
+        run: |
+          if [ ! -x r-type_server ]; then
+            echo "::error::Missing executable: r-type_server"
+            exit 1
+          fi
+          if [ -e r-type_client ]; then
+            echo "::error::r-type_client was built with RTYPE_BUILD_CLIENT=OFF"
+            exit 1
+          fi
+          if grep -q "^raylib_SOURCE_DIR" build/linux-release/CMakeCache.txt; then
+            echo "::error::Raylib was configured with RTYPE_BUILD_CLIENT=OFF"
+            exit 1
+          fi
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-server-only
+          path: build-server-only.log
           if-no-files-found: warn
 
   # ============================================================
@@ -180,7 +248,7 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install -y cmake make git python3 clang clang-tidy bear tar zstd
+          apt install -y cmake make git python3 clang clang-tidy bear tar zstd $RAYLIB_PACKAGES
 
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -282,7 +350,7 @@ jobs:
         run: |
           clang --version
           apt update
-          apt install -y llvm python3-full tar zstd
+          apt install -y llvm python3-full tar zstd $RAYLIB_PACKAGES
 
       - name: Checkout Repository
         uses: actions/checkout@v4

@@ -10,8 +10,11 @@
 
 #include <cstdint>
 #include <format>
-#include <string>
+#include <optional>
+#include <ostream>
 #include <sstream>
+#include <string>
+#include <string_view>
 
 namespace engine::core::log {
 
@@ -71,12 +74,35 @@ public:
     LogLine error(const std::string &format, Args... args);
 
 private:
+    LogLine makeLine(Level lineLevel);
+
+    template<typename... Args>
+    LogLine formatted(Level lineLevel, const std::string &format,
+        Args &... args);
+
     std::string _context;
     std::string _threadName;
 };
+
+void setLevel(Level threshold) noexcept;
+
+[[nodiscard]] Level level() noexcept;
+
+[[nodiscard]] bool isEnabled(Level lineLevel) noexcept;
+
+[[nodiscard]] std::optional<Level> parseLevel(std::string_view name) noexcept;
+
+/*
+** Turns colours off unless the stream is std::cerr on a terminal, so a
+** captured or redirected log has no escape codes. Call setColors after it
+** to force them.
+*/
+void setOutput(std::ostream &stream);
+
+void setColors(bool enabled);
 
 }
 
 #endif
 
-#include "Logger.tpp"
+#include "engine/core/Logger.tpp"

@@ -15,7 +15,7 @@ TEST(Error, EngineError)
 
 TEST(Error, RessourceError)
 {
-    EXPECT_THROW(throw engine::core::RessourceError("Ressource error"), engine::core::RessourceError);
+    EXPECT_THROW(throw engine::core::ResourceError("Ressource error"), engine::core::ResourceError);
 }
 
 TEST(Error, ConfigError)

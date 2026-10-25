@@ -28,7 +28,7 @@ public:
 };
 
 class NetworkError : public EngineError {
-public: 
+public:
     using EngineError::EngineError;
 };
 

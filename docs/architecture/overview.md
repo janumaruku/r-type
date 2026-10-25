@@ -158,7 +158,8 @@ r-type/
 │   └── game/      include/rtype/game/*.hpp       src/*.cpp  src/systems/*.cpp
 ├── apps/
 │   ├── server/    src/*.hpp src/*.cpp            # r-type_server
-│   └── client/    src/*.hpp src/*.cpp            # r-type_client
+│   ├── client/    src/*.hpp src/*.cpp            # r-type_client
+│   └── render_demo/ src/ assets/ tools/          # manual engine checks, built with RTYPE_BUILD_EXAMPLES
 ├── assets/        sprites/ sounds/ music/ fonts/
 ├── config/        client.cfg keybindings.cfg     # defaults, copied next to the binaries
 ├── tests/         engine/ network/ protocol/ game/ client/
