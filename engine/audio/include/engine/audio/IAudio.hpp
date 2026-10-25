@@ -11,6 +11,7 @@
 #include <filesystem>
 
 #include "engine/audio/AudioId.hpp"
+#include "engine/audio/Volume.hpp"
 
 namespace engine::audio {
 
@@ -51,6 +52,9 @@ public:
     virtual void setMusicVolume(float volume) = 0;
 
     virtual void setMuted(bool muted) = 0;
+
+    /* ** The current settings, for an options menu or a HUD */
+    [[nodiscard]] virtual const Volume &volumes() const = 0;
 
     virtual void update() = 0;
 };
