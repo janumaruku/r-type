@@ -75,7 +75,9 @@ protected:
     }
 
     const std::filesystem::path _temporaryRoot =
-        std::filesystem::temp_directory_path() / "rtype_asset_locator_tests";
+        std::filesystem::temp_directory_path()
+        / (std::string("rtype_asset_locator_")
+            + testing::UnitTest::GetInstance()->current_test_info()->name());
     std::filesystem::path _previousWorkingDirectory;
 };
 
@@ -115,7 +117,7 @@ TEST_F(AssetLocatorTest, MissingCandidatesAreListedInException)
     try {
         engine::core::AssetLocator locator(missingOverride);
         FAIL() << "Expected AssetLocator construction to fail";
-    } catch (const engine::core::RessourceError &error) {
+    } catch (const engine::core::ResourceError &error) {
         const std::string message = error.what();
         EXPECT_NE(message.find(missingOverride.string()), std::string::npos);
         EXPECT_NE(message.find(missingEnvironment.string()), std::string::npos);
@@ -141,5 +143,17 @@ TEST_F(AssetLocatorTest, ResolveThrowsForMissingFile)
     std::filesystem::create_directory(assetRoot);
     const engine::core::AssetLocator locator(assetRoot);
 
-    EXPECT_THROW((void)locator.resolve("missing.json"), engine::core::RessourceError);
+    EXPECT_THROW((void)locator.resolve("missing.json"), engine::core::ResourceError);
+}
+
+TEST_F(AssetLocatorTest, ResolveAcceptsAnEmptyFile)
+{
+    const auto assetRoot = _temporaryRoot / "assets";
+    const auto assetPath = assetRoot / "empty.json";
+    std::filesystem::create_directory(assetRoot);
+    std::ofstream(assetPath).close();
+
+    const engine::core::AssetLocator locator(assetRoot);
+
+    EXPECT_EQ(locator.resolve("empty.json"), assetPath);
 }
