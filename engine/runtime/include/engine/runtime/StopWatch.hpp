@@ -6,20 +6,21 @@
 */
 
 #ifndef STOPWATCH_HPP
-    #define STOPWATCH_HPP
-    #include "Clock.hpp"
+#define STOPWATCH_HPP
+#include "Clock.hpp"
 
 namespace engine::runtime {
-    class Stopwatch {
-        public:
-            Stopwatch() noexcept;
-            double restart() noexcept;
-            double elapsedSeconds() const noexcept;
+class Stopwatch {
+public:
+    Stopwatch() noexcept;
 
-        private:
-            TimePoint _start;
+    double restart() noexcept;
 
-    };
+    [[nodiscard]] double elapsedSeconds() const noexcept;
+
+private:
+    TimePoint _start;
+};
 }
 
 #endif

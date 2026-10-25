@@ -10,7 +10,7 @@
 #define VEC2_TPP
 
 #include <cmath>
-#include "Vec2.hpp"
+#include "engine/core/Vec2.hpp"
 
 namespace engine::core {
 

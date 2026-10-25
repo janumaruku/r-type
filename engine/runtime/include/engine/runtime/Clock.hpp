@@ -10,8 +10,8 @@
     #include <chrono>
 
 namespace engine::runtime {
-    using MyClock = std::chrono::steady_clock;
-    using TimePoint = std::chrono::time_point<MyClock>;
+    using Clock = std::chrono::steady_clock;
+    using TimePoint = std::chrono::time_point<Clock>;
 }
 
 #endif

@@ -8,7 +8,7 @@
 #ifndef LOGGER_TPP
 #define LOGGER_TPP
 
-#include "Logger.hpp"
+#include "engine/core/Logger.hpp"
 
 namespace engine::core::log {
 
