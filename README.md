@@ -60,6 +60,11 @@ Pass them at configure time, for example `cmake --preset linux-debug -DRTYPE_BUI
 | `RTYPE_BUILD_TESTS` | `ON` | Builds the test executables. When `OFF`, GoogleTest is not downloaded |
 | `RTYPE_BUILD_CLIENT` | `ON` | Builds `r-type_client`, `r-type_ecs_example` and Raylib. When `OFF`, only the server is built and the Raylib system libraries are not needed |
 | `WITH_COVERAGE` | `OFF` | Instruments the code and adds the `coverage` target. Needs Clang |
+| `RTYPE_BUILD_EXAMPLES` | `ON` | Builds the example programs, such as `apps/render_demo` (needs `RTYPE_BUILD_CLIENT`). They stay in the build folder, for example `build/linux-debug/apps/render_demo/render_demo` |
+
+### Examples
+
+`render_demo` opens a window and exercises the client engine the way the client will: window events, rebindable input from `apps/render_demo/assets/keybindings.json`, a letterboxed 1280 × 720 playfield, sprites, rectangles and text sorted by layer. Arrows or WASD move, SPACE or LCTRL fire, Escape quits. It is the manual check for what CI can't see: [apps/render_demo/CHECKLIST.md](apps/render_demo/CHECKLIST.md).
 
 ### Download cache
 
