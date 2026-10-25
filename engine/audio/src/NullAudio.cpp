@@ -11,6 +11,7 @@
 #include <limits>
 
 #include "engine/core/Errors.hpp"
+#include "engine/core/ResourcePath.hpp"
 
 namespace engine::audio {
 
@@ -22,7 +23,7 @@ template<typename Id>
 Id idFor(std::unordered_map<std::filesystem::path, Id> &ids,
     const std::filesystem::path &path)
 {
-    const std::filesystem::path key = path.lexically_normal();
+    const std::filesystem::path key = core::cacheKey(path);
 
     if (const auto it = ids.find(key); it != ids.end())
         return it->second;

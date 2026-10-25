@@ -9,9 +9,9 @@
 
 #include <filesystem>
 
-#include "ResourcePath.hpp"
+#include "engine/core/ResourcePath.hpp"
 
-using engine::render::cacheKey;
+using engine::core::cacheKey;
 
 TEST(ResourcePathTests, ADotSegmentGivesTheSameKey)
 {
