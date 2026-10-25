@@ -1,0 +1,10 @@
+{
+  "config": [
+    { "name": "MOVE_UP", "keys": ["UP", "KEY_W"] },
+    { "name": "MOVE_DOWN", "keys": ["DOWN", "KEY_S"] },
+    { "name": "MOVE_LEFT", "keys": ["LEFT", "KEY_A"] },
+    { "name": "MOVE_RIGHT", "keys": ["RIGHT", "KEY_D"] },
+    { "name": "FIRE", "keys": ["SPACE", "LCTRL"] },
+    { "name": "QUIT", "keys": ["ESCAPE"] }
+  ]
+}

@@ -26,7 +26,7 @@ public:
     [[nodiscard]] T length() const noexcept;
     [[nodiscard]] T lengthSquared() const noexcept;
     [[nodiscard]] Vec2<T> normalized() const noexcept;
-    
+
     [[nodiscard]] Vec2<T>operator+(const Vec2 &other) const noexcept;
     [[nodiscard]] Vec2<T>operator-(const Vec2 &other) const noexcept;
 
@@ -53,4 +53,4 @@ using Vec2u = Vec2<std::uint32_t>;
 
 #endif
 
-#include "Vec2.tpp"
+#include "engine/core/Vec2.tpp"

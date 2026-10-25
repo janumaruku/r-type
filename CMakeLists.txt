@@ -27,6 +27,7 @@ option(RTYPE_BUILD_TESTS "Build r-type unit tests" ON)
 option(RTYPE_BUILD_CLIENT "Build the client and Raylib" ON)
 option(WITH_COVERAGE "Instrument the code and add the coverage target (Clang only)" OFF)
 option(RTYPE_BUILD_BENCHMARKS "Build the benchmarks (use a Release build)" OFF)
+option(RTYPE_BUILD_EXAMPLES "Build the example programs (needs RTYPE_BUILD_CLIENT)" ON)
 set(RTYPE_SANITIZER "" CACHE STRING "Sanitizer to build with: empty, address or thread (GCC and Clang only)")
 set_property(CACHE RTYPE_SANITIZER PROPERTY STRINGS "" address thread)
 
@@ -43,6 +44,7 @@ add_subdirectory(network)
 add_subdirectory(apps/server)
 if (RTYPE_BUILD_CLIENT)
     add_subdirectory(apps/client)
+    add_subdirectory(apps/ecs_example)
 endif ()
 
 if (RTYPE_BUILD_TESTS)
@@ -51,6 +53,10 @@ if (RTYPE_BUILD_TESTS)
 endif ()
 
 add_subdirectory(engine)
+
+if (RTYPE_BUILD_CLIENT AND RTYPE_BUILD_EXAMPLES)
+    add_subdirectory(apps/render_demo)
+endif ()
 
 if (RTYPE_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)

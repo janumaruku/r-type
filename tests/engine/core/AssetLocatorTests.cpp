@@ -13,8 +13,8 @@
 #include <optional>
 #include <string>
 
-#include "AssetLocator.hpp"
-#include "Errors.hpp"
+#include "engine/core/AssetLocator.hpp"
+#include "engine/core/Errors.hpp"
 
 namespace {
 
@@ -75,7 +75,9 @@ protected:
     }
 
     const std::filesystem::path _temporaryRoot =
-        std::filesystem::temp_directory_path() / "rtype_asset_locator_tests";
+        std::filesystem::temp_directory_path()
+        / (std::string("rtype_asset_locator_")
+            + testing::UnitTest::GetInstance()->current_test_info()->name());
     std::filesystem::path _previousWorkingDirectory;
 };
 
@@ -142,4 +144,16 @@ TEST_F(AssetLocatorTest, ResolveThrowsForMissingFile)
     const engine::core::AssetLocator locator(assetRoot);
 
     EXPECT_THROW((void)locator.resolve("missing.json"), engine::core::ResourceError);
+}
+
+TEST_F(AssetLocatorTest, ResolveAcceptsAnEmptyFile)
+{
+    const auto assetRoot = _temporaryRoot / "assets";
+    const auto assetPath = assetRoot / "empty.json";
+    std::filesystem::create_directory(assetRoot);
+    std::ofstream(assetPath).close();
+
+    const engine::core::AssetLocator locator(assetRoot);
+
+    EXPECT_EQ(locator.resolve("empty.json"), assetPath);
 }

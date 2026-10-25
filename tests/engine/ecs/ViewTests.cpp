@@ -1,0 +1,399 @@
+/*
+** EPITECH PROJECT, 2026
+** r-type
+** File description:
+** ViewTests
+*/
+
+#include <gtest/gtest.h>
+
+#include <algorithm>
+#include <cstddef>
+#include <iterator>
+#include <tuple>
+#include <type_traits>
+#include <vector>
+
+#include "engine/core/Errors.hpp"
+#include "engine/ecs/IndexedView.hpp"
+#include "engine/ecs/Registry.hpp"
+#include "engine/ecs/View.hpp"
+
+using engine::core::EngineError;
+using engine::ecs::Entity;
+using engine::ecs::IndexedView;
+using engine::ecs::Registry;
+using engine::ecs::SparseSet;
+using engine::ecs::View;
+
+namespace {
+struct Tag {
+    int id;
+};
+
+struct Speed {
+    int value;
+};
+
+struct Mark {
+    int value;
+};
+
+struct Unregistered {
+    int value;
+};
+
+class ViewTest: public testing::Test {
+protected:
+    void SetUp() override
+    {
+        _registry.registerComponent<Tag>();
+        _registry.registerComponent<Speed>();
+        _registry.registerComponent<Mark>();
+    }
+
+    void spawnTagged(const int count)
+    {
+        for (int id = 0; id < count; ++id) {
+            _entities.push_back(_registry.spawnEntity());
+            _registry.addComponent(_entities.back(), Tag{id});
+        }
+    }
+
+    template <class... Components>
+    View<Components...> makeView()
+    {
+        return View<Components...>(
+            _registry.getComponents<std::remove_const_t<Components>>()...);
+    }
+
+    template <class... Components>
+    IndexedView<Components...> makeIndexedView()
+    {
+        return IndexedView<Components...>(
+            _registry.getComponents<std::remove_const_t<Components>>()...);
+    }
+
+    template <class... Components>
+    static std::vector<int> visitedIds(const View<Components...> &view)
+    {
+        std::vector<int> ids;
+
+        for (auto &&components: view)
+            ids.push_back(std::get<0>(components).id);
+        std::ranges::sort(ids);
+        return ids;
+    }
+
+    template <class... Components>
+    static std::size_t countVisits(const View<Components...> &view)
+    {
+        return static_cast<std::size_t>(
+            std::ranges::distance(view.begin(), view.end()));
+    }
+
+    Registry _registry;
+    std::vector<Entity> _entities;
+};
+} // namespace
+
+TEST_F(ViewTest, TwoSetJoinVisitsEntitiesInBothSetsOnce)
+{
+    spawnTagged(10);
+    for (int id = 0; id < 10; id += 2)
+        _registry.addComponent(_entities[id], Speed{id});
+
+    EXPECT_EQ(visitedIds(makeView<Tag, Speed>()),
+        (std::vector{0, 2, 4, 6, 8}));
+}
+
+TEST_F(ViewTest, ThreeSetJoinVisitsEntitiesInAllSetsOnce)
+{
+    spawnTagged(12);
+    for (int id = 0; id < 12; id += 2)
+        _registry.addComponent(_entities[id], Speed{id});
+    for (int id = 0; id < 12; id += 3)
+        _registry.addComponent(_entities[id], Mark{id});
+
+    EXPECT_EQ(visitedIds(makeView<Tag, Speed, Mark>()), (std::vector{0, 6}));
+}
+
+TEST_F(ViewTest, ConstComponentYieldsAConstReference)
+{
+    using ViewType = View<Tag, const Speed>;
+
+    static_assert(std::is_same_v<std::iter_reference_t<ViewType::iterator>,
+        std::tuple<Tag &, const Speed &>>);
+    static_assert(std::is_same_v<decltype(*std::declval<
+        ViewType::iterator>()), std::tuple<Tag &, const Speed &>>);
+}
+
+TEST_F(ViewTest, AnIteratorWithTheEntityYieldsItFirst)
+{
+    using Iterator = engine::ecs::ViewIterator<true, Tag, const Speed>;
+
+    static_assert(std::is_same_v<std::iter_reference_t<Iterator>,
+        std::tuple<Entity, Tag &, const Speed &>>);
+}
+
+TEST_F(ViewTest, WritesThroughTheViewAreVisibleInTheStorage)
+{
+    spawnTagged(4);
+    for (const Entity &entity: _entities)
+        _registry.addComponent(entity, Speed{1});
+
+    for (auto &&[tag, speed]: makeView<const Tag, Speed>())
+        speed.value = tag.id * 10;
+
+    for (int id = 0; id < 4; ++id)
+        EXPECT_EQ(_registry.getComponent<Speed>(_entities[id])->value, id * 10);
+}
+
+TEST_F(ViewTest, AnEmptySetGivesAnEmptyViewWhicheverSetItIs)
+{
+    spawnTagged(5);
+
+    EXPECT_TRUE(visitedIds(makeView<Tag, Speed>()).empty());
+    EXPECT_TRUE(visitedIds(makeView<Tag, const Speed>()).empty());
+
+    for (int id = 0; id < 5; ++id)
+        _registry.removeComponent<Tag>(_entities[id]);
+    for (const Entity &entity: _entities)
+        _registry.addComponent(entity, Speed{1});
+
+    EXPECT_EQ(countVisits(makeView<Speed, Tag>()), 0U);
+    EXPECT_EQ(countVisits(makeView<Tag, Speed>()), 0U);
+}
+
+TEST_F(ViewTest, KillingTheCurrentEntityVisitsEveryOtherEntityOnce)
+{
+    spawnTagged(10);
+    for (const Entity &entity: _entities)
+        _registry.addComponent(entity, Speed{0});
+
+    std::vector<int> visited;
+    for (auto &&[tag, speed]: makeView<Tag, Speed>()) {
+        const int id = tag.id;
+
+        visited.push_back(id);
+        if (id % 3 == 0)
+            _registry.killEntity(_entities[id]);
+    }
+    std::ranges::sort(visited);
+
+    EXPECT_EQ(visited, (std::vector{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
+    EXPECT_EQ(visitedIds(makeView<Tag, Speed>()),
+        (std::vector{1, 2, 4, 5, 7, 8}));
+}
+
+TEST_F(ViewTest, RemovingTheCurrentEntitysComponentVisitsEveryOtherOnce)
+{
+    spawnTagged(10);
+    for (const Entity &entity: _entities)
+        _registry.addComponent(entity, Speed{0});
+
+    std::vector<int> visited;
+    for (auto &&[tag, speed]: makeView<Tag, Speed>()) {
+        const int id = tag.id;
+
+        visited.push_back(id);
+        if (id % 2 == 0)
+            _registry.removeComponent<Speed>(_entities[id]);
+    }
+    std::ranges::sort(visited);
+
+    EXPECT_EQ(visited, (std::vector{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
+    EXPECT_EQ(visitedIds(makeView<Tag, Speed>()), (std::vector{1, 3, 5, 7, 9}));
+}
+
+TEST_F(ViewTest, AddingComponentsToOtherEntitiesDuringTheLoopDoesntCrash)
+{
+    spawnTagged(10);
+    for (int id = 0; id < 10; id += 2)
+        _registry.addComponent(_entities[id], Speed{id});
+
+    std::vector<int> visited;
+    for (auto &&[tag, speed]: makeView<Tag, Speed>()) {
+        const int id = tag.id;
+
+        visited.push_back(id);
+        _registry.addComponent(_entities[id + 1], Speed{id + 1});
+        const Entity spawned = _registry.spawnEntity();
+        _registry.addComponent(spawned, Tag{100 + id});
+        _registry.addComponent(spawned, Speed{100 + id});
+    }
+    std::ranges::sort(visited);
+
+    EXPECT_EQ(visited, (std::vector{0, 2, 4, 6, 8}));
+}
+
+TEST_F(ViewTest, ShrinkingTheDriverBelowTheCurrentPositionEndsTheLoop)
+{
+    spawnTagged(10);
+    for (int id = 0; id < 6; ++id)
+        _registry.addComponent(_entities[id], Speed{id});
+
+    std::size_t visits = 0;
+    for (auto &&components: makeView<Tag, Speed>()) {
+        static_cast<void>(components);
+        ++visits;
+        for (int id = 0; id < 6; ++id)
+            _registry.removeComponent<Speed>(_entities[id]);
+    }
+
+    EXPECT_EQ(visits, 1U);
+}
+
+TEST_F(ViewTest, AStaleHandleOnAReusedIndexIsNotYielded)
+{
+    SparseSet<Tag> tags;
+    SparseSet<Speed> speeds;
+    const Entity old = _registry.spawnEntity();
+    _registry.killEntity(old);
+    const Entity reused = _registry.spawnEntity();
+    ASSERT_EQ(reused.index(), old.index());
+    const Entity complete = _registry.spawnEntity();
+
+    speeds.insertAt(old, Speed{0});
+    tags.insertAt(reused, Tag{1});
+    tags.insertAt(complete, Tag{2});
+    speeds.insertAt(complete, Speed{2});
+
+    EXPECT_EQ(visitedIds(View<Tag, Speed>(tags, speeds)), (std::vector{2}));
+    EXPECT_EQ(countVisits(View<Speed, Tag>(speeds, tags)), 1U);
+}
+
+TEST_F(ViewTest, AnIndexedViewYieldsTheEntityOwningTheComponents)
+{
+    std::vector<Entity> killed;
+    for (int i = 0; i < 4; ++i)
+        killed.push_back(_registry.spawnEntity());
+    for (const Entity &entity: killed)
+        _registry.killEntity(entity);
+    spawnTagged(10);
+    for (int id = 0; id < 10; id += 2)
+        _registry.addComponent(_entities[id], Speed{id});
+
+    std::vector<int> visited;
+    for (auto &&[entity, tag, speed]: makeIndexedView<Tag, const Speed>()) {
+        visited.push_back(tag.id);
+        EXPECT_EQ(entity, _entities[tag.id]);
+        EXPECT_EQ(_registry.getComponent<Tag>(entity), &tag);
+        EXPECT_EQ(_registry.getComponent<Speed>(entity), &speed);
+    }
+    std::ranges::sort(visited);
+
+    EXPECT_EQ(visited, (std::vector{0, 2, 4, 6, 8}));
+    EXPECT_EQ(_entities[0].generation(), 1U);
+}
+
+TEST_F(ViewTest, KillingTheYieldedEntityVisitsEveryOtherEntityOnce)
+{
+    spawnTagged(10);
+    for (const Entity &entity: _entities)
+        _registry.addComponent(entity, Speed{0});
+
+    std::vector<int> visited;
+    for (auto &&[entity, tag, speed]: makeIndexedView<Tag, Speed>()) {
+        visited.push_back(tag.id);
+        _registry.killEntity(entity);
+    }
+    std::ranges::sort(visited);
+
+    EXPECT_EQ(visited, (std::vector{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}));
+    EXPECT_EQ(_registry.aliveCount(), 0U);
+}
+
+TEST_F(ViewTest, RegistryViewVisitsTheSameEntitiesAsAHandBuiltView)
+{
+    spawnTagged(10);
+    for (int id = 0; id < 10; id += 3)
+        _registry.addComponent(_entities[id], Speed{id});
+
+    EXPECT_EQ(visitedIds(_registry.view<Tag, Speed>()),
+        visitedIds(makeView<Tag, Speed>()));
+    EXPECT_EQ(visitedIds(_registry.view<Tag, Speed>()),
+        (std::vector{0, 3, 6, 9}));
+}
+
+TEST_F(ViewTest, RegistryViewOfConstComponentsWorksOnAConstRegistry)
+{
+    spawnTagged(3);
+    const Registry &registry = _registry;
+
+    auto view = registry.view<const Tag>();
+    static_assert(std::is_same_v<std::iter_reference_t<decltype(view.begin())>,
+        std::tuple<const Tag &>>);
+
+    EXPECT_EQ(visitedIds(view), (std::vector{0, 1, 2}));
+}
+
+TEST_F(ViewTest, RegistryViewsOfAConstAndANonConstTypeShareTheStorage)
+{
+    spawnTagged(4);
+    for (const Entity &entity: _entities)
+        _registry.addComponent(entity, Speed{0});
+
+    for (auto &&[tag, speed]: _registry.view<const Tag, Speed>())
+        speed.value = tag.id + 100;
+
+    std::vector<int> read;
+    for (auto &&[speed]: _registry.view<const Speed>())
+        read.push_back(speed.value);
+    std::ranges::sort(read);
+
+    EXPECT_EQ(read, (std::vector{100, 101, 102, 103}));
+}
+
+TEST_F(ViewTest, RegistryViewOfAnUnregisteredTypeThrows)
+{
+    EXPECT_THROW(static_cast<void>(_registry.view<Unregistered>()),
+        EngineError);
+    EXPECT_THROW(static_cast<void>(_registry.view<Tag, const Unregistered>()),
+        EngineError);
+}
+
+TEST_F(ViewTest, RegistryIndexedViewYieldsTheSameEntitiesAsAHandBuiltOne)
+{
+    spawnTagged(10);
+    for (int id = 0; id < 10; id += 3)
+        _registry.addComponent(_entities[id], Speed{id});
+
+    std::vector<Entity> fromRegistry;
+    for (auto &&[entity, tag, speed]: _registry.indexedView<Tag, Speed>()) {
+        EXPECT_EQ(entity, _entities[tag.id]);
+        fromRegistry.push_back(entity);
+    }
+    std::vector<Entity> handBuilt;
+    for (auto &&[entity, tag, speed]: makeIndexedView<Tag, Speed>())
+        handBuilt.push_back(entity);
+
+    EXPECT_EQ(fromRegistry, handBuilt);
+    EXPECT_EQ(fromRegistry.size(), 4U);
+}
+
+TEST_F(ViewTest, RegistryIndexedViewOfConstComponentsWorksOnAConstRegistry)
+{
+    spawnTagged(3);
+    const Registry &registry = _registry;
+
+    auto view = registry.indexedView<const Tag>();
+    static_assert(std::is_same_v<std::iter_reference_t<decltype(view.begin())>,
+        std::tuple<Entity, const Tag &>>);
+
+    std::size_t visits = 0;
+    for (auto &&[entity, tag]: view) {
+        EXPECT_EQ(entity, _entities[tag.id]);
+        ++visits;
+    }
+    EXPECT_EQ(visits, 3U);
+}
+
+TEST_F(ViewTest, RegistryIndexedViewOfAnUnregisteredTypeThrows)
+{
+    EXPECT_THROW(static_cast<void>(_registry.indexedView<Unregistered>()),
+        EngineError);
+    EXPECT_THROW(
+        static_cast<void>(_registry.indexedView<Tag, const Unregistered>()),
+        EngineError);
+}
