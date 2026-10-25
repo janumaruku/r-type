@@ -17,6 +17,7 @@
 #include "engine/audio/RaylibAudio.hpp"
 #include "engine/core/Errors.hpp"
 
+using engine::audio::MusicId;
 using engine::audio::RaylibAudio;
 using engine::audio::SoundId;
 
@@ -51,6 +52,33 @@ void writeSilentWav(const std::filesystem::path &path)
     out << std::string(DATA_SIZE, '\0');
 }
 
+void writeBigEndian(std::ofstream &out, std::uint32_t value, int bytes)
+{
+    for (int i = bytes - 1; i >= 0; --i)
+        out.put(static_cast<char>((value >> (8 * i)) & 0xFF));
+}
+
+/*
+** One QOA frame of near silence, 5120 mono samples at 22050 Hz, all slices
+** zero. Music tests use QOA, not WAV: Raylib 5.5 leaks the decoder of a WAV
+** music stream on unload, and it has no OGG encoder to write a test file.
+*/
+void writeQuietQoa(const std::filesystem::path &path)
+{
+    constexpr std::uint32_t SAMPLES = 5120;
+    constexpr std::uint32_t SLICES = SAMPLES / 20;
+    constexpr std::uint32_t FRAME_SIZE = 8 + 16 + (8 * SLICES);
+    std::ofstream out(path, std::ios::binary);
+
+    out << "qoaf";
+    writeBigEndian(out, SAMPLES, 4);
+    writeBigEndian(out, 1, 1);
+    writeBigEndian(out, 22050, 3);
+    writeBigEndian(out, SAMPLES, 2);
+    writeBigEndian(out, FRAME_SIZE, 2);
+    out << std::string(FRAME_SIZE - 8, '\0');
+}
+
 }
 
 /* ** Skipped on a machine without a sound device, like most CI runners */
@@ -67,6 +95,8 @@ protected:
         std::filesystem::create_directories(_dir);
         writeSilentWav(_dir / "shot.wav");
         writeSilentWav(_dir / "boom.wav");
+        writeQuietQoa(_dir / "stage.qoa");
+        writeQuietQoa(_dir / "boss.qoa");
         std::ofstream(_dir / "broken.wav") << "not a sound";
     }
 
@@ -120,4 +150,44 @@ TEST_F(RaylibAudioTests, PlayingWhileMutedOrWithAnUnknownIdDoesNothing)
     EXPECT_NO_THROW(_audio->playSound(shot, 1.0F));
     _audio->setMuted(false);
     EXPECT_NO_THROW(_audio->playSound(SoundId{999}, 1.0F));
+}
+
+TEST_F(RaylibAudioTests, MusicFollowsTheSameLoadingRules)
+{
+    const MusicId stage = _audio->loadMusic(_dir / "stage.qoa");
+
+    EXPECT_EQ(_audio->loadMusic(_dir / "." / "stage.qoa"), stage);
+    EXPECT_NE(_audio->loadMusic(_dir / "boss.qoa"), stage);
+    EXPECT_THROW((void)_audio->loadMusic(_dir / "missing.ogg"), engine::core::ResourceError);
+    EXPECT_THROW((void)_audio->loadMusic(_dir / "broken.wav"), engine::core::ResourceError);
+}
+
+TEST_F(RaylibAudioTests, PlayingUpdatingAndStoppingMusicDoNotThrow)
+{
+    const MusicId stage = _audio->loadMusic(_dir / "stage.qoa");
+    const MusicId boss = _audio->loadMusic(_dir / "boss.qoa");
+
+    EXPECT_NO_THROW(_audio->stopMusic());
+    EXPECT_NO_THROW(_audio->playMusic(stage, true));
+    EXPECT_NO_THROW(_audio->playMusic(stage, true));
+    EXPECT_NO_THROW(_audio->update());
+    EXPECT_NO_THROW(_audio->playMusic(boss, false));
+    EXPECT_NO_THROW(_audio->playMusic(MusicId{999}, true));
+    for (int i = 0; i < 20; ++i)
+        EXPECT_NO_THROW(_audio->update());
+    EXPECT_NO_THROW(_audio->stopMusic());
+    EXPECT_NO_THROW(_audio->update());
+}
+
+TEST_F(RaylibAudioTests, VolumeAndMuteChangesWhileMusicPlays)
+{
+    const MusicId stage = _audio->loadMusic(_dir / "stage.qoa");
+
+    _audio->playMusic(stage, true);
+    EXPECT_NO_THROW(_audio->setMasterVolume(0.5F));
+    EXPECT_NO_THROW(_audio->setMusicVolume(0.2F));
+    EXPECT_NO_THROW(_audio->setMuted(true));
+    EXPECT_NO_THROW(_audio->update());
+    EXPECT_NO_THROW(_audio->setMuted(false));
+    EXPECT_FLOAT_EQ(_audio->volumes().effectiveMusic(), 0.1F);
 }
