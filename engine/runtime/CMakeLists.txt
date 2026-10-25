@@ -1,6 +1,7 @@
 add_library(engine_runtime STATIC
-    src/StopWatch.cpp
-    src/FixedTimestep.cpp
+        src/StopWatch.cpp
+        src/FixedTimestep.cpp
+        include/engine/runtime/Clock.hpp
 )
 
 target_include_directories(engine_runtime PUBLIC include)

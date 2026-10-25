@@ -8,7 +8,7 @@
 #ifndef COLOR_TPP
 #define COLOR_TPP
 
-#include "Color.hpp"
+#include "engine/core/Color.hpp"
 
 namespace engine::core {
 Color::Color() noexcept :

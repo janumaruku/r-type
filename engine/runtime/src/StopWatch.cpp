@@ -5,28 +5,29 @@
 ** StopWatch.cpp
 */
 
-#include "../include/engine/runtime/StopWatch.hpp"
+#include "engine/runtime/StopWatch.hpp"
 
-namespace engine::runtime
+namespace engine::runtime {
+
+Stopwatch::Stopwatch() noexcept: _start(Clock::now())
 {
+}
 
-    Stopwatch::Stopwatch() noexcept : _start(MyClock::now()) {}
+double Stopwatch::restart() noexcept
+{
+    const TimePoint timeNow = Clock::now();
+    const std::chrono::duration<double> timeElapsed = timeNow - _start;
 
-    double Stopwatch::restart() noexcept
-    {
-        TimePoint TimeNow = MyClock::now();
-        std::chrono::duration<double> TimeElapsed = TimeNow - _start;
+    _start = timeNow;
+    return timeElapsed.count();
+}
 
-        _start = TimeNow;
-        return TimeElapsed.count();
-    }
+double Stopwatch::elapsedSeconds() const noexcept
+{
+    const TimePoint timeNow = Clock::now();
+    const std::chrono::duration<double> timeElapsed = timeNow - _start;
 
-    double Stopwatch::elapsedSeconds() const noexcept
-    {
-        TimePoint TimeNow = MyClock::now();
-        std::chrono::duration<double> TimeElapsed = TimeNow - _start;
-
-        return TimeElapsed.count();
-    }
+    return timeElapsed.count();
+}
 
 }
