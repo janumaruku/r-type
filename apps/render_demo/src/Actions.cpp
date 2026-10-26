@@ -15,8 +15,9 @@ namespace render_demo {
 namespace {
 using engine::input::Key;
 
-constexpr std::array<std::string_view, 6> NAMES{"MOVE_UP", "MOVE_DOWN",
-    "MOVE_LEFT", "MOVE_RIGHT", "FIRE", "QUIT"};
+constexpr std::array<std::string_view, 10> NAMES{"MOVE_UP", "MOVE_DOWN",
+    "MOVE_LEFT", "MOVE_RIGHT", "FIRE", "QUIT", "EXPLODE", "VOLUME_UP",
+    "VOLUME_DOWN", "MUTE"};
 }
 
 std::string_view toString(const Action action)
@@ -49,6 +50,10 @@ engine::input::ActionMap<Action> defaultBindings()
     bindings.bind(Action::FIRE, Key::SPACE);
     bindings.bind(Action::FIRE, Key::LCTRL);
     bindings.bind(Action::QUIT, Key::ESCAPE);
+    bindings.bind(Action::EXPLODE, Key::KEY_X);
+    bindings.bind(Action::VOLUME_UP, Key::NUM0);
+    bindings.bind(Action::VOLUME_DOWN, Key::NUM9);
+    bindings.bind(Action::MUTE, Key::KEY_M);
     return bindings;
 }
 
