@@ -13,6 +13,7 @@
 
 #include "DrawCommand.hpp"
 #include "RenderQueue.hpp"
+#include "engine/audio/Volume.hpp"
 #include "engine/core/Vec2.hpp"
 
 namespace render_demo {
@@ -52,6 +53,7 @@ struct Frame {
     const Ship &ship;
     const std::vector<Vec2f> &bullets;
     unsigned fired;
+    const engine::audio::Volume &volumes;
 };
 
 void fillQueue(engine::render::RenderQueue &queue, const SceneAssets &assets,

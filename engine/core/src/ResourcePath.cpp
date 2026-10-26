@@ -5,9 +5,9 @@
 ** ResourcePath.cpp
 */
 
-#include "ResourcePath.hpp"
+#include "engine/core/ResourcePath.hpp"
 
-namespace engine::render {
+namespace engine::core {
 
 std::filesystem::path cacheKey(const std::filesystem::path &path)
 {
