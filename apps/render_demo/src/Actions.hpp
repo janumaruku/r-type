@@ -22,6 +22,10 @@ enum class Action: std::uint8_t {
     MOVE_RIGHT,
     FIRE,
     QUIT,
+    EXPLODE,
+    VOLUME_UP,
+    VOLUME_DOWN,
+    MUTE,
 };
 
 /*
@@ -33,7 +37,8 @@ enum class Action: std::uint8_t {
 [[nodiscard]] bool fromString(std::string_view name, Action &action);
 
 /*
-** Arrows and WASD to move, SPACE and LCTRL to fire, ESCAPE to quit:
+** Arrows and WASD to move, SPACE and LCTRL to fire, ESCAPE to quit, X for
+** ten explosions at once, 0 and 9 for master volume up and down, M to mute:
 ** keybindings.json can replace any of them.
 */
 [[nodiscard]] engine::input::ActionMap<Action> defaultBindings();
