@@ -18,7 +18,7 @@
 
 #include "CacheAccess.hpp"
 #include "engine/core/Errors.hpp"
-#include "ResourcePath.hpp"
+#include "engine/core/ResourcePath.hpp"
 
 namespace engine::render {
 
@@ -45,7 +45,7 @@ TextureCache::~TextureCache()
 */
 TextureId TextureCache::load(const std::filesystem::path &path)
 {
-    const std::filesystem::path key = cacheKey(path);
+    const std::filesystem::path key = core::cacheKey(path);
 
     if (const auto it = _impl->pathToId.find(key); it != _impl->pathToId.end())
         return it->second;

@@ -9,4 +9,5 @@ rtype_add_test(engine_core_tests
     FactoryTemplateTests.cpp
     LoggerTests.cpp
     RngTests.cpp
+    ResourcePathTests.cpp
 )

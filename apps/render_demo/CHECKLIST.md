@@ -25,3 +25,16 @@ On Windows the binary is `build\windows-clangcl-debug\apps\render_demo\Debug\ren
 | Caches | The log shows `sprites.png loaded twice: same id 0`. `render_demo --missing-asset` logs `Texture file does not exist: …missing.png` and exits with 84, without a crash | [ ] | [ ] |
 | Log | Raylib's own messages appear with the `[raylib]` context, in our format | [ ] | [ ] |
 | Shutdown | Closing the window: every `Unloaded …` line from Raylib comes before `Window closed successfully`, and there's no warning after it | [ ] | [ ] |
+
+## Audio
+
+| Check | How | Linux | Windows |
+| --- | --- | --- | --- |
+| Device | The log shows `sound device opened`, then `audio: RaylibAudio`, and the music starts | [ ] | [ ] |
+| Overlap | X plays ten overlapping explosions, with no crackle. Press it many times: the demo's memory doesn't grow | [ ] | [ ] |
+| Fire | Each shot plays the shot sound, even when firing fast | [ ] | [ ] |
+| Music | The music loops without a gap or a stutter over several loops, including while resizing the window | [ ] | [ ] |
+| Volumes | 0 and 9 change "master" in the HUD by 0.1, between 0.0 and 1.0. The music changes at once, the effects on their next play | [ ] | [ ] |
+| Mute | M shows `MUTED`: everything goes silent. M again: the music continues where it was, at the same volume | [ ] | [ ] |
+| No device | With audio disabled in the OS (or no output device), the log shows the `falling back to NullAudio` warning and `audio: NullAudio (silent)`, and everything else works | [ ] | [ ] |
+| Shutdown | Quitting gives no Raylib warning about unloading, and `AUDIO: Device closed successfully` comes before `Window closed successfully` | [ ] | [ ] |
