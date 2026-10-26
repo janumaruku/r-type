@@ -1,5 +1,6 @@
 add_library(rtype_protocol STATIC
-        src/MessageType.cpp)
+        src/MessageType.cpp
+        include/rtype/protocol/Header.hpp)
 
 target_include_directories(rtype_protocol PUBLIC include)
 
