@@ -8,10 +8,15 @@
 #include <algorithm>
 #include <chrono>
 #include <filesystem>
+#include <memory>
+#include <string>
 #include <string_view>
 #include <vector>
 
 #include "Actions.hpp"
+#include "engine/audio/IAudio.hpp"
+#include "engine/audio/MakeAudio.hpp"
+#include "engine/audio/NullAudio.hpp"
 #include "engine/core/AssetLocator.hpp"
 #include "engine/core/Color.hpp"
 #include "engine/core/Errors.hpp"
@@ -39,6 +44,8 @@ constexpr int EXIT_ERROR = 84;
 constexpr float SHIP_SPEED = 400.0F;
 constexpr float BULLET_SPEED = 900.0F;
 constexpr float MAX_FRAME_TIME = 0.05F;
+constexpr float VOLUME_STEP = 0.1F;
+constexpr int EXPLOSIONS_PER_PRESS = 10;
 const engine::core::Color BACKGROUND{12, 18, 40, 255};
 
 /*
@@ -147,11 +154,59 @@ void loadMissingAsset(engine::render::TextureCache &textures,
     (void)textures.load(assets.root() / "missing.png");
 }
 
+struct DemoSounds {
+    engine::audio::SoundId shot;
+    engine::audio::SoundId explosion;
+    engine::audio::MusicId music;
+};
+
+/*
+** The client config will start at master 1.0, sfx 0.6, music 0.8; the demo
+** uses the same values so it sounds like the game.
+*/
+DemoSounds startAudio(engine::audio::IAudio &audio,
+    const engine::core::AssetLocator &assets, engine::core::log::Logger &logger)
+{
+    const bool silent =
+        dynamic_cast<engine::audio::NullAudio *>(&audio) != nullptr;
+    const DemoSounds sounds{
+        .shot = audio.loadSound(assets.resolve("shot.wav")),
+        .explosion = audio.loadSound(assets.resolve("explosion.wav")),
+        .music = audio.loadMusic(assets.resolve("music.ogg")),
+    };
+
+    logger.info("audio: {}", std::string{silent ? "NullAudio (silent)" : "RaylibAudio"});
+    audio.setMasterVolume(1.0F);
+    audio.setSfxVolume(0.6F);
+    audio.setMusicVolume(0.8F);
+    audio.playMusic(sounds.music, true);
+    return sounds;
+}
+
+void handleAudioKeys(engine::audio::IAudio &audio, const DemoSounds &sounds,
+    const Bindings &bindings, const InputState &input,
+    engine::core::log::Logger &logger)
+{
+    if (bindings.wasTriggered(Action::EXPLODE, input)) {
+        for (int i = 0; i < EXPLOSIONS_PER_PRESS; ++i)
+            audio.playSound(sounds.explosion, 1.0F);
+        logger.info("{} explosions in one frame", EXPLOSIONS_PER_PRESS);
+    }
+    if (bindings.wasTriggered(Action::VOLUME_UP, input))
+        audio.setMasterVolume(audio.volumes().master() + VOLUME_STEP);
+    if (bindings.wasTriggered(Action::VOLUME_DOWN, input))
+        audio.setMasterVolume(audio.volumes().master() - VOLUME_STEP);
+    if (bindings.wasTriggered(Action::MUTE, input))
+        audio.setMuted(!audio.volumes().muted());
+}
+
 /*
 ** The order matters: the window first, then the caches and the renderer,
 ** which hold GPU resources and must be destroyed before the window closes.
 ** Each frame runs in the order the client will use: events, input state,
-** game update, then fill, sort and submit the queue.
+** game update, then fill, sort and submit the queue. Audio doesn't need the
+** window; it comes after it only so Raylib's audio messages go through our
+** logger. Its update() runs once per frame, on this thread.
 */
 void run(engine::core::log::Logger &logger, const bool missingAsset)
 {
@@ -168,6 +223,8 @@ void run(engine::core::log::Logger &logger, const bool missingAsset)
     engine::render::FontCache fonts;
     engine::render::RaylibRenderer renderer{window, textures, fonts,
         LOGICAL_SIZE};
+    const std::unique_ptr<engine::audio::IAudio> audio =
+        engine::audio::makeAudio();
     const render_demo::SceneAssets scene{
         .sheet = textures.load(assets.resolve("sprites.png")),
         .font = fonts.load(assets.resolve("DejaVuSansMono.ttf")),
@@ -176,6 +233,7 @@ void run(engine::core::log::Logger &logger, const bool missingAsset)
     if (missingAsset)
         loadMissingAsset(textures, assets);
     const Bindings bindings = loadBindings(assets, logger);
+    const DemoSounds sounds = startAudio(*audio, assets, logger);
     InputState input;
     engine::render::RenderQueue queue;
     Ship ship{.position = LOGICAL_SIZE * 0.5F, .facingLeft = false,
@@ -193,7 +251,10 @@ void run(engine::core::log::Logger &logger, const bool missingAsset)
         if (bindings.wasTriggered(Action::FIRE, input)) {
             logger.info("FIRE #{}", ++fired);
             bullets.push_back(ship.position + Vec2f{CELL, 0.0F});
+            audio->playSound(sounds.shot, 1.0F);
         }
+        handleAudioKeys(*audio, sounds, bindings, input, logger);
+        audio->update();
 
         const auto now = std::chrono::steady_clock::now();
         const float dt = std::min(
@@ -205,7 +266,8 @@ void run(engine::core::log::Logger &logger, const bool missingAsset)
 
         queue.clear();
         render_demo::fillQueue(queue, scene, render_demo::Frame{
-            .ship = ship, .bullets = bullets, .fired = fired});
+            .ship = ship, .bullets = bullets, .fired = fired,
+            .volumes = audio->volumes()});
         queue.sortByLayer();
         renderer.beginFrame(BACKGROUND);
         renderer.submit(queue);
