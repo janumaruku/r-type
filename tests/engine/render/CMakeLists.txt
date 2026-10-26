@@ -3,7 +3,6 @@ rtype_add_test(engine_render_tests
     SOURCES
     LetterboxTests.cpp
     RenderQueueTests.cpp
-    ResourcePathTests.cpp
 )
 
 rtype_add_test(engine_render_raylib_tests

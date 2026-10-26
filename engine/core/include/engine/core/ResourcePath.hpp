@@ -10,7 +10,7 @@
 
 #include <filesystem>
 
-namespace engine::render {
+namespace engine::core {
 
 /*
 ** The key the caches store a file under: the path made lexically_normal(),
