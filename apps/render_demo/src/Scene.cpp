@@ -7,6 +7,7 @@
 
 #include "Scene.hpp"
 
+#include <format>
 #include <string>
 #include <utility>
 
@@ -122,6 +123,14 @@ void pushHud(RenderQueue &queue, const SceneAssets &assets,
     queue.push(text(engine::render::FontId{},
         "default font: arrows/WASD move, SPACE/LCTRL fire, ESC quits",
         Vec2f{20.0F, 84.0F}, 20, dim));
+    queue.push(text(engine::render::FontId{},
+        "X: 10 explosions   0/9: master volume up/down   M: mute",
+        Vec2f{20.0F, 108.0F}, 20, dim));
+    queue.push(text(engine::render::FontId{},
+        std::format("master {:.1f}   sfx {:.1f}   music {:.1f}{}",
+            frame.volumes.master(), frame.volumes.sfx(), frame.volumes.music(),
+            frame.volumes.muted() ? "   MUTED" : ""),
+        Vec2f{760.0F, 16.0F}, 20, WHITE));
     queue.push(text(engine::render::FontId{},
         "left: 300 over 200 over 100   right: same layer, green pushed last",
         Vec2f{100.0F, 270.0F}, 20, dim));

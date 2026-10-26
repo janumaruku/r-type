@@ -8,4 +8,5 @@ add_subdirectory(input)
 
 if (RTYPE_BUILD_CLIENT)
     add_subdirectory(render)
+    add_subdirectory(audio)
 endif ()
