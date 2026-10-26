@@ -24,7 +24,23 @@ enum class MessageType : std::uint8_t {
     KICK = 0x86,
 };
 
-[[nodiscard]] constexpr bool isKnown(MessageType type) noexcept;
+[[nodiscard]] constexpr bool isKnown(MessageType type) noexcept
+{
+    switch (type) {
+    case MessageType::HELLO:
+    case MessageType::INPUT:
+    case MessageType::DISCONNECT:
+    case MessageType::WELCOME:
+    case MessageType::REJECT:
+    case MessageType::SNAPSHOT:
+    case MessageType::EVENT:
+    case MessageType::SHUTDOWN:
+    case MessageType::KICK:
+        return true;
+    }
+
+    return false;
+}
 
 std::ostream &operator<<(std::ostream &stream, MessageType type);
 }
