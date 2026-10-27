@@ -22,7 +22,7 @@ inline constexpr std::uint8_t MAX_PLAYERS = 4;
 
 struct Hello {
     std::uint8_t protocolVersion = Header::VERSION;
-    std::string playerName;
+    std::string playerName{};
 
     bool operator==(const Hello &) const = default;
 };
