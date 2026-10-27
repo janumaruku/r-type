@@ -79,4 +79,21 @@ void deserialize(net::Packet &packet, Input &message)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
             "INPUT: reserved bits set");
 }
+
+void serialize(net::Packet &packet, const Disconnect &message)
+{
+    packet << message.reason;
+}
+
+void deserialize(net::Packet &packet, Disconnect &message)
+{
+    packet >> message.reason;
+
+    switch (message.reason) {
+    case DisconnectReason::QUIT:
+        return;
+    }
+    throw ProtocolError(DecodeError::OUT_OF_RANGE,
+        "DISCONNECT: reason out of range");
+}
 }
