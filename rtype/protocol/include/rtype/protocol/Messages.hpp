@@ -43,6 +43,21 @@ struct Welcome {
 void serialize(net::Packet &packet, const Welcome &message);
 
 void deserialize(net::Packet &packet, Welcome &message);
+
+enum class RejectReason : std::uint8_t {
+    SERVER_FULL = 1,
+    VERSION_MISMATCH = 2,
+};
+
+struct Reject {
+    RejectReason reason = RejectReason::SERVER_FULL;
+
+    bool operator==(const Reject &) const = default;
+};
+
+void serialize(net::Packet &packet, const Reject &message);
+
+void deserialize(net::Packet &packet, Reject &message);
 }
 
 #endif //R_TYPE_MESSAGES_HPP
