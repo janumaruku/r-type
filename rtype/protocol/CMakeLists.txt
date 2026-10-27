@@ -1,7 +1,9 @@
 add_library(rtype_protocol STATIC
         src/MessageType.cpp
         src/ProtocolError.cpp
-        src/Header.cpp)
+        src/Header.cpp
+        include/rtype/protocol/Messages.hpp
+        src/Messages.cpp)
 
 target_include_directories(rtype_protocol PUBLIC include)
 
