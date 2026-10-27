@@ -100,6 +100,21 @@ struct Shutdown {
 void serialize(net::Packet &packet, const Shutdown &message);
 
 void deserialize(net::Packet &packet, Shutdown &message);
+
+enum class KickReason : std::uint8_t {
+    PROTOCOL_ERROR = 1,
+    RATE_LIMITED = 2,
+};
+
+struct Kick {
+    KickReason reason = KickReason::PROTOCOL_ERROR;
+
+    bool operator==(const Kick &) const = default;
+};
+
+void serialize(net::Packet &packet, const Kick &message);
+
+void deserialize(net::Packet &packet, Kick &message);
 }
 
 #endif //R_TYPE_MESSAGES_HPP

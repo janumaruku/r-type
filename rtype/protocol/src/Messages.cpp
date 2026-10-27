@@ -104,4 +104,22 @@ void serialize(net::Packet &, const Shutdown &)
 void deserialize(net::Packet &, Shutdown &)
 {
 }
+
+void serialize(net::Packet &packet, const Kick &message)
+{
+    packet << message.reason;
+}
+
+void deserialize(net::Packet &packet, Kick &message)
+{
+    packet >> message.reason;
+
+    switch (message.reason) {
+    case KickReason::PROTOCOL_ERROR:
+    case KickReason::RATE_LIMITED:
+        return;
+    }
+    throw ProtocolError(DecodeError::OUT_OF_RANGE,
+        "KICK: reason out of range");
+}
 }
