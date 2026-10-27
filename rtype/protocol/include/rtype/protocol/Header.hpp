@@ -11,7 +11,7 @@
 #include <cstdint>
 
 #include "MessageType.hpp"
-#include "../../../../../network/include/network/Packet.hpp"
+#include "network/Packet.hpp"
 
 namespace rtype::protocol {
 struct Header {
@@ -19,7 +19,7 @@ struct Header {
     static constexpr std::uint8_t VERSION = 1;
     static constexpr std::size_t SIZE = 8;
 
-    explicit Header(MessageType type);
+    explicit Header(MessageType myType);
 
     std::uint16_t magic = MAGIC;
     std::uint8_t version = VERSION;
@@ -38,3 +38,5 @@ template <class Message>
 // rtype
 
 #endif //R_TYPE_HEADER_HPP
+
+#include "rtype/protocol/Header.tpp"
