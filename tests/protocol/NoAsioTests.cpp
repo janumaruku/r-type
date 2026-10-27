@@ -7,9 +7,12 @@
 
 #include <gtest/gtest.h>
 
+#include "rtype/protocol/Event.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/MessageType.hpp"
+#include "rtype/protocol/Messages.hpp"
 #include "rtype/protocol/ProtocolError.hpp"
+#include "rtype/protocol/Snapshot.hpp"
 
 /*
 ** network links Asio publicly, so its include path reaches this file: only the
