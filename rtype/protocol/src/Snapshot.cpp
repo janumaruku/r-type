@@ -60,4 +60,41 @@ void deserialize(net::Packet &packet, PlayerInfo &message)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
             "PLAYER_INFO: playerId must be between 0 and 3");
 }
+
+void serialize(net::Packet &packet, const EntityState &message)
+{
+    packet << message.netId << message.kind << message.variant
+        << message.x << message.y << message.vx << message.vy;
+}
+
+void deserialize(net::Packet &packet, EntityState &message)
+{
+    packet >> message.netId >> message.kind >> message.variant
+        >> message.x >> message.y >> message.vx >> message.vy;
+
+    if (message.netId == 0)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "ENTITY_STATE: netId must not be 0");
+
+    switch (message.kind) {
+    case EntityKind::PLAYER_SHIP:
+        if (message.variant >= MAX_PLAYERS)
+            throw ProtocolError(DecodeError::OUT_OF_RANGE,
+                "ENTITY_STATE: variant out of range for PLAYER_SHIP");
+        return;
+    case EntityKind::BYDOS_SLAVE:
+        if (message.variant > pattern::SINE)
+            throw ProtocolError(DecodeError::OUT_OF_RANGE,
+                "ENTITY_STATE: variant out of range for BYDOS_SLAVE");
+        return;
+    case EntityKind::PLAYER_MISSILE:
+    case EntityKind::ENEMY_MISSILE:
+        if (message.variant != 0)
+            throw ProtocolError(DecodeError::OUT_OF_RANGE,
+                "ENTITY_STATE: variant must be 0 for a missile");
+        return;
+    }
+    throw ProtocolError(DecodeError::OUT_OF_RANGE,
+        "ENTITY_STATE: kind out of range");
+}
 }
