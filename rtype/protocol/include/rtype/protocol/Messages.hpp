@@ -58,6 +58,26 @@ struct Reject {
 void serialize(net::Packet &packet, const Reject &message);
 
 void deserialize(net::Packet &packet, Reject &message);
+
+namespace buttons {
+inline constexpr std::uint8_t UP = 1U << 0U;
+inline constexpr std::uint8_t DOWN = 1U << 1U;
+inline constexpr std::uint8_t LEFT = 1U << 2U;
+inline constexpr std::uint8_t RIGHT = 1U << 3U;
+inline constexpr std::uint8_t FIRE = 1U << 4U;
+inline constexpr std::uint8_t RESERVED = 0xE0;
+}
+
+struct Input {
+    std::uint32_t inputSequence = 0;
+    std::uint8_t buttons = 0;
+
+    bool operator==(const Input &) const = default;
+};
+
+void serialize(net::Packet &packet, const Input &message);
+
+void deserialize(net::Packet &packet, Input &message);
 }
 
 #endif //R_TYPE_MESSAGES_HPP
