@@ -7,6 +7,8 @@
 
 #include "rtype/protocol/Messages.hpp"
 
+#include <format>
+
 #include "rtype/protocol/ProtocolError.hpp"
 
 namespace rtype::protocol {
@@ -121,5 +123,22 @@ void deserialize(net::Packet &packet, Kick &message)
     }
     throw ProtocolError(DecodeError::OUT_OF_RANGE,
         "KICK: reason out of range");
+}
+
+std::string sanitizeName(std::string_view name,
+    const std::uint8_t playerId)
+{
+    if (name.empty())
+        return std::format("Player {}", playerId + 1);
+
+    name = name.substr(0, MAX_NAME_LENGTH);
+    std::string result;
+
+    for (const char letter: name) {
+        const auto byte = static_cast<unsigned char>(letter);
+        result.push_back(byte < 0x20 || byte > 0x7E ? '?' : letter);
+    }
+
+    return result;
 }
 }
