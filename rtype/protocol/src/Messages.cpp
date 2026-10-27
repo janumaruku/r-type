@@ -96,4 +96,12 @@ void deserialize(net::Packet &packet, Disconnect &message)
     throw ProtocolError(DecodeError::OUT_OF_RANGE,
         "DISCONNECT: reason out of range");
 }
+
+void serialize(net::Packet &, const Shutdown &)
+{
+}
+
+void deserialize(net::Packet &, Shutdown &)
+{
+}
 }
