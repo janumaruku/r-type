@@ -7,79 +7,18 @@
 
 #include <gtest/gtest.h>
 
-#include <cstddef>
 #include <cstdint>
-#include <span>
 #include <string>
 #include <vector>
 
+#include "MessageTestHelpers.hpp"
 #include "rtype/protocol/Messages.hpp"
 #include "rtype/protocol/ProtocolError.hpp"
 
 using namespace rtype::protocol;
+using namespace protocol_test;
 
 namespace {
-
-template <class Message>
-std::vector<std::uint8_t> encode(const Message &message)
-{
-    net::Packet packet;
-
-    packet << message;
-
-    const auto bytes = packet.bytes();
-    return {bytes.begin(), bytes.end()};
-}
-
-template <class Message>
-void expectRoundTrip(const Message &message)
-{
-    const std::vector<std::uint8_t> bytes = encode(message);
-    net::Packet packet{bytes};
-    Message read;
-
-    packet >> read;
-    EXPECT_EQ(read, message);
-    EXPECT_TRUE(packet.fullyRead());
-}
-
-template <class Message>
-void expectEveryPrefixTruncated(const Message &message)
-{
-    const std::vector<std::uint8_t> bytes = encode(message);
-
-    for (std::size_t length = 0; length < bytes.size(); ++length) {
-        net::Packet packet{std::span(bytes).first(length)};
-        Message read;
-
-        try {
-            packet >> read;
-            ADD_FAILURE() << "a prefix of " << length << " bytes was accepted";
-        } catch (const net::PacketError &error) {
-            EXPECT_EQ(classify(error), DecodeError::TRUNCATED)
-                << "prefix of " << length << " bytes";
-        }
-    }
-}
-
-/*
-** serialize doesn't validate, so an invalid message is built by encoding a
-** struct holding the invalid value.
-*/
-template <class Message>
-void expectOutOfRange(const Message &invalid)
-{
-    const std::vector<std::uint8_t> bytes = encode(invalid);
-    net::Packet packet{bytes};
-    Message read;
-
-    try {
-        packet >> read;
-        ADD_FAILURE() << "an invalid message was accepted";
-    } catch (const ProtocolError &error) {
-        EXPECT_EQ(error.code(), DecodeError::OUT_OF_RANGE) << error.what();
-    }
-}
 
 const std::string SIXTEEN_BYTES = "ABCDEFGHIJKLMNOP";
 
