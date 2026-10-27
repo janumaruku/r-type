@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <string_view>
 
 #include "rtype/protocol/Header.hpp"
 #include "network/Packet.hpp"
@@ -115,6 +116,9 @@ struct Kick {
 void serialize(net::Packet &packet, const Kick &message);
 
 void deserialize(net::Packet &packet, Kick &message);
+
+[[nodiscard]] std::string sanitizeName(std::string_view name,
+    std::uint8_t playerId);
 }
 
 #endif //R_TYPE_MESSAGES_HPP
