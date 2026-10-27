@@ -321,7 +321,7 @@ A receiver MUST run these checks before using any field. None of them may crash 
 | `version` ≠ 1 | Drop. If it is a HELLO, the server replies REJECT(VERSION_MISMATCH), at most once per second per address |
 | `type` unknown, or travelling in the wrong direction | Drop, count as an offence |
 | Payload shorter than the type needs, or bytes left over after decoding | Drop, count as an offence |
-| A field out of range: button bits 5–7, an unknown enum value, `chunkIndex` ≥ `chunkCount`, `chunkCount` of 0 or more than 16, more than 48 entities or a roster that is neither 0 nor 4 entries, a list count larger than the bytes left, a string longer than its maximum | Drop, count as an offence |
+| A field out of range: button bits 5–7, an unknown enum value, `chunkIndex` ≥ `chunkCount`, `chunkCount` of 0 or more than 16, more than 48 entities or a roster that is neither 0 nor 4 entries, a roster in chunk 0 missing or one in another chunk, a roster whose `playerId`s aren't 0, 1, 2, 3 in order, a PlayerInfo whose state is EMPTY with a name or isn't ALIVE with a `shipNetId`, an EntityState with `netId` 0 or a `variant` that doesn't match its `kind` (section 6.5), a list count larger than the bytes left, a string longer than its maximum | Drop, count as an offence |
 | A non-HELLO datagram from an address with no session | Drop, no reply |
 | More than 240 datagrams in one second from one address | Drop the excess |
 | More than 10 offences in one second from one session | Kick: KICK(PROTOCOL_ERROR) to the offender (section 6.8), EVENT PLAYER_LEFT(KICKED) to the others, then forget the session |
