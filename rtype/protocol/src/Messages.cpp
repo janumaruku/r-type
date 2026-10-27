@@ -18,7 +18,7 @@ void serialize(net::Packet &packet, const Hello &message)
 void deserialize(net::Packet &packet, Hello &message)
 {
     packet >> message.protocolVersion >> message.playerName;
-    if (message.playerName.size() > 16U)
+    if (message.playerName.size() > MAX_NAME_LENGTH)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
             "HELLO: player name too long");
 }
