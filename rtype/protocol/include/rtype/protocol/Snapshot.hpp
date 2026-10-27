@@ -11,6 +11,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 
 #include "network/Packet.hpp"
 
@@ -68,6 +69,21 @@ struct EntityState {
 void serialize(net::Packet &packet, const EntityState &message);
 
 void deserialize(net::Packet &packet, EntityState &message);
+
+struct Snapshot {
+    std::uint32_t serverTick = 0;
+    std::uint32_t lastProcessedInput = 0;
+    std::uint8_t chunkIndex = 0;
+    std::uint8_t chunkCount = 1;
+    std::vector<PlayerInfo> roster;
+    std::vector<EntityState> entities;
+
+    bool operator==(const Snapshot &) const = default;
+};
+
+void serialize(net::Packet &packet, const Snapshot &message);
+
+void deserialize(net::Packet &packet, Snapshot &message);
 }
 
 #endif //R_TYPE_SNAPSHOT_HPP
