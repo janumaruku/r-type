@@ -84,6 +84,14 @@ struct Snapshot {
 void serialize(net::Packet &packet, const Snapshot &message);
 
 void deserialize(net::Packet &packet, Snapshot &message);
+
+/*
+** Splits a whole tick into chunks of at most MAX_ENTITIES_PER_CHUNK entities,
+** with the roster in chunk 0 only. full's chunkIndex and chunkCount are
+** ignored. More than MAX_CHUNKS * MAX_ENTITIES_PER_CHUNK entities is a server
+** bug, not network input, so it throws engine::core::EngineError.
+*/
+[[nodiscard]] std::vector<Snapshot> splitSnapshot(const Snapshot &full);
 }
 
 #endif //R_TYPE_SNAPSHOT_HPP
