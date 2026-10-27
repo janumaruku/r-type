@@ -78,6 +78,20 @@ struct Input {
 void serialize(net::Packet &packet, const Input &message);
 
 void deserialize(net::Packet &packet, Input &message);
+
+enum class DisconnectReason : std::uint8_t {
+    QUIT = 0,
+};
+
+struct Disconnect {
+    DisconnectReason reason = DisconnectReason::QUIT;
+
+    bool operator==(const Disconnect &) const = default;
+};
+
+void serialize(net::Packet &packet, const Disconnect &message);
+
+void deserialize(net::Packet &packet, Disconnect &message);
 }
 
 #endif //R_TYPE_MESSAGES_HPP
