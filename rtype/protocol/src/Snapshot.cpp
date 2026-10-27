@@ -97,4 +97,55 @@ void deserialize(net::Packet &packet, EntityState &message)
     throw ProtocolError(DecodeError::OUT_OF_RANGE,
         "ENTITY_STATE: kind out of range");
 }
+
+void serialize(net::Packet &packet, const Snapshot &message)
+{
+    packet << message.serverTick << message.lastProcessedInput
+        << message.chunkIndex << message.chunkCount << message.roster
+        << message.entities;
+}
+
+static bool isRosterInSlotOrder(const std::vector<PlayerInfo> &roster)
+{
+    for (std::size_t slot = 0; slot < roster.size(); ++slot)
+        if (roster[slot].playerId != slot)
+            return false;
+
+    return true;
+}
+
+void deserialize(net::Packet &packet, Snapshot &message)
+{
+    packet >> message.serverTick >> message.lastProcessedInput
+        >> message.chunkIndex >> message.chunkCount >> message.roster
+        >> message.entities;
+
+    if (message.chunkCount == 0 || message.chunkCount > MAX_CHUNKS)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "SNAPSHOT: chunkCount out of range");
+
+    if (message.chunkIndex >= message.chunkCount)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "SNAPSHOT: chunkIndex out of range");
+
+    if (!message.roster.empty() && message.roster.size() != MAX_PLAYERS)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "SNAPSHOT: roster must have 0 or 4 entries");
+
+    if (message.chunkIndex == 0 && message.roster.empty())
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "SNAPSHOT: chunk 0 must carry the roster");
+
+    if (message.chunkIndex != 0 && !message.roster.empty())
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "SNAPSHOT: only chunk 0 may carry the roster");
+
+    if (message.entities.size() > MAX_ENTITIES_PER_CHUNK)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "SNAPSHOT: too many entities");
+
+    if (!isRosterInSlotOrder(message.roster))
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "SNAPSHOT: roster not in slot order");
+}
 }
