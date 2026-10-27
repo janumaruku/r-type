@@ -92,6 +92,14 @@ struct Disconnect {
 void serialize(net::Packet &packet, const Disconnect &message);
 
 void deserialize(net::Packet &packet, Disconnect &message);
+
+struct Shutdown {
+    bool operator==(const Shutdown &) const = default;
+};
+
+void serialize(net::Packet &packet, const Shutdown &message);
+
+void deserialize(net::Packet &packet, Shutdown &message);
 }
 
 #endif //R_TYPE_MESSAGES_HPP
