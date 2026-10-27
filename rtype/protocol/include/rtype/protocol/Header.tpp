@@ -8,15 +8,14 @@
 #ifndef R_TYPE_HEADER_TPP
 #define R_TYPE_HEADER_TPP
 
-#include "rtype/protocol/MessageType.hpp"
+#include "rtype/protocol/Header.hpp"
 
 namespace rtype::protocol {
 template <class Message>
 net::Packet makePacket(MessageType type, std::uint32_t sequence,
     const Message &message)
 {
-    Header header(type);
-    header.sequence = sequence;
+    Header header{.type = type, .sequence = sequence};
 
     net::Packet packet;
     packet << header << message;

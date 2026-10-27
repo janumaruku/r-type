@@ -8,8 +8,10 @@
 #ifndef R_TYPE_PROTOCOL_ERROR_HPP
 #define R_TYPE_PROTOCOL_ERROR_HPP
 
+#include <cstddef>
 #include <cstdint>
 #include <iosfwd>
+#include <string>
 
 #include "network/Packet.hpp"
 
@@ -17,7 +19,7 @@ namespace rtype::protocol {
 enum class DecodeError: std::uint8_t {
     BAD_SIZE,
     BAD_MAGIC,
-    UNKNOW_TYPE,
+    UNKNOWN_TYPE,
     WRONG_DIRECTION,
     TRUNCATED,
     TRAILING_BYTES,
@@ -37,7 +39,8 @@ private:
 };
 
 void checkDatagramSize(std::size_t size);
-} // protocol
-// rtype
+
+[[nodiscard]] DecodeError classify(const net::PacketError &error) noexcept;
+}
 
 #endif //R_TYPE_PROTOCOL_ERROR_HPP

@@ -1,6 +1,5 @@
 add_library(rtype_protocol STATIC
         src/MessageType.cpp
-        include/rtype/protocol/Header.hpp
         src/ProtocolError.cpp
         src/Header.cpp)
 
