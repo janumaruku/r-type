@@ -65,4 +65,18 @@ void deserialize(net::Packet &packet, Reject &message)
     throw ProtocolError(DecodeError::OUT_OF_RANGE,
         "REJECT: reason out of range");
 }
+
+void serialize(net::Packet &packet, const Input &message)
+{
+    packet << message.inputSequence << message.buttons;
+}
+
+void deserialize(net::Packet &packet, Input &message)
+{
+    packet >> message.inputSequence >> message.buttons;
+
+    if ((message.buttons & buttons::RESERVED) != 0)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "INPUT: reserved bits set");
+}
 }
