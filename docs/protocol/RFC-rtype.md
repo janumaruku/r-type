@@ -50,7 +50,7 @@ All multi-byte values are **little-endian**.
 | `u16` | 2 bytes | Unsigned integer, little-endian |
 | `u32` | 4 bytes | Unsigned integer, little-endian |
 | `f32` | 4 bytes | IEEE-754 binary32, little-endian |
-| `string<N>` | 1 + n bytes | A `u8` length n, with n ≤ N, followed by n bytes of printable ASCII (`0x20`–`0x7E`). No terminator |
+| `string<N>` | 1 + n bytes | A `u8` length n, with n ≤ N, followed by n bytes that SHOULD be printable ASCII (`0x20`–`0x7E`). No terminator. A receiver MUST NOT reject other bytes: see section 6.1 |
 | `list<T>` | 2 + n × size of T | A `u16` count n, followed by n elements of type T |
 
 Conventions:
@@ -93,7 +93,7 @@ There is no length field: the payload is everything after byte 8 (section 2.1).
 
 `type` answers *which of our messages is this?* `magic` answers *is this one of our messages at all?*
 
-Any program can send bytes to an open UDP port: port scanners, a misconfigured tool, or another team's client pointed at the wrong server. The receiver gets those bytes as a datagram like any other. Without `magic`, the first byte after the version would be read as a `type`. With 8 valid types out of 256 possible byte values, about 1 junk datagram in 32 would be routed to a command, and only the payload checks would stop it.
+Any program can send bytes to an open UDP port: port scanners, a misconfigured tool, or another team's client pointed at the wrong server. The receiver gets those bytes as a datagram like any other. Without `magic`, the first byte after the version would be read as a `type`. With 9 valid types out of 256 possible byte values, about 1 junk datagram in 28 would be routed to a command, and only the payload checks would stop it.
 
 With `magic`, a junk datagram also has to start with exactly `54 52`, a 1 in 65 536 chance. It is rejected after reading 2 bytes, before any decoding. Casting the `type` byte to the `MessageType` enum doesn't help here: C++ accepts any byte value in an enum, valid or not.
 
@@ -135,6 +135,7 @@ Client-to-server types are below `0x80`; server-to-client types are `0x80` and a
 | `0x83` | SNAPSHOT | S → C | 30 times per second, in one or more chunks | 14 – 1182 |
 | `0x84` | EVENT | S → C | When something happens; important events 3 times | 21 |
 | `0x85` | SHUTDOWN | S → C | 3 times when the server stops | 0 |
+| `0x86` | KICK | S → C | 3 times, when the server kicks this client | 1 |
 
 ## 6. Message layouts
 
@@ -145,7 +146,7 @@ Offsets are relative to the start of the payload.
 | Offset | Field | Type | Rules |
 | --- | --- | --- | --- |
 | 0 | `protocolVersion` | u8 | MUST be 1 |
-| 1 | `playerName` | string<16> | The server replaces any non-printable byte with `?`. An empty name becomes `Player N`. |
+| 1 | `playerName` | string<16> | The server replaces any byte outside `0x20`–`0x7E` with `?`. An empty name becomes `Player N`, where N = `playerId` + 1: `Player 1` for slot 0. |
 
 The client sends HELLO every 0.5 s until it receives WELCOME or REJECT. After 5 s without either, it gives up and reports that the server is unreachable.
 
@@ -252,6 +253,18 @@ The server sends "3 times" events on three consecutive ticks. The client MUST ke
 - **DISCONNECT** has a `u8 reason` (0 = QUIT). The client sends it 3 times, 20 ms apart, then closes its socket.
 - **SHUTDOWN** has an empty payload. The server sends it 3 times to every client before exiting, so clients can show "Server closed" right away instead of waiting for a timeout.
 
+### 6.8 KICK (`0x86`, server → client)
+
+| Offset | Field | Type | Rules |
+| --- | --- | --- | --- |
+| 0 | `reason` | u8 | 1 = PROTOCOL_ERROR (too many invalid datagrams, section 10), 2 = RATE_LIMITED (a session that keeps flooding the server) |
+
+The server sends KICK 3 times, on 3 consecutive ticks, like SHUTDOWN, then forgets the session. The other players receive EVENT PLAYER_LEFT(KICKED). The client shows the reason right away, for example "Kicked: protocol error", instead of waiting 5 s and reporting a lost connection.
+
+KICK is sent once per session, never once per bad datagram, and the datagram is 9 bytes long, so it can't be used to amplify traffic.
+
+Dropping the excess above 240 datagrams per second (section 10) remains the first answer to flooding. How long a session may stay above that limit before it receives KICK(RATE_LIMITED) is up to the server.
+
 ## 7. How the protocol meets the subject's notification requirement
 
 The subject (requirement F-04) asks the server to notify clients of each of these:
@@ -278,6 +291,7 @@ stateDiagram-v2
     InGame --> InGame : INPUT at 60 Hz, SNAPSHOT at 30 Hz, EVENTs
     InGame --> Closed : player quits (DISCONNECT x3)
     InGame --> Closed : SHUTDOWN received
+    InGame --> Closed : KICK received
     InGame --> Closed : nothing from the server for 5 s
     Closed --> [*]
 ```
@@ -290,7 +304,7 @@ On the server, an address becomes a session only when it sends a valid HELLO and
 | --- | --- | --- |
 | DISCONNECT received | Remove the session, free the slot, destroy the ship and its missiles | EVENT PLAYER_LEFT(QUIT); the entities and the roster entry vanish from SNAPSHOT |
 | No datagram from a client for **5 s** (crash, cable pulled, frozen client) | The same | EVENT PLAYER_LEFT(TIMEOUT) |
-| Protocol abuse (section 10) | The same, plus a log line naming the address | EVENT PLAYER_LEFT(KICKED) |
+| Protocol abuse (section 10) | KICK(PROTOCOL_ERROR) 3 times to the offender, then the same, plus a log line naming the address | EVENT PLAYER_LEFT(KICKED) |
 
 The server keeps running in every case. When the last player leaves, it stops spawning enemies and waits until someone connects.
 
@@ -310,7 +324,7 @@ A receiver MUST run these checks before using any field. None of them may crash 
 | A field out of range: button bits 5–7, an unknown enum value, `chunkIndex` ≥ `chunkCount`, `chunkCount` of 0 or more than 16, more than 48 entities or a roster that is neither 0 nor 4 entries, a list count larger than the bytes left, a string longer than its maximum | Drop, count as an offence |
 | A non-HELLO datagram from an address with no session | Drop, no reply |
 | More than 240 datagrams in one second from one address | Drop the excess |
-| More than 10 offences in one second from one session | Kick: EVENT PLAYER_LEFT(KICKED) to the others, then forget the session |
+| More than 10 offences in one second from one session | Kick: KICK(PROTOCOL_ERROR) to the offender (section 6.8), EVENT PLAYER_LEFT(KICKED) to the others, then forget the session |
 
 ## 11. Bandwidth
 
@@ -320,12 +334,14 @@ At the planned peak of 4 players, 30 enemies and 60 missiles, a snapshot holds a
 
 `rtype_protocol` implements this document on top of [`net::Packet`](../modules/network.md#netpacket). Each message is a plain struct, with a `serialize` / `deserialize` pair declared right after it in the same namespace, in the style of nlohmann::json's `to_json` / `from_json`. Each pair reads and writes the fields in the order of the tables above, and `deserialize` validates every range the RFC states.
 
+A failed decode throws `ProtocolError`, a subclass of `net::PacketError` carrying a `DecodeError` code (`BAD_SIZE`, `BAD_MAGIC`, `UNKNOWN_TYPE`, `WRONG_DIRECTION`, `TRUNCATED`, `TRAILING_BYTES`, `OUT_OF_RANGE`), so a receiver can log why a datagram was dropped and count offences (section 10). A field out of range gives `OUT_OF_RANGE`. Running out of bytes throws a plain `net::PacketError` from `net::Packet` itself, which `classify` reports as `TRUNCATED`.
+
 ```cpp
 namespace rtype::protocol {
 
 enum class MessageType : std::uint8_t {
     HELLO = 0x01, INPUT = 0x02, DISCONNECT = 0x03,
-    WELCOME = 0x81, REJECT = 0x82, SNAPSHOT = 0x83, EVENT = 0x84, SHUTDOWN = 0x85,
+    WELCOME = 0x81, REJECT = 0x82, SNAPSHOT = 0x83, EVENT = 0x84, SHUTDOWN = 0x85, KICK = 0x86,
 };
 std::ostream& operator<<(std::ostream& stream, MessageType type);   // for logs and FactoryTemplate
 
@@ -346,9 +362,10 @@ inline void serialize(net::Packet& packet, const Header& header)
 
 inline void deserialize(net::Packet& packet, Header& header)
 {
-    packet >> header.magic >> header.version >> header.type >> header.sequence;
+    packet >> header.magic;
     if (header.magic != Header::MAGIC)
-        throw net::PacketError("Header: bad magic");
+        throw ProtocolError(DecodeError::BAD_MAGIC, "Header: bad magic");
+    packet >> header.version >> header.type >> header.sequence;
     // version and type are checked by the dispatcher: a wrong version may deserve a REJECT,
     // and an unknown type is simply not registered in the command factory
 }
@@ -367,7 +384,7 @@ inline void deserialize(net::Packet& packet, Input& input)
 {
     packet >> input.inputSequence >> input.buttons;
     if ((input.buttons & 0xE0) != 0)
-        throw net::PacketError("INPUT: reserved button bits set");
+        throw ProtocolError(DecodeError::OUT_OF_RANGE, "INPUT: reserved bits set");
 }
 
 struct Snapshot {
@@ -390,12 +407,14 @@ inline void deserialize(net::Packet& packet, Snapshot& snapshot)
     packet >> snapshot.serverTick >> snapshot.lastProcessedInput >> snapshot.chunkIndex
            >> snapshot.chunkCount >> snapshot.roster >> snapshot.entities;
     if (snapshot.chunkCount == 0 || snapshot.chunkCount > 16 || snapshot.chunkIndex >= snapshot.chunkCount)
-        throw net::PacketError("SNAPSHOT: bad chunk numbering");
+        throw ProtocolError(DecodeError::OUT_OF_RANGE, "SNAPSHOT: bad chunk numbering");
     if ((snapshot.roster.size() != 0 && snapshot.roster.size() != 4) || snapshot.entities.size() > 48)
-        throw net::PacketError("SNAPSHOT: bad list size");
+        throw ProtocolError(DecodeError::OUT_OF_RANGE, "SNAPSHOT: bad list size");
 }
 
-// Hello, Disconnect, Welcome, Reject, PlayerInfo, EntityState, Event: same pattern.
+// Hello, Disconnect, Welcome, Reject, Kick, PlayerInfo, EntityState, Event: same pattern.
+
+std::string sanitizeName(std::string_view name, std::uint8_t playerId);   // section 6.1
 
 template <typename Message>
 net::Packet makePacket(MessageType type, std::uint32_t sequence, const Message& message)
@@ -420,4 +439,4 @@ link.socket.sendTo(link.server, protocol::makePacket(MessageType::INPUT, ++link.
 const auto input = message.packet.read<protocol::Input>();
 ```
 
-Every message type has a round-trip unit test (`read<T>()` after `write(m)` gives back `m`) and a truncation test: every prefix of a valid payload throws `PacketError`.
+Every message type has a round-trip unit test (`read<T>()` after `write(m)` gives back `m`) and a truncation test: every prefix of a valid payload throws `PacketError`, which `classify` reports as `TRUNCATED`.
