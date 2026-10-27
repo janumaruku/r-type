@@ -33,7 +33,7 @@ struct PlayerInfo {
     std::uint8_t lives = 0;
     std::uint32_t score = 0;
     std::uint32_t shipNetId = 0;
-    std::string name;
+    std::string name{};
 
     bool operator==(const PlayerInfo &) const = default;
 };
@@ -75,8 +75,8 @@ struct Snapshot {
     std::uint32_t lastProcessedInput = 0;
     std::uint8_t chunkIndex = 0;
     std::uint8_t chunkCount = 1;
-    std::vector<PlayerInfo> roster;
-    std::vector<EntityState> entities;
+    std::vector<PlayerInfo> roster{};
+    std::vector<EntityState> entities{};
 
     bool operator==(const Snapshot &) const = default;
 };
