@@ -7,6 +7,11 @@
 
 #include "rtype/protocol/Snapshot.hpp"
 
+#include <algorithm>
+#include <cstddef>
+#include <format>
+
+#include "engine/core/Errors.hpp"
 #include "rtype/protocol/Messages.hpp"
 #include "rtype/protocol/ProtocolError.hpp"
 
@@ -147,5 +152,40 @@ void deserialize(net::Packet &packet, Snapshot &message)
     if (!isRosterInSlotOrder(message.roster))
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
             "SNAPSHOT: roster not in slot order");
+}
+
+std::vector<Snapshot> splitSnapshot(const Snapshot &full)
+{
+    const std::size_t total = full.entities.size();
+    constexpr std::size_t maxEntities = MAX_CHUNKS * MAX_ENTITIES_PER_CHUNK;
+
+    if (total > maxEntities)
+        throw engine::core::EngineError(std::format(
+            "splitSnapshot: {} entities, at most {} fit in one tick", total,
+            maxEntities));
+
+    const std::size_t count = std::max<std::size_t>(1,
+        (total + MAX_ENTITIES_PER_CHUNK - 1) / MAX_ENTITIES_PER_CHUNK);
+    std::vector<Snapshot> chunks;
+
+    chunks.reserve(count);
+    for (std::size_t index = 0; index < count; ++index) {
+        const std::size_t first = index * MAX_ENTITIES_PER_CHUNK;
+        const std::size_t last =
+            std::min(total, first + MAX_ENTITIES_PER_CHUNK);
+
+        chunks.push_back(Snapshot{
+            .serverTick = full.serverTick,
+            .lastProcessedInput = full.lastProcessedInput,
+            .chunkIndex = static_cast<std::uint8_t>(index),
+            .chunkCount = static_cast<std::uint8_t>(count),
+            .roster = index == 0 ? full.roster : std::vector<PlayerInfo>{},
+            .entities = {
+                full.entities.begin() + static_cast<std::ptrdiff_t>(first),
+                full.entities.begin() + static_cast<std::ptrdiff_t>(last),
+            },
+        });
+    }
+    return chunks;
 }
 }
