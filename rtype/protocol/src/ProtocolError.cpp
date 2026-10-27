@@ -14,22 +14,22 @@ std::ostream &operator<<(std::ostream &stream, DecodeError error)
 {
     switch (error) {
     case DecodeError::BAD_SIZE:
-        stream << "BAD SIZE";
+        return stream << "BAD_SIZE";
     case DecodeError::BAD_MAGIC:
-        stream << "BAD MAGIC";
-    case DecodeError::UNKNOW_TYPE:
-        stream << "UNKNOWN TYPE";
+        return stream << "BAD_MAGIC";
+    case DecodeError::UNKNOWN_TYPE:
+        return stream << "UNKNOWN_TYPE";
     case DecodeError::WRONG_DIRECTION:
-        stream << "WRONG DIRECTION";
+        return stream << "WRONG_DIRECTION";
     case DecodeError::TRUNCATED:
-        stream << "TRUNCATED";
+        return stream << "TRUNCATED";
     case DecodeError::TRAILING_BYTES:
-        stream << "TRAILING BYTES";
-    default:
-        stream << "UNKNOWN";
+        return stream << "TRAILING_BYTES";
+    case DecodeError::OUT_OF_RANGE:
+        return stream << "OUT_OF_RANGE";
     }
 
-    return stream;
+    return stream << "UNKNOWN";
 }
 
 ProtocolError::ProtocolError(DecodeError code,
@@ -46,6 +46,13 @@ void checkDatagramSize(std::size_t size)
 {
     if (size < Header::SIZE || size > net::Packet::MAX_SIZE)
         throw ProtocolError(DecodeError::BAD_SIZE,
-            "maformed packet, size out of range");
+            "Datagram: size out of range");
+}
+
+DecodeError classify(const net::PacketError &error) noexcept
+{
+    if (const auto *protocolError = dynamic_cast<const ProtocolError *>(&error))
+        return protocolError->code();
+    return DecodeError::TRUNCATED;
 }
 }

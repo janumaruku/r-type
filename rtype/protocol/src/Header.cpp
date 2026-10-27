@@ -10,10 +10,6 @@
 #include "rtype/protocol/ProtocolError.hpp"
 
 namespace rtype::protocol {
-Header::Header(MessageType myType): type(myType)
-{
-}
-
 void serialize(net::Packet &packet, const Header &header)
 {
     packet << header.magic << header.version << header.type << header.sequence;
@@ -22,14 +18,11 @@ void serialize(net::Packet &packet, const Header &header)
 void deserialize(net::Packet &packet, Header &header)
 {
     packet >> header.magic;
+    if (header.magic != Header::MAGIC)
+        throw ProtocolError(DecodeError::BAD_MAGIC, "Header: bad magic");
+
     packet >> header.version;
-
-    MessageType temp;
-    packet >> temp;
-    if (isKnown(temp))
-        throw ProtocolError(DecodeError::UNKNOW_TYPE, "unknown message type");
-
-    header.type = temp;
+    packet >> header.type;
     packet >> header.sequence;
 }
 }
