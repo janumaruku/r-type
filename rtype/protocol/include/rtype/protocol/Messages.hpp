@@ -27,7 +27,22 @@ struct Hello {
 };
 
 void serialize(net::Packet &packet, const Hello &message);
+
 void deserialize(net::Packet &packet, Hello &message);
+
+struct Welcome {
+    std::uint8_t playerId = 0;
+    std::uint8_t tickRate = 60;
+    std::uint8_t snapshotRate = 30;
+    std::uint8_t maxPlayers = MAX_PLAYERS;
+    std::uint32_t serverTick = 0;
+
+    bool operator==(const Welcome &) const = default;
+};
+
+void serialize(net::Packet &packet, const Welcome &message);
+
+void deserialize(net::Packet &packet, Welcome &message);
 }
 
 #endif //R_TYPE_MESSAGES_HPP

@@ -22,4 +22,29 @@ void deserialize(net::Packet &packet, Hello &message)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
             "HELLO: player name too long");
 }
+
+void serialize(net::Packet &packet, const Welcome &message)
+{
+    packet << message.playerId << message.tickRate << message.snapshotRate <<
+        message.maxPlayers << message.serverTick;
+}
+
+void deserialize(net::Packet &packet, Welcome &message)
+{
+    packet >> message.playerId >> message.tickRate >> message.snapshotRate >>
+        message.maxPlayers >> message.serverTick;
+
+    if (message.playerId >= MAX_PLAYERS)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "WELCOME: playerId out of range");
+    if (message.maxPlayers == 0 || message.maxPlayers > MAX_PLAYERS)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "WELCOME: maxPlayers out of range");
+    if (message.tickRate == 0)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "WELCOME: tickRate out of range");
+    if (message.snapshotRate == 0)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "WELCOME: snapshotRate out of range");
+}
 }
