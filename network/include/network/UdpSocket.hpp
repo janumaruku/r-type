@@ -31,9 +31,13 @@ struct Datagram {
 };
 
 /*
-** Counts since the socket was constructed, never reset, not even by stop() and
-** start(). stats() reads the 7 values one by one, not as a single atomic
-** snapshot, which is enough for statistics.
+** @struct SocketStats
+** @brief What a @ref UdpSocket received, dropped and sent, per cause.
+**
+** Counts since the socket was constructed, never reset, not even by
+** @ref UdpSocket::stop() and @ref UdpSocket::start().
+** @ref UdpSocket::stats() reads the 7 values one by one, not as a single
+** atomic snapshot, which is enough for statistics.
 */
 struct SocketStats {
     std::uint64_t received = 0;
@@ -82,6 +86,9 @@ private:
     std::size_t _receiveErrors = 0;
 
     /*
+    ** @struct Counters
+    ** @brief The atomic counters behind @ref SocketStats.
+    **
     ** Written only on the IO thread and read from any thread, so relaxed
     ** atomics are enough.
     */
@@ -96,9 +103,12 @@ private:
     };
 
     /*
-    ** Turns a stream of events into at most one log line per second. Used
-    ** only on the IO thread. record() counts one event and returns how many
-    ** to log now, or 0 if the last line is less than a second old.
+    ** @struct LogLimiter
+    ** @brief Turns a stream of events into at most one log line per second.
+    **
+    ** Used only on the IO thread. @ref record counts one event and returns
+    ** how many to log now, or 0 if the last line is less than a second old.
+    ** Events after the last line are logged only when a new event comes.
     */
     struct LogLimiter {
         std::chrono::steady_clock::time_point last{};
@@ -127,9 +137,12 @@ private:
     std::uint16_t _port = 0;
     asio::io_context _ioContext;
     /*
-    ** Keeps _ioContext.run() from returning when no operation is pending, as
-    ** after giveUpReceiving(), so that sendTo() still works. An empty optional
-    ** before start() and after stop(), since a work guard can't be re-armed.
+    ** @brief Keeps @ref _ioContext's run() from returning when no operation
+    ** is pending, as after @ref giveUpReceiving(), so that @ref sendTo()
+    ** still works.
+    **
+    ** An empty optional before @ref start() and after @ref stop(), since a
+    ** work guard can't be re-armed.
     */
     std::optional<asio::executor_work_guard<asio::io_context::executor_type>>
         _workGuard;

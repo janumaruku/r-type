@@ -186,8 +186,8 @@ void UdpSocket::handleReceive(const asio::error_code &error,
         const std::uint64_t count = _queueFullLog.record(
             std::chrono::steady_clock::now());
         if (count != 0)
-            _logger.warn("UDP queue full: dropped {} datagrams in the last "
-                "second", count);
+            _logger.warn("UDP queue full: {} datagram(s) dropped since the "
+                "last warning", count);
     }
     rearmReceive();
 }
@@ -198,8 +198,8 @@ void UdpSocket::dropOversized()
     const std::uint64_t count = _oversizedLog.record(
         std::chrono::steady_clock::now());
     if (count != 0)
-        _logger.debug("Dropped {} UDP datagrams larger than {} bytes in the "
-            "last second", count, Packet::MAX_SIZE);
+        _logger.debug("{} UDP datagram(s) larger than {} bytes dropped since "
+            "the last message", count, Packet::MAX_SIZE);
 }
 
 void UdpSocket::handleReceiveError(const asio::error_code &error)
@@ -284,8 +284,8 @@ void UdpSocket::sendTo(const asio::ip::udp::endpoint &endpoint,
                     const std::uint64_t count = _sendErrorLog.record(
                         std::chrono::steady_clock::now());
                     if (count != 0)
-                        _logger.debug("Failed to send {} UDP datagrams in the "
-                            "last second, the last one to {}:{}: {}", count,
+                        _logger.debug("{} UDP send(s) failed since the last "
+                            "message, the last one to {}:{}: {}", count,
                             endpoint.address().to_string(), endpoint.port(),
                             error.message());
                 });
