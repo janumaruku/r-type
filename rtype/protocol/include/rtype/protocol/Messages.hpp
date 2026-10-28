@@ -14,6 +14,7 @@
 #include <string_view>
 
 #include "rtype/protocol/Header.hpp"
+#include "rtype/protocol/MessageType.hpp"
 #include "network/Packet.hpp"
 
 namespace rtype::protocol {
@@ -21,6 +22,8 @@ inline constexpr std::size_t MAX_NAME_LENGTH = 16;
 inline constexpr std::uint8_t MAX_PLAYERS = 4;
 
 struct Hello {
+    static constexpr MessageType TYPE = MessageType::HELLO;
+
     std::uint8_t protocolVersion = Header::VERSION;
     std::string playerName{};
 
@@ -32,6 +35,8 @@ void serialize(net::Packet &packet, const Hello &message);
 void deserialize(net::Packet &packet, Hello &message);
 
 struct Welcome {
+    static constexpr MessageType TYPE = MessageType::WELCOME;
+
     std::uint8_t playerId = 0;
     std::uint8_t tickRate = 60;
     std::uint8_t snapshotRate = 30;
@@ -51,6 +56,8 @@ enum class RejectReason : std::uint8_t {
 };
 
 struct Reject {
+    static constexpr MessageType TYPE = MessageType::REJECT;
+
     RejectReason reason = RejectReason::SERVER_FULL;
 
     bool operator==(const Reject &) const = default;
@@ -70,6 +77,8 @@ inline constexpr std::uint8_t RESERVED = 0xE0;
 }
 
 struct Input {
+    static constexpr MessageType TYPE = MessageType::INPUT;
+
     std::uint32_t inputSequence = 0;
     std::uint8_t buttons = 0;
 
@@ -85,6 +94,8 @@ enum class DisconnectReason : std::uint8_t {
 };
 
 struct Disconnect {
+    static constexpr MessageType TYPE = MessageType::DISCONNECT;
+
     DisconnectReason reason = DisconnectReason::QUIT;
 
     bool operator==(const Disconnect &) const = default;
@@ -95,6 +106,8 @@ void serialize(net::Packet &packet, const Disconnect &message);
 void deserialize(net::Packet &packet, Disconnect &message);
 
 struct Shutdown {
+    static constexpr MessageType TYPE = MessageType::SHUTDOWN;
+
     bool operator==(const Shutdown &) const = default;
 };
 
@@ -108,6 +121,8 @@ enum class KickReason : std::uint8_t {
 };
 
 struct Kick {
+    static constexpr MessageType TYPE = MessageType::KICK;
+
     KickReason reason = KickReason::PROTOCOL_ERROR;
 
     bool operator==(const Kick &) const = default;

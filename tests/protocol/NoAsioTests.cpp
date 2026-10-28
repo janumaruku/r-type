@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 
+#include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/Event.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/MessageType.hpp"
