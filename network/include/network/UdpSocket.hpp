@@ -125,6 +125,11 @@ private:
 
     std::uint16_t _port = 0;
     asio::io_context _ioContext;
+    /*
+    ** Keeps _ioContext.run() from returning when no operation is pending, as
+    ** after giveUpReceiving(), so that sendTo() still works. An empty optional
+    ** before start() and after stop(), since a work guard can't be re-armed.
+    */
     std::optional<asio::executor_work_guard<asio::io_context::executor_type>>
         _workGuard;
     asio::ip::udp::socket _socket;
