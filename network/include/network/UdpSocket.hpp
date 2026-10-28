@@ -17,6 +17,7 @@
 #include <cstdint>
 #include <deque>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 #include "engine/core/Logger.hpp"
@@ -124,7 +125,8 @@ private:
 
     std::uint16_t _port = 0;
     asio::io_context _ioContext;
-    asio::executor_work_guard<asio::io_context::executor_type> _workGuard;
+    std::optional<asio::executor_work_guard<asio::io_context::executor_type>>
+        _workGuard;
     asio::ip::udp::socket _socket;
 
     std::thread _thread;
