@@ -8,9 +8,39 @@
 #include "rtype/protocol/MessageType.hpp"
 
 #include <format>
+#include <sstream>
 #include <string>
 
+#include "rtype/protocol/ProtocolError.hpp"
+
 namespace rtype::protocol {
+static std::string describe(MessageType type, const char *what)
+{
+    std::ostringstream stream;
+    stream << type << ": " << what;
+    return stream.str();
+}
+
+void checkType(MessageType type, Direction expected)
+{
+    if (!isKnown(type))
+        throw ProtocolError(DecodeError::UNKNOWN_TYPE,
+            describe(type, "unknown type"));
+
+    switch (expected) {
+    case Direction::CLIENT_TO_SERVER:
+        if (isClientToServer(type))
+            return;
+        break;
+    case Direction::SERVER_TO_CLIENT:
+        if (isServerToClient(type))
+            return;
+        break;
+    }
+    throw ProtocolError(DecodeError::WRONG_DIRECTION,
+        describe(type, "wrong direction"));
+}
+
 std::ostream &operator<<(std::ostream &stream, MessageType type)
 {
     switch (type) {
