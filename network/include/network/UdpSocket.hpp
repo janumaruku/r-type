@@ -11,6 +11,7 @@
 #include <array>
 #include <asio.hpp>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <thread>
 #include <cstdint>
@@ -26,6 +27,21 @@ namespace net {
 struct Datagram {
     std::vector<std::uint8_t> bytes;
     asio::ip::udp::endpoint from;
+};
+
+/*
+** Counts since the socket was constructed, never reset, not even by stop() and
+** start(). stats() reads the 7 values one by one, not as a single atomic
+** snapshot, which is enough for statistics.
+*/
+struct SocketStats {
+    std::uint64_t received = 0;
+    std::uint64_t droppedEmpty = 0;
+    std::uint64_t droppedOversized = 0;
+    std::uint64_t droppedQueueFull = 0;
+    std::uint64_t receiveErrors = 0;
+    std::uint64_t sent = 0;
+    std::uint64_t sendErrors = 0;
 };
 
 class UdpSocket {
@@ -50,6 +66,7 @@ public:
     [[nodiscard]] std::vector<Datagram> receiveAll(std::size_t max = 1024);
 
     [[nodiscard]] asio::ip::udp::endpoint localEndpoint() const;
+    [[nodiscard]] SocketStats stats() const;
     [[nodiscard]] std::uint64_t dropped() const;
     [[nodiscard]] bool isReceiving() const noexcept;
 
@@ -63,6 +80,39 @@ private:
     std::atomic<bool> _receiving{false};
     std::size_t _receiveErrors = 0;
 
+    /*
+    ** Written only on the IO thread and read from any thread, so relaxed
+    ** atomics are enough.
+    */
+    struct Counters {
+        std::atomic<std::uint64_t> received{0};
+        std::atomic<std::uint64_t> droppedEmpty{0};
+        std::atomic<std::uint64_t> droppedOversized{0};
+        std::atomic<std::uint64_t> droppedQueueFull{0};
+        std::atomic<std::uint64_t> receiveErrors{0};
+        std::atomic<std::uint64_t> sent{0};
+        std::atomic<std::uint64_t> sendErrors{0};
+    };
+
+    /*
+    ** Turns a stream of events into at most one log line per second. Used
+    ** only on the IO thread. record() counts one event and returns how many
+    ** to log now, or 0 if the last line is less than a second old.
+    */
+    struct LogLimiter {
+        std::chrono::steady_clock::time_point last{};
+        std::uint64_t pending = 0;
+
+        [[nodiscard]] std::uint64_t record(
+            std::chrono::steady_clock::time_point now);
+    };
+
+    Counters _counters;
+    LogLimiter _queueFullLog;
+    LogLimiter _oversizedLog;
+    LogLimiter _sendErrorLog;
+
+    void countReceiveError();
     void receiveNext();
     void handleReceive(const asio::error_code &error,
         std::size_t bytesReceived);
