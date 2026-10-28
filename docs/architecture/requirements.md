@@ -12,7 +12,7 @@ Every requirement below comes from the Epitech subject (`../rtype-project.pdf`, 
 | F-04 | MUST | The server notifies clients when a monster spawns, moves, is destroyed, fires or kills a player, and when another client acts | [RFC §7](../protocol/RFC-rtype.md#7-how-the-protocol-meets-the-subjects-notification-requirement) |
 | F-05 | MUST | The server is multithreaded and never blocks waiting on clients | [server: threads](../modules/server.md#threads) |
 | F-06 | MUST | The server survives a client crash and tells the other clients in that game | [RFC §9](../protocol/RFC-rtype.md#9-disconnection-and-crash-handling), [server](../modules/server.md#joining-leaving-and-crashing) |
-| F-07 | MUST | Malformed packets never crash a program, use excessive memory or compromise the server | [network: Packet](../modules/network.md#netpacket), [RFC §10](../protocol/RFC-rtype.md#10-validation-and-malformed-input) |
+| F-07 | MUST | Malformed packets never crash a program, use excessive memory or compromise the server | [network: Packet](../modules/network.md#netpacket), [RFC §10](../protocol/RFC-rtype.md#10-error-handling), [RFC §11](../protocol/RFC-rtype.md#11-validation-and-malformed-input) |
 | F-08 | MUST | Starfield scrolling, entity movement and all time flow are driven by timers, not CPU speed | [engine: runtime](../modules/engine.md#runtime-engine_runtime) |
 | F-09 | MUST | Players move with the arrow keys | [engine: input](../modules/engine.md#input-engine_input) |
 | F-10 | MUST | Bydos slaves and missiles exist | [game: components](../modules/game.md#components) |

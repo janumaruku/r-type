@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "network/Packet.hpp"
+#include "rtype/protocol/MessageType.hpp"
 
 namespace rtype::protocol {
 inline constexpr std::size_t MAX_ENTITIES_PER_CHUNK = 48;
@@ -71,6 +72,8 @@ void serialize(net::Packet &packet, const EntityState &message);
 void deserialize(net::Packet &packet, EntityState &message);
 
 struct Snapshot {
+    static constexpr MessageType TYPE = MessageType::SNAPSHOT;
+
     std::uint32_t serverTick = 0;
     std::uint32_t lastProcessedInput = 0;
     std::uint8_t chunkIndex = 0;

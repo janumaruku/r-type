@@ -11,6 +11,7 @@
 #include <cstdint>
 
 #include "network/Packet.hpp"
+#include "rtype/protocol/MessageType.hpp"
 
 namespace rtype::protocol {
 enum class EventType : std::uint8_t {
@@ -31,6 +32,8 @@ enum class LeaveReason : std::uint8_t {
 };
 
 struct Event {
+    static constexpr MessageType TYPE = MessageType::EVENT;
+
     std::uint32_t eventId = 0;
     EventType type = EventType::PLAYER_FIRED;
     std::uint32_t a = 0;
