@@ -264,19 +264,26 @@ void UdpSocket::rearmReceive()
         receiveNext();
 }
 
+/*
+** @brief Stops the IO thread, then closes the socket.
+**
+** The socket is closed only after the IO thread was joined: a receive handler
+** may still be running until then, and an Asio socket can't be used from two
+** threads at once.
+*/
 void UdpSocket::stop()
 {
     _running = false;
     _receiving = false;
     _workGuard.reset();
     _ioContext.stop();
-    _socket.close();
 
     if (_thread.joinable()) {
         _thread.join();
         flushLogs();
         _logger.info("UDP socket stopped");
     }
+    _socket.close();
 }
 
 void UdpSocket::sendTo(const asio::ip::udp::endpoint &endpoint,
