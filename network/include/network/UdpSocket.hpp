@@ -108,7 +108,8 @@ private:
     **
     ** Used only on the IO thread. @ref record counts one event and returns
     ** how many to log now, or 0 if the last line is less than a second old.
-    ** Events after the last line are logged only when a new event comes.
+    ** @ref flush returns the events still held back and starts over, so that
+    ** @ref flushLogs can log them.
     */
     struct LogLimiter {
         std::chrono::steady_clock::time_point last{};
@@ -116,6 +117,7 @@ private:
 
         [[nodiscard]] std::uint64_t record(
             std::chrono::steady_clock::time_point now);
+        [[nodiscard]] std::uint64_t flush();
     };
 
     Counters _counters;
@@ -130,6 +132,9 @@ private:
     void handleReceiveError(const asio::error_code &error);
     [[nodiscard]] bool enqueueDatagram(std::size_t bytesReceived);
     void dropOversized();
+    void logQueueFull(std::uint64_t count);
+    void logOversized(std::uint64_t count);
+    void flushLogs();
     void rearmReceive();
     void retryReceiveLater();
     void giveUpReceiving();
