@@ -18,8 +18,7 @@
 namespace net {
 
 UdpSocket::UdpSocket(std::uint16_t port):
-    _port(port), _workGuard(asio::make_work_guard(_ioContext)),
-    _socket(_ioContext), _dropped(0)
+    _port(port), _socket(_ioContext), _dropped(0)
 {
 }
 
@@ -58,6 +57,9 @@ void UdpSocket::start()
     _logger.info("UDP socket bound on port {}, system receive buffer {} bytes",
         localEndpoint().port(), error ? 0 : bufferSize.value());
 
+    _ioContext.restart();
+    _workGuard.emplace(_ioContext.get_executor());
+    _receiveErrors = 0;
     _running = true;
     _receiving = true;
     receiveNext();
@@ -231,7 +233,7 @@ void UdpSocket::sendTo(const asio::ip::udp::endpoint &endpoint,
     std::vector bytes(packetBytes.begin(), packetBytes.end());
     auto sharedBytes = std::make_shared<std::vector<std::uint8_t>>(
         std::move(bytes));
-    asio::post(_workGuard.get_executor(),
+    asio::post(_ioContext.get_executor(),
         [this, endpoint, sharedBytes = std::move(sharedBytes)] {
             _socket.async_send_to(asio::buffer(*sharedBytes), endpoint,
                 [this, endpoint,
