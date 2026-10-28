@@ -118,7 +118,8 @@ private:
     void handleReceive(const asio::error_code &error,
         std::size_t bytesReceived);
     void handleReceiveError(const asio::error_code &error);
-    void enqueueDatagram(std::size_t bytesReceived);
+    [[nodiscard]] bool enqueueDatagram(std::size_t bytesReceived);
+    void dropOversized();
     void rearmReceive();
     void retryReceiveLater();
     void giveUpReceiving();
@@ -140,7 +141,6 @@ private:
     asio::ip::udp::endpoint _sender;
     std::mutex _mutex;
     std::deque<Datagram> _incoming;
-    std::atomic<std::uint64_t> _dropped;
 };
 
 } // namespace net
