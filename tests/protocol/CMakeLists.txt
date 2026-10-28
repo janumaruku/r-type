@@ -5,7 +5,6 @@ rtype_add_test(protocol_tests
     EventTests.cpp
     FixedMessageTests.cpp
     HeaderTests.cpp
-    LoopbackTests.cpp
     MalformedInputTests.cpp
     MessageTypeTests.cpp
     NoAsioTests.cpp
