@@ -9,6 +9,7 @@
 
 #include <asio/post.hpp>
 #include <cassert>
+#include <chrono>
 #include <format>
 #include <utility>
 
@@ -18,8 +19,7 @@
 namespace net {
 
 UdpSocket::UdpSocket(std::uint16_t port):
-    _port(port), _workGuard(asio::make_work_guard(_ioContext)),
-    _socket(_ioContext), _dropped(0)
+    _port(port), _socket(_ioContext)
 {
 }
 
@@ -58,6 +58,9 @@ void UdpSocket::start()
     _logger.info("UDP socket bound on port {}, system receive buffer {} bytes",
         localEndpoint().port(), error ? 0 : bufferSize.value());
 
+    _ioContext.restart();
+    _workGuard.emplace(_ioContext.get_executor());
+    _receiveErrors = 0;
     _running = true;
     _receiving = true;
     receiveNext();
@@ -77,7 +80,7 @@ void UdpSocket::receiveNext()
                 try {
                     handleReceive(error, bytesReceived);
                 } catch (const std::exception &exception) {
-                    ++_receiveErrors;
+                    countReceiveError();
                     _logger.error(
                         "Exception in UDP receive handler: {}",
                         exception.what());
@@ -86,7 +89,7 @@ void UdpSocket::receiveNext()
                     else
                         giveUpReceiving();
                 } catch (...) {
-                    ++_receiveErrors;
+                    countReceiveError();
                     _logger.error("Unknown exception in UDP receive handler");
                     if (_receiveErrors < MAX_RECEIVE_ERRORS)
                         rearmReceive();
@@ -104,15 +107,23 @@ void UdpSocket::receiveNext()
     }
 }
 
-void UdpSocket::retryReceiveLater()
+void UdpSocket::countReceiveError()
 {
     ++_receiveErrors;
+    _counters.receiveErrors.fetch_add(1, std::memory_order_relaxed);
+}
+
+void UdpSocket::retryReceiveLater()
+{
+    countReceiveError();
     if (_receiveErrors >= MAX_RECEIVE_ERRORS) {
         giveUpReceiving();
         return;
     }
     try {
-        asio::post(_ioContext, [this] { rearmReceive(); });
+        asio::post(_ioContext, [this] {
+            rearmReceive();
+        });
     } catch (...) {
         _logger.error("Cannot schedule a new UDP receive");
         giveUpReceiving();
@@ -122,8 +133,15 @@ void UdpSocket::retryReceiveLater()
 void UdpSocket::giveUpReceiving()
 {
     _receiving = false;
+    flushLogs();
+    const auto [received, droppedEmpty, droppedOversized, droppedQueueFull,
+        receiveErrors, sent, sendErrors] = stats();
     _logger.error("UDP receive loop stopped after repeated errors; "
-        "the socket no longer receives");
+        "the socket no longer receives (received {}, dropped {} empty, "
+        "{} oversized, {} on a full queue, {} receive errors, sent {}, "
+        "{} send errors)", received, droppedEmpty,
+        droppedOversized, droppedQueueFull, receiveErrors,
+        sent, sendErrors);
 }
 
 void UdpSocket::handleReceive(const asio::error_code &error,
@@ -142,10 +160,8 @@ void UdpSocket::handleReceive(const asio::error_code &error,
     #endif
 
     if (error == asio::error::message_size) {
-        ++_dropped;
         _receiveErrors = 0;
-        _logger.debug("Dropped UDP datagram larger than the {}-byte receive buffer",
-            _receiveBuffer.size());
+        dropOversized();
         rearmReceive();
         return;
     }
@@ -157,25 +173,61 @@ void UdpSocket::handleReceive(const asio::error_code &error,
 
     _receiveErrors = 0;
     if (bytesReceived == 0) {
+        _counters.droppedEmpty.fetch_add(1, std::memory_order_relaxed);
         rearmReceive();
         return;
     }
     if (bytesReceived > Packet::MAX_SIZE) {
-        ++_dropped;
-        _logger.debug(
-            "Dropped UDP datagram from {}: size {} exceeds maximum {}",
-            _sender.address().to_string(), bytesReceived, Packet::MAX_SIZE);
+        dropOversized();
         rearmReceive();
         return;
     }
 
-    enqueueDatagram(bytesReceived);
+    if (!enqueueDatagram(bytesReceived))
+        logQueueFull(_queueFullLog.record(std::chrono::steady_clock::now()));
     rearmReceive();
+}
+
+void UdpSocket::dropOversized()
+{
+    _counters.droppedOversized.fetch_add(1, std::memory_order_relaxed);
+    logOversized(_oversizedLog.record(std::chrono::steady_clock::now()));
+}
+
+void UdpSocket::logQueueFull(std::uint64_t count)
+{
+    if (count != 0)
+        _logger.warn("UDP queue full: {} datagram(s) dropped since the last "
+            "warning", count);
+}
+
+void UdpSocket::logOversized(std::uint64_t count)
+{
+    if (count != 0)
+        _logger.debug("{} UDP datagram(s) larger than {} bytes dropped since "
+            "the last message", count, Packet::MAX_SIZE);
+}
+
+/*
+** @brief Logs the events the limiters still hold back, so that none is left
+** unlogged when the socket stops or gives up receiving.
+**
+** The limiters belong to the IO thread: this is called on it, from
+** @ref giveUpReceiving, or after it was joined, from @ref stop.
+*/
+void UdpSocket::flushLogs()
+{
+    logQueueFull(_queueFullLog.flush());
+    logOversized(_oversizedLog.flush());
+    const std::uint64_t failedSends = _sendErrorLog.flush();
+    if (failedSends != 0)
+        _logger.debug("{} UDP send(s) failed since the last message",
+            failedSends);
 }
 
 void UdpSocket::handleReceiveError(const asio::error_code &error)
 {
-    ++_receiveErrors;
+    countReceiveError();
     _logger.warn("UDP receive failed: {}", error.message());
     if (_receiveErrors >= MAX_RECEIVE_ERRORS) {
         giveUpReceiving();
@@ -184,12 +236,17 @@ void UdpSocket::handleReceiveError(const asio::error_code &error)
     rearmReceive();
 }
 
-void UdpSocket::enqueueDatagram(std::size_t bytesReceived)
+/*
+** @brief Queues the datagram, or counts it as dropped if the queue is full.
+** @return false when it was dropped. The caller logs it, so that nothing is
+** logged while @ref _mutex is held.
+*/
+bool UdpSocket::enqueueDatagram(std::size_t bytesReceived)
 {
     std::scoped_lock lock(_mutex);
     if (_incoming.size() >= MAX_QUEUED_DATAGRAMS) {
-        ++_dropped;
-        return;
+        _counters.droppedQueueFull.fetch_add(1, std::memory_order_relaxed);
+        return false;
     }
 
     _incoming.push_back({
@@ -197,6 +254,8 @@ void UdpSocket::enqueueDatagram(std::size_t bytesReceived)
             _receiveBuffer.begin() + bytesReceived),
         .from = _sender,
     });
+    _counters.received.fetch_add(1, std::memory_order_relaxed);
+    return true;
 }
 
 void UdpSocket::rearmReceive()
@@ -205,18 +264,26 @@ void UdpSocket::rearmReceive()
         receiveNext();
 }
 
+/*
+** @brief Stops the IO thread, then closes the socket.
+**
+** The socket is closed only after the IO thread was joined: a receive handler
+** may still be running until then, and an Asio socket can't be used from two
+** threads at once.
+*/
 void UdpSocket::stop()
 {
     _running = false;
     _receiving = false;
     _workGuard.reset();
     _ioContext.stop();
-    _socket.close();
 
     if (_thread.joinable()) {
         _thread.join();
+        flushLogs();
         _logger.info("UDP socket stopped");
     }
+    _socket.close();
 }
 
 void UdpSocket::sendTo(const asio::ip::udp::endpoint &endpoint,
@@ -231,17 +298,27 @@ void UdpSocket::sendTo(const asio::ip::udp::endpoint &endpoint,
     std::vector bytes(packetBytes.begin(), packetBytes.end());
     auto sharedBytes = std::make_shared<std::vector<std::uint8_t>>(
         std::move(bytes));
-    asio::post(_workGuard.get_executor(),
+    asio::post(_ioContext.get_executor(),
         [this, endpoint, sharedBytes = std::move(sharedBytes)] {
             _socket.async_send_to(asio::buffer(*sharedBytes), endpoint,
                 [this, endpoint,
                     sharedBytes = sharedBytes](const asio::error_code &error,
                 std::size_t) {
-                    if (!error)
+                    if (!error) {
+                        _counters.sent.fetch_add(1, std::memory_order_relaxed);
                         return;
-                    _logger.debug("Failed to send UDP datagram to {}:{}: {}",
-                        endpoint.address().to_string(), endpoint.port(),
-                        error.message());
+                    }
+                    if (error == asio::error::operation_aborted)
+                        return;
+                    _counters.sendErrors.fetch_add(1,
+                        std::memory_order_relaxed);
+                    const std::uint64_t count = _sendErrorLog.record(
+                        std::chrono::steady_clock::now());
+                    if (count != 0)
+                        _logger.debug("{} UDP send(s) failed since the last "
+                            "message, the last one to {}:{}: {}", count,
+                            endpoint.address().to_string(), endpoint.port(),
+                            error.message());
                 });
         });
 }
@@ -264,9 +341,44 @@ std::vector<Datagram> UdpSocket::receiveAll(std::size_t max)
     return _socket.local_endpoint();
 }
 
+[[nodiscard]] SocketStats UdpSocket::stats() const
+{
+    return {
+        .received = _counters.received.load(std::memory_order_relaxed),
+        .droppedEmpty = _counters.droppedEmpty.load(std::memory_order_relaxed),
+        .droppedOversized =
+        _counters.droppedOversized.load(std::memory_order_relaxed),
+        .droppedQueueFull =
+        _counters.droppedQueueFull.load(std::memory_order_relaxed),
+        .receiveErrors =
+        _counters.receiveErrors.load(std::memory_order_relaxed),
+        .sent = _counters.sent.load(std::memory_order_relaxed),
+        .sendErrors = _counters.sendErrors.load(std::memory_order_relaxed),
+    };
+}
+
 [[nodiscard]] std::uint64_t UdpSocket::dropped() const
 {
-    return _dropped.load();
+    const SocketStats total = stats();
+
+    return total.droppedEmpty + total.droppedOversized
+        + total.droppedQueueFull;
+}
+
+std::uint64_t UdpSocket::LogLimiter::record(
+    std::chrono::steady_clock::time_point now)
+{
+    ++pending;
+    if (last != std::chrono::steady_clock::time_point{}
+        && now - last < std::chrono::seconds(1))
+        return 0;
+    last = now;
+    return std::exchange(pending, 0);
+}
+
+std::uint64_t UdpSocket::LogLimiter::flush()
+{
+    return std::exchange(*this, LogLimiter{}).pending;
 }
 
 [[nodiscard]] bool UdpSocket::isReceiving() const noexcept
