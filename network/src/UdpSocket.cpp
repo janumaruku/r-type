@@ -133,6 +133,7 @@ void UdpSocket::retryReceiveLater()
 void UdpSocket::giveUpReceiving()
 {
     _receiving = false;
+    flushLogs();
     const auto [received, droppedEmpty, droppedOversized, droppedQueueFull,
         receiveErrors, sent, sendErrors] = stats();
     _logger.error("UDP receive loop stopped after repeated errors; "
@@ -182,24 +183,46 @@ void UdpSocket::handleReceive(const asio::error_code &error,
         return;
     }
 
-    if (!enqueueDatagram(bytesReceived)) {
-        const std::uint64_t count = _queueFullLog.record(
-            std::chrono::steady_clock::now());
-        if (count != 0)
-            _logger.warn("UDP queue full: {} datagram(s) dropped since the "
-                "last warning", count);
-    }
+    if (!enqueueDatagram(bytesReceived))
+        logQueueFull(_queueFullLog.record(std::chrono::steady_clock::now()));
     rearmReceive();
 }
 
 void UdpSocket::dropOversized()
 {
     _counters.droppedOversized.fetch_add(1, std::memory_order_relaxed);
-    const std::uint64_t count = _oversizedLog.record(
-        std::chrono::steady_clock::now());
+    logOversized(_oversizedLog.record(std::chrono::steady_clock::now()));
+}
+
+void UdpSocket::logQueueFull(std::uint64_t count)
+{
+    if (count != 0)
+        _logger.warn("UDP queue full: {} datagram(s) dropped since the last "
+            "warning", count);
+}
+
+void UdpSocket::logOversized(std::uint64_t count)
+{
     if (count != 0)
         _logger.debug("{} UDP datagram(s) larger than {} bytes dropped since "
             "the last message", count, Packet::MAX_SIZE);
+}
+
+/*
+** @brief Logs the events the limiters still hold back, so that none is left
+** unlogged when the socket stops or gives up receiving.
+**
+** The limiters belong to the IO thread: this is called on it, from
+** @ref giveUpReceiving, or after it was joined, from @ref stop.
+*/
+void UdpSocket::flushLogs()
+{
+    logQueueFull(_queueFullLog.flush());
+    logOversized(_oversizedLog.flush());
+    const std::uint64_t failedSends = _sendErrorLog.flush();
+    if (failedSends != 0)
+        _logger.debug("{} UDP send(s) failed since the last message",
+            failedSends);
 }
 
 void UdpSocket::handleReceiveError(const asio::error_code &error)
@@ -251,6 +274,7 @@ void UdpSocket::stop()
 
     if (_thread.joinable()) {
         _thread.join();
+        flushLogs();
         _logger.info("UDP socket stopped");
     }
 }
@@ -343,6 +367,11 @@ std::uint64_t UdpSocket::LogLimiter::record(
         return 0;
     last = now;
     return std::exchange(pending, 0);
+}
+
+std::uint64_t UdpSocket::LogLimiter::flush()
+{
+    return std::exchange(*this, LogLimiter{}).pending;
 }
 
 [[nodiscard]] bool UdpSocket::isReceiving() const noexcept
