@@ -12,6 +12,11 @@
 #include <ostream>
 
 namespace rtype::protocol {
+enum class Direction : std::uint8_t {
+    CLIENT_TO_SERVER,
+    SERVER_TO_CLIENT,
+};
+
 enum class MessageType : std::uint8_t {
     HELLO = 0x01,
     INPUT = 0x02,
@@ -23,6 +28,8 @@ enum class MessageType : std::uint8_t {
     SHUTDOWN = 0x85,
     KICK = 0x86,
 };
+
+void checkType(MessageType type, Direction expected);
 
 [[nodiscard]] constexpr bool isKnown(MessageType type) noexcept
 {
@@ -40,6 +47,16 @@ enum class MessageType : std::uint8_t {
     }
 
     return false;
+}
+
+[[nodiscard]] constexpr bool isClientToServer(MessageType type) noexcept
+{
+    return isKnown(type) && static_cast<std::uint8_t>(type) < 0x80;
+}
+
+[[nodiscard]] constexpr bool isServerToClient(MessageType type) noexcept
+{
+    return isKnown(type) && static_cast<std::uint8_t>(type) >= 0x80;
 }
 
 std::ostream &operator<<(std::ostream &stream, MessageType type);
