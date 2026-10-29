@@ -15,22 +15,29 @@ Every component is a plain aggregate with no methods and no pointers. Entities a
 | `Damage` | `int16_t amount` | Damage dealt on contact |
 | `Replicated` | `NetId netId`, `EntityKind kind`, `uint8_t variant` | Marks the entity for the network. The only component `collectReplicated()` reads |
 | `PlayerShip` | `uint8_t playerId`, `InputButtons buttons`, `float invulnerableFor` | Present only on player ships |
-| `Weapon` | `float cooldown`, `float timer`, `Vec2f muzzleOffset`, `float projectileSpeed`, `bool triggered` | Fires when `triggered` is set and `timer` ≤ 0 |
-| `EnemyBrain` | `MovePattern pattern`, `float baseY`, `float amplitude`, `float frequency`, `float age`, `float fireTimer` | Bydos movement and firing state |
-| `Projectile` | `NetId owner` | Who to credit for a kill |
+| `Weapon` | `float cooldown`, `float timer`, `Vec2f muzzleOffset`, `float projectileSpeed`, `Vec2f aim`, `bool triggered` | Fires when `triggered` is set and `timer` ≤ 0. `aim` is the unit direction of the next shot: (1, 0) for a ship, set by `aimedShooterSystem` for an enemy |
+| `StraightMover` | `float speed` | Moves left at `speed` |
+| `SineMover` | `float speed`, `float baseY`, `float amplitude`, `float frequency`, `float age` | Moves left at `speed` while oscillating around `baseY` |
+| `AimedShooter` | `FloatRange interval`, `float timer` | Fires at the nearest ship every random `interval` |
+| `Projectile` | `NetId owner`, `uint8_t ownerPlayerId` | Who fired it. `ownerPlayerId` survives the shooter's death, and is `NO_PLAYER` for enemy missiles |
+| `LastHit` | `NetId by`, `uint8_t byPlayerId` | Who dealt the last damage, so `healthSystem` knows whom to credit and whom to name as the killer |
 | `Lifetime` | `float remaining` | The entity is destroyed when it reaches 0 |
-| `ConfinedToPlayfield` | (none) | Clamped inside 1280 × 720 |
+| `ConfinedToPlayfield` | (none) | Clamped so its collider stays inside 1280 × 720 |
 | `DespawnOutsidePlayfield` | `float margin` | Destroyed once more than `margin` outside the playfield |
 | `ScoreValue` | `uint32_t points` | Points awarded to the killer |
 
-**Which components each entity has:**
+`registerComponents(Registry &)` registers all 17. Registering is idempotent, so calling it twice is harmless.
+
+**Behaviour components.** An enemy's behaviour is the set of components it has, not a type switch: `StraightMover` or `SineMover` for its movement, `AimedShooter` for its attack. Each has its own system and only writes plain data (`Velocity`, `Weapon.aim`, `Weapon.triggered`). A new movement or attack is a new component and a new system, with no change to the existing ones. `MovePattern` remains as the BYDOS_SLAVE's network `variant` (0 = STRAIGHT, 1 = SINE) and as the argument `makeBydosSlave` uses to pick the mover.
+
+**Which components each entity has** (Collider in full sizes, see [sizes](#sizes-follow-the-sprite-frames)):
 
 | Kind | Transform | Velocity | Collider | Health | Damage | Replicated | Extra |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| PLAYER_SHIP | yes | yes | PLAYER, 16×8 | 1 | 1 | yes | `PlayerShip`, `Weapon`, `ConfinedToPlayfield` |
-| BYDOS_SLAVE | yes | yes | ENEMY, 16×16 | 1 | 1 | yes | `EnemyBrain`, `Weapon`, `DespawnOutsidePlayfield`, `ScoreValue(100)` |
-| PLAYER_MISSILE | yes | yes | PLAYER_SHOT, 8×3 | 1 | 1 | yes | `Projectile`, `Lifetime(2 s)`, `DespawnOutsidePlayfield` |
-| ENEMY_MISSILE | yes | yes | ENEMY_SHOT, 4×4 | 1 | 1 | yes | `Projectile`, `Lifetime(4 s)`, `DespawnOutsidePlayfield` |
+| PLAYER_SHIP | yes | yes | PLAYER, 32 × 14 | 1 | 1 | yes | `PlayerShip`, `Weapon`, `ConfinedToPlayfield` |
+| BYDOS_SLAVE | yes | yes | ENEMY, 21 × 24 | 1 | 1 | yes | `StraightMover` or `SineMover`, `AimedShooter`, `Weapon`, `DespawnOutsidePlayfield`, `ScoreValue(100)` |
+| PLAYER_MISSILE | yes | yes | PLAYER_SHOT, 12 × 4 | 1 | 1 | yes | `Projectile`, `Lifetime(2 s)`, `DespawnOutsidePlayfield` |
+| ENEMY_MISSILE | yes | yes | ENEMY_SHOT, 7 × 6 | 1 | 1 | yes | `Projectile`, `Lifetime(4 s)`, `DespawnOutsidePlayfield` |
 
 **Which layers collide** (anything not listed never collides):
 
@@ -196,15 +203,39 @@ Every gameplay number lives in `struct Rules` with these defaults. Nothing in a 
 | `playerLives` | 3 |  |
 | `respawnDelay` / `respawnInvulnerability` | 2 s / 2 s |  |
 | `playerFireCooldown` | 0.20 s | 5 shots per second while held |
-| `playerMissileSpeed` | 900 u/s | Fired straight right |
+| `playerMissileSpeed` / `playerMissileLifetime` | 900 u/s / 2 s | Fired straight right |
 | `enemySpeed` | random 160–240 u/s |  |
-| `sineAmplitude` / `sineFrequency` | random 40–120 u / 0.5–1.2 Hz | Half of the spawned Bydos use SINE |
+| `sineAmplitude` / `sineFrequency` | random 40–120 u / 0.5–1.2 Hz |  |
+| `sineChance` | 0.5 | Half of the spawned Bydos get `SineMover` |
 | `enemyFireInterval` | random 1.5–3.0 s | Aimed at the nearest ship |
-| `enemyMissileSpeed` | 420 u/s |  |
-| `spawnInterval` | starts at 1.6 s, 0.05 s shorter every 10 s, minimum 0.5 s |  |
+| `enemyMissileSpeed` / `enemyMissileLifetime` | 420 u/s / 4 s |  |
+| `spawnIntervalStart` / `spawnIntervalStep` / `spawnIntervalStepEvery` / `spawnIntervalMin` | 1.6 s / 0.05 s / 10 s / 0.5 s | Starts at 1.6 s, 0.05 s shorter every 10 s, never below 0.5 s |
+| `enemySpawnX` / `enemySpawnY` | 1312 / random 40–680 | Just off the right edge |
 | `maxEnemies` | 30 |  |
 | `killScore` | 100 |  |
 | `gameOverResetDelay` | 5 s |  |
+| `despawnMargin` | 64 u | Larger than the gap between `enemySpawnX` and the edge, so an enemy isn't destroyed as soon as it spawns |
+| `playerHalfSize` / `enemyHalfSize` | 16 × 7 / 10.5 × 12 | See below |
+| `playerMissileHalfSize` / `enemyMissileHalfSize` | 6 × 2 / 3.5 × 3 | See below |
+| `playerMuzzleOffset` | (16, 0) | The ship's half width: a missile starts at its nose |
+| `enemyMuzzleOffset` | (−10.5, 0) | Minus the Bydos's half width: its shots leave from its left edge |
+
+Each default is checked by `RulesTests.cpp`, so changing a number is a deliberate change to both this table and the test.
+
+### Sizes follow the sprite frames
+
+One game unit is one pixel of the 1280 × 720 logical screen, and sprites are drawn at scale 1, so a size measured on a sprite sheet is a size in game units. Each collider is the tight box of the visible pixels, the largest over all the entity's frames, so the hitbox matches what's drawn. The frames are those of `assets/sprites/catalog.json`, whose sheets come from ManuelR-T/R-Type.
+
+| Entity | Sheet and frames | Visible pixels | Full size | `halfSize` |
+| --- | --- | --- | --- | --- |
+| Player ship | `r-typesheet42.gif`, 33 × 17 cells | 32 × 12 idle, up to 32 × 14 tilted | 32 × 14 | 16 × 7 |
+| Bydos slave | `r-typesheet5.gif`, 21 × 24 frames | 21 × 7 to 21 × 24 while it turns | 21 × 24 | 10.5 × 12 |
+| Player missile | `r-typesheet1.gif`, frame `[337, 255, 12, 4]` | 12 × 4 | 12 × 4 | 6 × 2 |
+| Enemy missile | `r-typesheet43.png`, the ball's 4 frames | 7 × 6 in every frame | 7 × 6 | 3.5 × 3 |
+
+`confineToPlayfield` uses `playerHalfSize`, so the ship's visible pixels never leave the playfield. The 33 × 17 cell drawn around them overhangs by at most 1.5 pixels, which are transparent.
+
+**If a frame in `catalog.json` is re-measured, its size here and in `Rules` must follow.**
 
 **Telling players apart (requirement F-12).** Player 0 is cyan, player 1 magenta, player 2 green and player 3 red. These are the colour rows of the provided sprite sheet. Every ship also shows a `P1`–`P4` label, so players stay distinguishable without relying on colour ([accessibility](../architecture/accessibility.md)).
 
