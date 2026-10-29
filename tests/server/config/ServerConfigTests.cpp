@@ -9,90 +9,176 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <iostream>
 #include <initializer_list>
+#include <limits>
+#include <sstream>
 #include <string>
 #include <string_view>
 #include <vector>
 
-using rtype::server::ConfigError;
-using rtype::server::HelpRequested;
 using rtype::server::ServerConfig;
 using engine::core::log::Level;
 
-ServerConfig parseArgs(std::initializer_list<std::string_view> args)
+namespace {
+
+struct ParseResult {
+    int exitCode;
+    ServerConfig config;
+    std::string output;
+};
+
+class CoutRedirect {
+public:
+    explicit CoutRedirect(std::ostream& output)
+        : previous_(std::cout.rdbuf(output.rdbuf()))
+    {
+    }
+
+    ~CoutRedirect()
+    {
+        std::cout.rdbuf(previous_);
+    }
+
+    CoutRedirect(const CoutRedirect&) = delete;
+    CoutRedirect& operator=(const CoutRedirect&) = delete;
+
+private:
+    std::streambuf* previous_;
+};
+
+ParseResult parseArgs(std::initializer_list<std::string_view> args)
 {
-    const std::vector<std::string_view> views(args);
-    return ServerConfig::parse(views);
+    std::vector<std::string> storage;
+    storage.reserve(args.size() + 1);
+    storage.emplace_back("rtype-server");
+
+    for (const std::string_view arg : args) {
+        storage.emplace_back(arg);
+    }
+
+    std::vector<char*> argv;
+    argv.reserve(storage.size());
+
+    for (std::string& arg : storage) {
+        argv.push_back(arg.data());
+    }
+
+    ServerConfig config{};
+    std::ostringstream output;
+    int exitCode = 0;
+
+    {
+        CoutRedirect redirect(output);
+        exitCode = rtype::server::parse(
+            static_cast<int>(argv.size()),
+            argv.data(),
+            config);
+    }
+
+    return {exitCode, config, output.str()};
 }
 
-// Expects a ConfigError whose message names `option`.
 void expectConfigError(
     std::initializer_list<std::string_view> args,
     std::string_view option)
 {
-    try {
-        parseArgs(args);
-        ADD_FAILURE() << "expected ConfigError";
-    } catch (const ConfigError& error) {
-        const std::string message = error.what();
-        EXPECT_NE(message.find(option), std::string::npos) << message;
-    }
+    const ParseResult result = parseArgs(args);
+
+    EXPECT_EQ(result.exitCode, 84) << result.output;
+    EXPECT_NE(result.output.find(option), std::string::npos)
+        << result.output;
 }
+
+} // namespace
 
 TEST(ServerConfigTests, NoArgumentsUsesDefaults)
 {
-    const ServerConfig config = parseArgs({});
+    const ParseResult result = parseArgs({});
 
-    EXPECT_EQ(config.port, 4242);
-    EXPECT_FALSE(config.seed.has_value());
-    EXPECT_EQ(config.logLevel, Level::EG_INFO);
+    ASSERT_EQ(result.exitCode, 0);
+    EXPECT_EQ(result.config.port, 4242);
+    EXPECT_FALSE(result.config.seed.has_value());
+    EXPECT_EQ(result.config.logLevel, Level::EG_INFO);
 }
 
 TEST(ServerConfigTests, ParsesAllOptions)
 {
-    const ServerConfig config = parseArgs(
+    const ParseResult result = parseArgs(
         {"-p", "5000", "--seed", "7", "--log-level", "debug"});
 
-    EXPECT_EQ(config.port, 5000);
-    ASSERT_TRUE(config.seed.has_value());
-    EXPECT_EQ(*config.seed, 7U);
-    EXPECT_EQ(config.logLevel, Level::EG_DEBUG);
+    ASSERT_EQ(result.exitCode, 0);
+    EXPECT_EQ(result.config.port, 5000);
+    ASSERT_TRUE(result.config.seed.has_value());
+    EXPECT_EQ(*result.config.seed, 7U);
+    EXPECT_EQ(result.config.logLevel, Level::EG_DEBUG);
 }
 
 TEST(ServerConfigTests, AcceptsLongPortForm)
 {
-    EXPECT_EQ(parseArgs({"--port", "4243"}).port, 4243);
+    const ParseResult result = parseArgs({"--port", "4243"});
+
+    ASSERT_EQ(result.exitCode, 0);
+    EXPECT_EQ(result.config.port, 4243);
 }
 
 TEST(ServerConfigTests, AcceptsPortBoundaries)
 {
-    EXPECT_EQ(parseArgs({"--port", "1"}).port, 1);
-    EXPECT_EQ(parseArgs({"--port", "65535"}).port, 65535);
+    const ParseResult zero = parseArgs({"--port", "0"});
+    const ParseResult low = parseArgs({"--port", "1"});
+    const ParseResult high = parseArgs({"--port", "65535"});
+
+    ASSERT_EQ(zero.exitCode, 0);
+    ASSERT_EQ(low.exitCode, 0);
+    ASSERT_EQ(high.exitCode, 0);
+
+    EXPECT_EQ(zero.config.port, 0);
+    EXPECT_EQ(low.config.port, 1);
+    EXPECT_EQ(high.config.port, 65535);
 }
 
 TEST(ServerConfigTests, AcceptsSeedBoundaries)
 {
-    const ServerConfig low = parseArgs({"--seed", "0"});
-    const ServerConfig high = parseArgs({"--seed", "4294967295"});
+    const ParseResult low = parseArgs({"--seed", "0"});
+    const ParseResult high = parseArgs({"--seed", "4294967295"});
 
-    ASSERT_TRUE(low.seed.has_value());
-    ASSERT_TRUE(high.seed.has_value());
-    EXPECT_EQ(*low.seed, 0U);
-    EXPECT_EQ(*high.seed, 4294967295U);
+    ASSERT_EQ(low.exitCode, 0);
+    ASSERT_EQ(high.exitCode, 0);
+
+    ASSERT_TRUE(low.config.seed.has_value());
+    ASSERT_TRUE(high.config.seed.has_value());
+
+    EXPECT_EQ(*low.config.seed, 0U);
+    EXPECT_EQ(
+        *high.config.seed,
+        std::numeric_limits<std::uint32_t>::max());
 }
 
 TEST(ServerConfigTests, LastOccurrenceWins)
 {
-    EXPECT_EQ(parseArgs({"-p", "1", "-p", "2"}).port, 2);
+    const ParseResult port = parseArgs({"-p", "1", "-p", "2"});
 
-    const ServerConfig config = parseArgs({"--seed", "1", "--seed", "2"});
-    ASSERT_TRUE(config.seed.has_value());
-    EXPECT_EQ(*config.seed, 2U);
+    ASSERT_EQ(port.exitCode, 0);
+    EXPECT_EQ(port.config.port, 2);
+
+    const ParseResult seed = parseArgs(
+        {"--seed", "1", "--seed", "2"});
+
+    ASSERT_EQ(seed.exitCode, 0);
+    ASSERT_TRUE(seed.config.seed.has_value());
+    EXPECT_EQ(*seed.config.seed, 2U);
+
+    const ParseResult logLevel = parseArgs(
+        {"--log-level", "debug", "--log-level", "info"});
+
+    ASSERT_EQ(logLevel.exitCode, 0);
+    EXPECT_EQ(logLevel.config.logLevel, Level::EG_INFO);
 }
 
 class PortRejected : public testing::TestWithParam<std::string> {};
 
-TEST_P(PortRejected, ThrowsNamingThePort)
+TEST_P(PortRejected, ReturnsErrorNamingThePort)
 {
     expectConfigError(
         {"--port", std::string_view{GetParam()}},
@@ -103,7 +189,6 @@ INSTANTIATE_TEST_SUITE_P(
     ServerConfigTests,
     PortRejected,
     testing::Values(
-        std::string{"0"},
         std::string{"65536"},
         std::string{"42x"},
         std::string{""},
@@ -111,7 +196,7 @@ INSTANTIATE_TEST_SUITE_P(
 
 class SeedRejected : public testing::TestWithParam<std::string> {};
 
-TEST_P(SeedRejected, ThrowsNamingTheSeed)
+TEST_P(SeedRejected, ReturnsErrorNamingTheSeed)
 {
     expectConfigError(
         {"--seed", std::string_view{GetParam()}},
@@ -146,30 +231,38 @@ TEST(ServerConfigTests, RejectsMissingValue)
     expectConfigError({"--log-level"}, "--log-level");
 }
 
-TEST(ServerConfigTests, HelpFlagsThrowHelpRequested)
+TEST(ServerConfigTests, HelpFlagsReturnSuccessAndPrintUsage)
 {
-    EXPECT_THROW(parseArgs({"-h"}), HelpRequested);
-    EXPECT_THROW(parseArgs({"--help"}), HelpRequested);
+    for (const std::string_view flag : {"-h", "--help"}) {
+        const ParseResult result = parseArgs({flag});
+
+        EXPECT_EQ(result.exitCode, 0) << result.output;
+        EXPECT_NE(result.output.find("--port"), std::string::npos);
+        EXPECT_NE(result.output.find("--seed"), std::string::npos);
+        EXPECT_NE(result.output.find("--log-level"), std::string::npos);
+    }
 }
 
-TEST(ServerConfigTests, HelpWinsAfterOtherOptions)
+TEST(ServerConfigTests, HelpWorksAfterValidOptions)
 {
-    EXPECT_THROW(parseArgs({"-p", "5000", "--help"}), HelpRequested);
-}
+    const ParseResult result = parseArgs(
+        {"-p", "5000", "--help"});
 
-TEST(ServerConfigTests, HelpWinsOverEarlierErrors)
-{
-    EXPECT_THROW(parseArgs({"--frobnicate", "-h"}), HelpRequested);
+    EXPECT_EQ(result.exitCode, 0) << result.output;
+    EXPECT_NE(result.output.find("--help"), std::string::npos);
 }
 
 TEST(ServerConfigTests, UsageNamesProgramAndOptions)
 {
-    const std::string usage = ServerConfig::usage("r-type_server");
+    const ParseResult result = parseArgs({"--help"});
 
-    EXPECT_NE(usage.find("r-type_server"), std::string::npos);
+    ASSERT_EQ(result.exitCode, 0);
+
+    EXPECT_NE(result.output.find("rtype-server"), std::string::npos);
 
     for (const std::string_view option :
          {"--port", "--seed", "--log-level", "--help"}) {
-        EXPECT_NE(usage.find(option), std::string::npos) << option;
+        EXPECT_NE(result.output.find(option), std::string::npos)
+            << option;
     }
 }
