@@ -9,6 +9,7 @@
 #define R_TYPE_NET_ID_ALLOCATOR_HPP
 
 #include <optional>
+#include <unordered_map>
 
 #include "Types.hpp"
 #include "engine/ecs/Entity.hpp"
