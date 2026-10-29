@@ -1,7 +1,9 @@
 #include <iostream>
 
-int main() {
-    std::cout << "Hello world" << std::endl;
+#include "ServerConfig.hpp"
 
-    return 0;
+int main(int argc, char *argv[])
+{
+    rtype::server::ServerConfig config;
+    return parse(argc, argv, config);
 }

@@ -6,95 +6,67 @@
 */
 
 #include "ServerConfig.hpp"
-#include "engine/core/Logger.hpp"
 
 #include <algorithm>
 #include <charconv>
+#include <CLI/CLI.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <format>
 #include <string>
 #include <system_error>
 #include <type_traits>
+#include <limits>
+
+#include "engine/core/Logger.hpp"
 
 namespace rtype::server {
-namespace {
-
-template <typename T>
-T getValue(std::string_view option, std::string_view value)
+int parse(int argc, char *const argv[], ServerConfig &serverConfig)
 {
-    static_assert(std::is_integral_v<T>);
+    CLI::App app{"R-type game server", "rtype-server"};
 
-    T result{};
-    const char* const end = value.data() + value.size();
-    const auto [ptr, ec] = std::from_chars(value.data(), end, result);
+    app.add_option("-p,--port", serverConfig.port,
+           "Server listening on port (default 4242)")
+        ->check(CLI::Range(0, 65535))
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+    ;
 
-    if (ec != std::errc() || ptr != end)
-        throw ConfigError(std::format("{}: '{}' is not a valid number", option, value));
-    return result;
-}
+    app.add_option_function<std::string>(
+    "--seed",
+    [&serverConfig](const std::string& value) {
+        std::uint32_t seed{};
+        const auto [ptr, ec] = std::from_chars(
+            value.data(), value.data() + value.size(), seed);
 
-std::uint16_t parsePort(std::string_view option, std::string_view value)
-{
-    const auto port = getValue<std::uint16_t>(option, value);
+        if (value.empty() || ec != std::errc{} ||
+            ptr != value.data() + value.size())
+            throw CLI::ValidationError("--seed", "Invalid seed");
 
-    if (port == 0)
-        throw ConfigError(std::format("{}: '{}' is not a port from 1 to 65535", option, value));
-    return port;
-}
+        serverConfig.seed = seed;
+    },
+    "Seed for random number generator")$
+    ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
-engine::core::log::Level parseLogLevel(std::string_view option, std::string_view value)
-{
-    const auto level = engine::core::log::parseLevel(value);
+    app.add_option_function<std::string>(
+           "--log-level",
+           [&serverConfig](const std::string &name) {
+               serverConfig.logLevel = *engine::core::log::parseLevel(name);
+           },
+           "Logging level")
+        ->check(CLI::IsMember({"debug", "trace", "warn", "info", "error"}))
+        ->default_str("info")
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
-    if (!level)
-        throw ConfigError(std::format("{}: '{}' is not a log level", option, value));
-    return *level;
-}
-
-}  // namespace
-
-ServerConfig ServerConfig::parse(std::span<const std::string_view> args)
-{
-    const auto isHelp = [](std::string_view arg) { return arg == "-h" || arg == "--help"; };
-    if (std::ranges::any_of(args, isHelp))
-        throw HelpRequested();
-
-    ServerConfig config = {};
-    const std::size_t size = args.size();
-
-    for (std::size_t i = 0; i < size; ++i) {
-        const std::string_view arg = args[i];
-        const auto nextValue = [&]() -> std::string_view {
-            if (i + 1 >= size)
-                throw ConfigError(std::format("{}: missing value", arg));
-            return args[++i];
-        };
-
-        if (arg == "-p" || arg == "--port")
-            config.port = parsePort(arg, nextValue());
-        else if (arg == "--seed")
-            config.seed = getValue<std::uint32_t>(arg, nextValue());
-        else if (arg == "--log-level")
-            config.logLevel = parseLogLevel(arg, nextValue());
-        else
-            throw ConfigError(std::format("{}: unknown option", arg));
+    try {
+        app.parse(argc, argv);
+    } catch (const CLI::Error &e) {
+        if (e.get_exit_code() == 0) {
+            std::cout << app.help() << std::endl;
+            return 0;
+        }
+        std::cout << e.what() << "\n\n" << app.help() << std::endl;
+        return 84;
     }
-    return config;
+    return 0;
 }
-
-std::string ServerConfig::usage(std::string_view program)
-{
-    // Replace the body with the synopsis and options table from server.md.
-    return std::format(
-        "Usage: {} [options]\n"
-        "\n"
-        "Options:\n"
-        "  -p, --port <port>        UDP port, 1-65535 (default 4242)\n"
-        "      --seed <seed>        Random seed, 0-4294967295\n"
-        "      --log-level <level>  trace, debug, info, warn, error or off (default info)\n"
-        "  -h, --help               Show this help and exit\n",
-        program);
-}
-
-}  // namespace rtype::server
+} // namespace rtype::server
