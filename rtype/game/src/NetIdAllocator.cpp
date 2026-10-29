@@ -32,4 +32,16 @@ std::optional<engine::ecs::Entity> NetIdAllocator::find(const NetId netId,
 
     return it->second;
 }
+
+void NetIdAllocator::releaseDead(const engine::ecs::Registry &registry)
+{
+    std::erase_if(_byNetId, [&registry](const auto &pair) {
+        return !registry.isAlive(pair.second);
+    });
+}
+
+std::size_t NetIdAllocator::size() const noexcept
+{
+    return _byNetId.size();
+}
 }
