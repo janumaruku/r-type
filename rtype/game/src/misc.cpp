@@ -7,3 +7,4 @@
 
 #include "rtype/game/Rules.hpp"
 #include "rtype/game/Types.hpp"
+#include "rtype/game/Components.hpp"
