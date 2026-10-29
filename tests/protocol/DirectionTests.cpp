@@ -14,24 +14,25 @@
 #include "rtype/protocol/MessageType.hpp"
 #include "rtype/protocol/ProtocolError.hpp"
 
-using namespace rtype::protocol;
+namespace proto = rtype::protocol;
 
 namespace {
 
-constexpr std::array CLIENT_TO_SERVER{MessageType::HELLO, MessageType::INPUT,
-    MessageType::DISCONNECT};
+constexpr std::array CLIENT_TO_SERVER{proto::MessageType::HELLO,
+    proto::MessageType::INPUT, proto::MessageType::DISCONNECT};
 
-constexpr std::array SERVER_TO_CLIENT{MessageType::WELCOME,
-    MessageType::REJECT, MessageType::SNAPSHOT, MessageType::EVENT,
-    MessageType::SHUTDOWN, MessageType::KICK};
+constexpr std::array SERVER_TO_CLIENT{proto::MessageType::WELCOME,
+    proto::MessageType::REJECT, proto::MessageType::SNAPSHOT,
+    proto::MessageType::EVENT, proto::MessageType::SHUTDOWN,
+    proto::MessageType::KICK};
 
-void expectCheckTypeFails(MessageType type, Direction expected,
-    DecodeError code, const std::string &message)
+void expectCheckTypeFails(proto::MessageType type, proto::Direction expected,
+    proto::DecodeError code, const std::string &message)
 {
     try {
-        checkType(type, expected);
+        proto::checkType(type, expected);
         ADD_FAILURE() << type << " was accepted";
-    } catch (const ProtocolError &error) {
+    } catch (const proto::ProtocolError &error) {
         EXPECT_EQ(error.code(), code) << type;
         EXPECT_EQ(std::string(error.what()), message);
     }
@@ -41,62 +42,71 @@ void expectCheckTypeFails(MessageType type, Direction expected,
 
 TEST(DirectionTests, HelloInputAndDisconnectGoFromClientToServer)
 {
-    for (const MessageType type: CLIENT_TO_SERVER) {
-        EXPECT_TRUE(isClientToServer(type)) << type;
-        EXPECT_FALSE(isServerToClient(type)) << type;
+    for (const proto::MessageType type: CLIENT_TO_SERVER) {
+        EXPECT_TRUE(proto::isClientToServer(type)) << type;
+        EXPECT_FALSE(proto::isServerToClient(type)) << type;
     }
 }
 
 TEST(DirectionTests, TheSixOtherTypesGoFromServerToClient)
 {
-    for (const MessageType type: SERVER_TO_CLIENT) {
-        EXPECT_TRUE(isServerToClient(type)) << type;
-        EXPECT_FALSE(isClientToServer(type)) << type;
+    for (const proto::MessageType type: SERVER_TO_CLIENT) {
+        EXPECT_TRUE(proto::isServerToClient(type)) << type;
+        EXPECT_FALSE(proto::isClientToServer(type)) << type;
     }
 }
 
 TEST(DirectionTests, AnUnknownTypeGoesNowhere)
 {
     for (const std::uint8_t byte: std::array<std::uint8_t, 3>{0x04, 0x80, 0xFF}) {
-        const auto type = static_cast<MessageType>(byte);
+        const auto type = static_cast<proto::MessageType>(byte);
 
-        EXPECT_FALSE(isClientToServer(type)) << type;
-        EXPECT_FALSE(isServerToClient(type)) << type;
+        EXPECT_FALSE(proto::isClientToServer(type)) << type;
+        EXPECT_FALSE(proto::isServerToClient(type)) << type;
     }
 }
 
 TEST(DirectionTests, TheDirectionIsKnownAtCompileTime)
 {
-    static_assert(isClientToServer(MessageType::HELLO));
-    static_assert(isServerToClient(MessageType::KICK));
-    static_assert(!isClientToServer(static_cast<MessageType>(0x80)));
-    static_assert(!isServerToClient(static_cast<MessageType>(0x80)));
+    static_assert(proto::isClientToServer(proto::MessageType::HELLO));
+    static_assert(proto::isServerToClient(proto::MessageType::KICK));
+    static_assert(!proto::isClientToServer(static_cast<
+        proto::MessageType>(0x80)));
+    static_assert(!proto::isServerToClient(static_cast<
+        proto::MessageType>(0x80)));
 }
 
 TEST(DirectionTests, EveryTypeIsAcceptedInItsOwnDirection)
 {
-    for (const MessageType type: CLIENT_TO_SERVER)
-        EXPECT_NO_THROW(checkType(type, Direction::CLIENT_TO_SERVER)) << type;
-    for (const MessageType type: SERVER_TO_CLIENT)
-        EXPECT_NO_THROW(checkType(type, Direction::SERVER_TO_CLIENT)) << type;
+    for (const proto::MessageType type: CLIENT_TO_SERVER)
+        EXPECT_NO_THROW(proto::checkType(type,
+            proto::Direction::CLIENT_TO_SERVER))
+            << type;
+    for (const proto::MessageType type: SERVER_TO_CLIENT)
+        EXPECT_NO_THROW(proto::checkType(type,
+            proto::Direction::SERVER_TO_CLIENT))
+            << type;
 }
 
 TEST(DirectionTests, ATypeTravellingTheOtherWayIsRejected)
 {
-    expectCheckTypeFails(MessageType::SHUTDOWN, Direction::CLIENT_TO_SERVER,
-        DecodeError::WRONG_DIRECTION, "SHUTDOWN: wrong direction");
-    expectCheckTypeFails(MessageType::KICK, Direction::CLIENT_TO_SERVER,
-        DecodeError::WRONG_DIRECTION, "KICK: wrong direction");
-    expectCheckTypeFails(MessageType::HELLO, Direction::SERVER_TO_CLIENT,
-        DecodeError::WRONG_DIRECTION, "HELLO: wrong direction");
+    expectCheckTypeFails(proto::MessageType::SHUTDOWN,
+        proto::Direction::CLIENT_TO_SERVER, proto::DecodeError::WRONG_DIRECTION,
+        "SHUTDOWN: wrong direction");
+    expectCheckTypeFails(proto::MessageType::KICK,
+        proto::Direction::CLIENT_TO_SERVER, proto::DecodeError::WRONG_DIRECTION,
+        "KICK: wrong direction");
+    expectCheckTypeFails(proto::MessageType::HELLO,
+        proto::Direction::SERVER_TO_CLIENT, proto::DecodeError::WRONG_DIRECTION,
+        "HELLO: wrong direction");
 }
 
 TEST(DirectionTests, AnUnknownTypeIsRejectedInBothDirections)
 {
-    const auto type = static_cast<MessageType>(0x42);
+    const auto type = static_cast<proto::MessageType>(0x42);
 
-    expectCheckTypeFails(type, Direction::CLIENT_TO_SERVER,
-        DecodeError::UNKNOWN_TYPE, "0x42: unknown type");
-    expectCheckTypeFails(type, Direction::SERVER_TO_CLIENT,
-        DecodeError::UNKNOWN_TYPE, "0x42: unknown type");
+    expectCheckTypeFails(type, proto::Direction::CLIENT_TO_SERVER,
+        proto::DecodeError::UNKNOWN_TYPE, "0x42: unknown type");
+    expectCheckTypeFails(type, proto::Direction::SERVER_TO_CLIENT,
+        proto::DecodeError::UNKNOWN_TYPE, "0x42: unknown type");
 }
