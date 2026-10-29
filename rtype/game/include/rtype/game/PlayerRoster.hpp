@@ -19,7 +19,7 @@
 namespace rtype::game {
 struct PlayerSlot {
     std::uint8_t playerId = 0;
-    std::string name;
+    std::string name{};
     std::uint8_t lives = 0;
     std::uint32_t score = 0;
     SlotState state = SlotState::EMPTY;

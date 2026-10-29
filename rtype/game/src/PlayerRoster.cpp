@@ -9,4 +9,15 @@
 
 namespace rtype::game {
 
+std::optional<std::uint8_t> PlayerRoster::reserve()
+{
+    for (std::size_t i = 0; i < _slots.size(); ++i) {
+        if (_slots[i].has_value())
+            continue;
+        const auto playerId = static_cast<std::uint8_t>(i);
+        _slots[i].emplace(PlayerSlot{.playerId = playerId});
+        return playerId;
+    }
+    return std::nullopt;
+}
 }
