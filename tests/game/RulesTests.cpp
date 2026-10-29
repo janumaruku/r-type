@@ -9,7 +9,8 @@
 
 #include "rtype/game/Rules.hpp"
 
-using namespace rtype::game;
+using rtype::game::FloatRange;
+using rtype::game::Rules;
 using engine::core::Vec2f;
 
 namespace {

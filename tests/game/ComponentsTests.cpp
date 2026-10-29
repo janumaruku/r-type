@@ -11,7 +11,26 @@
 #include "engine/ecs/Registry.hpp"
 #include "rtype/game/Components.hpp"
 
-using namespace rtype::game;
+using rtype::game::AimedShooter;
+using rtype::game::Collider;
+using rtype::game::ConfinedToPlayfield;
+using rtype::game::Damage;
+using rtype::game::DespawnOutsidePlayfield;
+using rtype::game::Health;
+using rtype::game::LastHit;
+using rtype::game::Lifetime;
+using rtype::game::NO_NET_ID;
+using rtype::game::NO_PLAYER;
+using rtype::game::PlayerShip;
+using rtype::game::Projectile;
+using rtype::game::registerComponents;
+using rtype::game::Replicated;
+using rtype::game::ScoreValue;
+using rtype::game::SineMover;
+using rtype::game::StraightMover;
+using rtype::game::Transform;
+using rtype::game::Velocity;
+using rtype::game::Weapon;
 
 namespace {
 

@@ -25,8 +25,8 @@
 #include "rtype/protocol/ProtocolError.hpp"
 #include "rtype/protocol/Snapshot.hpp"
 
-using namespace rtype::protocol;
-using namespace protocol_test;
+namespace proto = rtype::protocol;
+using protocol_test::encode;
 
 namespace {
 
@@ -36,40 +36,43 @@ constexpr std::array<std::uint8_t, 4> EDGE_VALUES{0x00, 0x7F, 0x80, 0xFF};
 
 constexpr int RANDOM_DATAGRAMS = 1000;
 
-constexpr std::array EVERY_TYPE{MessageType::HELLO, MessageType::INPUT,
-    MessageType::DISCONNECT, MessageType::WELCOME, MessageType::REJECT,
-    MessageType::SNAPSHOT, MessageType::EVENT, MessageType::SHUTDOWN,
-    MessageType::KICK};
+constexpr std::array EVERY_TYPE{proto::MessageType::HELLO,
+    proto::MessageType::INPUT,
+    proto::MessageType::DISCONNECT, proto::MessageType::WELCOME,
+        proto::MessageType::REJECT,
+    proto::MessageType::SNAPSHOT, proto::MessageType::EVENT,
+        proto::MessageType::SHUTDOWN,
+    proto::MessageType::KICK};
 
-void decodePayload(MessageType type, net::Packet &packet)
+void decodePayload(proto::MessageType type, net::Packet &packet)
 {
     switch (type) {
-    case MessageType::HELLO:
-        static_cast<void>(decode<Hello>(packet));
+    case proto::MessageType::HELLO:
+        static_cast<void>(proto::decode<proto::Hello>(packet));
         return;
-    case MessageType::INPUT:
-        static_cast<void>(decode<Input>(packet));
+    case proto::MessageType::INPUT:
+        static_cast<void>(proto::decode<proto::Input>(packet));
         return;
-    case MessageType::DISCONNECT:
-        static_cast<void>(decode<Disconnect>(packet));
+    case proto::MessageType::DISCONNECT:
+        static_cast<void>(proto::decode<proto::Disconnect>(packet));
         return;
-    case MessageType::WELCOME:
-        static_cast<void>(decode<Welcome>(packet));
+    case proto::MessageType::WELCOME:
+        static_cast<void>(proto::decode<proto::Welcome>(packet));
         return;
-    case MessageType::REJECT:
-        static_cast<void>(decode<Reject>(packet));
+    case proto::MessageType::REJECT:
+        static_cast<void>(proto::decode<proto::Reject>(packet));
         return;
-    case MessageType::SNAPSHOT:
-        static_cast<void>(decode<Snapshot>(packet));
+    case proto::MessageType::SNAPSHOT:
+        static_cast<void>(proto::decode<proto::Snapshot>(packet));
         return;
-    case MessageType::EVENT:
-        static_cast<void>(decode<Event>(packet));
+    case proto::MessageType::EVENT:
+        static_cast<void>(proto::decode<proto::Event>(packet));
         return;
-    case MessageType::SHUTDOWN:
-        static_cast<void>(decode<Shutdown>(packet));
+    case proto::MessageType::SHUTDOWN:
+        static_cast<void>(proto::decode<proto::Shutdown>(packet));
         return;
-    case MessageType::KICK:
-        static_cast<void>(decode<Kick>(packet));
+    case proto::MessageType::KICK:
+        static_cast<void>(proto::decode<proto::Kick>(packet));
         return;
     }
 }
@@ -79,15 +82,16 @@ void decodePayload(MessageType type, net::Packet &packet)
 ** version is dropped without an error, as the REJECT it may cause belongs to
 ** the server.
 */
-void dispatch(std::span<const std::uint8_t> datagram, Direction direction)
+void dispatch(std::span<const std::uint8_t> datagram,
+    proto::Direction direction)
 {
-    checkDatagramSize(datagram.size());
+    proto::checkDatagramSize(datagram.size());
     net::Packet packet{datagram};
-    const auto header = packet.read<Header>();
+    const auto header = packet.read<proto::Header>();
 
-    if (header.version != Header::VERSION)
+    if (header.version != proto::Header::VERSION)
         return;
-    checkType(header.type, direction);
+    proto::checkType(header.type, direction);
     decodePayload(header.type, packet);
 }
 
@@ -96,12 +100,12 @@ void dispatch(std::span<const std::uint8_t> datagram, Direction direction)
 ** Any exception other than a net::PacketError escapes and fails the test.
 */
 template <class Function>
-std::optional<DecodeError> failureOf(Function &&function)
+std::optional<proto::DecodeError> failureOf(Function &&function)
 {
     try {
         function();
     } catch (const net::PacketError &error) {
-        return classify(error);
+        return proto::classify(error);
     }
     return std::nullopt;
 }
@@ -109,18 +113,19 @@ std::optional<DecodeError> failureOf(Function &&function)
 template <class Message>
 Bytes datagram(const Message &message)
 {
-    const net::Packet packet = makePacket(Message::TYPE, 1, message);
+    const net::Packet packet = proto::makePacket(Message::TYPE, 1, message);
     const auto bytes = packet.bytes();
 
     return {bytes.begin(), bytes.end()};
 }
 
 template <class Message>
-std::optional<DecodeError> decodeFailureOf(std::span<const std::uint8_t> payload)
+std::optional<proto::DecodeError> decodeFailureOf(
+    std::span<const std::uint8_t> payload)
 {
     return failureOf([payload] {
         net::Packet packet{payload};
-        static_cast<void>(decode<Message>(packet));
+        static_cast<void>(proto::decode<Message>(packet));
     });
 }
 
@@ -132,38 +137,42 @@ void decodeAsEach(std::span<const std::uint8_t> payload)
 
 void decodeAsEveryType(std::span<const std::uint8_t> payload)
 {
-    decodeAsEach<Hello, Input, Disconnect, Welcome, Reject, Snapshot, Event,
-        Shutdown, Kick>(payload);
+    decodeAsEach<proto::Hello, proto::Input, proto::Disconnect, proto::Welcome,
+        proto::Reject, proto::Snapshot, proto::Event,
+        proto::Shutdown, proto::Kick>(payload);
 }
 
-Snapshot smallSnapshot()
+proto::Snapshot smallSnapshot()
 {
-    Snapshot snapshot{.serverTick = 7, .lastProcessedInput = 3};
+    proto::Snapshot snapshot{.serverTick = 7, .lastProcessedInput = 3};
 
-    for (std::uint8_t slot = 0; slot < MAX_PLAYERS; ++slot)
-        snapshot.roster.push_back(PlayerInfo{.playerId = slot,
-            .state = PlayerState::ALIVE, .lives = 3, .shipNetId = 10U + slot,
+    for (std::uint8_t slot = 0; slot < proto::MAX_PLAYERS; ++slot)
+        snapshot.roster.push_back(proto::PlayerInfo{.playerId = slot,
+            .state = proto::PlayerState::ALIVE, .lives = 3,
+                .shipNetId = 10U + slot,
             .name = "P" + std::to_string(slot)});
-    snapshot.entities.push_back(EntityState{.netId = 10,
-        .kind = EntityKind::PLAYER_SHIP, .x = 1.0F});
-    snapshot.entities.push_back(EntityState{.netId = 20,
-        .kind = EntityKind::BYDOS_SLAVE, .variant = pattern::SINE});
+    snapshot.entities.push_back(proto::EntityState{.netId = 10,
+        .kind = proto::EntityKind::PLAYER_SHIP, .x = 1.0F});
+    snapshot.entities.push_back(proto::EntityState{.netId = 20,
+        .kind = proto::EntityKind::BYDOS_SLAVE,
+            .variant = proto::pattern::SINE});
     return snapshot;
 }
 
 /*
 ** The largest valid payload: 4 players with 16-byte names and 48 entities.
 */
-Snapshot fullSnapshot()
+proto::Snapshot fullSnapshot()
 {
-    Snapshot snapshot = smallSnapshot();
+    proto::Snapshot snapshot = smallSnapshot();
 
-    for (PlayerInfo &player: snapshot.roster)
+    for (proto::PlayerInfo &player: snapshot.roster)
         player.name = "ABCDEFGHIJKLMNOP";
     snapshot.entities.clear();
-    for (std::uint32_t netId = 1; netId <= MAX_ENTITIES_PER_CHUNK; ++netId)
-        snapshot.entities.push_back(EntityState{.netId = netId,
-            .kind = EntityKind::ENEMY_MISSILE, .vx = -300.0F});
+    for (std::uint32_t netId = 1; netId <= proto::MAX_ENTITIES_PER_CHUNK;
+        ++netId)
+        snapshot.entities.push_back(proto::EntityState{.netId = netId,
+            .kind = proto::EntityKind::ENEMY_MISSILE, .vx = -300.0F});
     return snapshot;
 }
 
@@ -174,7 +183,7 @@ void expectDecoded(const Message &message)
     const Bytes bytes = encode(message);
     net::Packet packet{bytes};
 
-    EXPECT_EQ(decode<Message>(packet), message);
+    EXPECT_EQ(proto::decode<Message>(packet), message);
 }
 
 template <class Message>
@@ -187,10 +196,11 @@ void expectTrailingBytes(const Message &message)
     bytes.push_back(0);
     net::Packet packet{bytes};
     try {
-        static_cast<void>(decode<Message>(packet));
+        static_cast<void>(proto::decode<Message>(packet));
         ADD_FAILURE() << Message::TYPE << " with an extra byte was accepted";
-    } catch (const ProtocolError &error) {
-        EXPECT_EQ(error.code(), DecodeError::TRAILING_BYTES) << Message::TYPE;
+    } catch (const proto::ProtocolError &error) {
+        EXPECT_EQ(error.code(),
+            proto::DecodeError::TRAILING_BYTES) << Message::TYPE;
         EXPECT_EQ(std::string(error.what()), expected.str());
     }
 }
@@ -209,7 +219,8 @@ void expectEveryMutationDecodesOrFailsCleanly(const Message &message)
             Bytes mutated = valid;
 
             mutated[index] = value;
-            ASSERT_NO_THROW(static_cast<void>(decodeFailureOf<Message>(mutated)))
+            ASSERT_NO_THROW(static_cast<
+                void>(decodeFailureOf<Message>(mutated)))
                 << Message::TYPE << ", byte " << index << " set to "
                 << static_cast<unsigned>(value);
         }
@@ -220,70 +231,78 @@ void expectEveryMutationDecodesOrFailsCleanly(const Message &message)
 
 TEST(MalformedInputTests, DecodeReturnsAMessageWithNothingLeftOver)
 {
-    expectDecoded(Hello{.playerName = "Bob"});
-    expectDecoded(Input{.inputSequence = 9, .buttons = buttons::FIRE});
-    expectDecoded(Disconnect{});
-    expectDecoded(Welcome{.playerId = 2});
-    expectDecoded(Reject{.reason = RejectReason::VERSION_MISMATCH});
+    expectDecoded(proto::Hello{.playerName = "Bob"});
+    expectDecoded(proto::Input{.inputSequence = 9,
+        .buttons = proto::buttons::FIRE});
+    expectDecoded(proto::Disconnect{});
+    expectDecoded(proto::Welcome{.playerId = 2});
+    expectDecoded(proto::Reject{
+        .reason = proto::RejectReason::VERSION_MISMATCH});
     expectDecoded(smallSnapshot());
-    expectDecoded(Event{.eventId = 4, .type = EventType::GAME_OVER});
-    expectDecoded(Shutdown{});
-    expectDecoded(Kick{.reason = KickReason::RATE_LIMITED});
+    expectDecoded(proto::Event{.eventId = 4,
+        .type = proto::EventType::GAME_OVER});
+    expectDecoded(proto::Shutdown{});
+    expectDecoded(proto::Kick{.reason = proto::KickReason::RATE_LIMITED});
 }
 
 TEST(MalformedInputTests, AnExtraByteAfterAnyMessageIsTrailingBytes)
 {
-    expectTrailingBytes(Hello{.playerName = "Bob"});
-    expectTrailingBytes(Input{.inputSequence = 9, .buttons = buttons::FIRE});
-    expectTrailingBytes(Disconnect{});
-    expectTrailingBytes(Welcome{.playerId = 2});
-    expectTrailingBytes(Reject{.reason = RejectReason::VERSION_MISMATCH});
+    expectTrailingBytes(proto::Hello{.playerName = "Bob"});
+    expectTrailingBytes(proto::Input{.inputSequence = 9,
+        .buttons = proto::buttons::FIRE});
+    expectTrailingBytes(proto::Disconnect{});
+    expectTrailingBytes(proto::Welcome{.playerId = 2});
+    expectTrailingBytes(proto::Reject{
+        .reason = proto::RejectReason::VERSION_MISMATCH});
     expectTrailingBytes(smallSnapshot());
-    expectTrailingBytes(Event{.eventId = 4, .type = EventType::GAME_OVER});
-    expectTrailingBytes(Shutdown{});
-    expectTrailingBytes(Kick{.reason = KickReason::RATE_LIMITED});
+    expectTrailingBytes(proto::Event{.eventId = 4,
+        .type = proto::EventType::GAME_OVER});
+    expectTrailingBytes(proto::Shutdown{});
+    expectTrailingBytes(proto::Kick{.reason = proto::KickReason::RATE_LIMITED});
 }
 
 TEST(MalformedInputTests, DecodeReadsThePayloadAfterTheHeader)
 {
-    const Bytes bytes = datagram(Input{.inputSequence = 9, .buttons = 1});
+    const Bytes bytes = datagram(proto::Input{.inputSequence = 9,
+        .buttons = 1});
     net::Packet packet{bytes};
 
-    EXPECT_EQ(packet.read<Header>().type, MessageType::INPUT);
-    EXPECT_EQ(decode<Input>(packet), (Input{.inputSequence = 9, .buttons = 1}));
+    EXPECT_EQ(packet.read<proto::Header>().type, proto::MessageType::INPUT);
+    EXPECT_EQ(proto::decode<proto::Input>(packet),
+        (proto::Input{.inputSequence = 9, .buttons = 1}));
 }
 
 TEST(MalformedInputTests, AValidDatagramPassesTheWholeDispatch)
 {
     EXPECT_EQ(failureOf([] {
-        dispatch(datagram(Input{.inputSequence = 1}),
-            Direction::CLIENT_TO_SERVER);
+        dispatch(datagram(proto::Input{.inputSequence = 1}),
+            proto::Direction::CLIENT_TO_SERVER);
     }), std::nullopt);
     EXPECT_EQ(failureOf([] {
-        dispatch(datagram(fullSnapshot()), Direction::SERVER_TO_CLIENT);
+        dispatch(datagram(fullSnapshot()), proto::Direction::SERVER_TO_CLIENT);
     }), std::nullopt);
 }
 
 TEST(MalformedInputTests, ADatagramOfAWrongSizeIsBadSize)
 {
-    const Bytes valid = datagram(Hello{});
+    const Bytes valid = datagram(proto::Hello{});
 
-    for (std::size_t size = 0; size < Header::SIZE; ++size) {
+    for (std::size_t size = 0; size < proto::Header::SIZE; ++size) {
         const Bytes shorter(valid.begin(),
             valid.begin() + static_cast<std::ptrdiff_t>(size));
         const Bytes zeros(size, 0);
 
         EXPECT_EQ(failureOf([&] {
-            dispatch(zeros, Direction::CLIENT_TO_SERVER);
-        }), DecodeError::BAD_SIZE) << size << " bytes";
+            dispatch(zeros, proto::Direction::CLIENT_TO_SERVER);
+        }), proto::DecodeError::BAD_SIZE) << size << " bytes";
         EXPECT_EQ(failureOf([&] {
-            dispatch(shorter, Direction::CLIENT_TO_SERVER);
-        }), DecodeError::BAD_SIZE) << size << " bytes of a HELLO";
+            dispatch(shorter, proto::Direction::CLIENT_TO_SERVER);
+        }), proto::DecodeError::BAD_SIZE) << size << " bytes of a HELLO";
     }
     EXPECT_EQ(failureOf([] {
         dispatch(Bytes(net::Packet::MAX_SIZE + 1, 0),
-            Direction::CLIENT_TO_SERVER);
-    }), DecodeError::BAD_SIZE);
+            proto::Direction::CLIENT_TO_SERVER);
+    }), proto::DecodeError::BAD_SIZE);
 }
 
 /*
@@ -292,49 +311,52 @@ TEST(MalformedInputTests, ADatagramOfAWrongSizeIsBadSize)
 */
 TEST(MalformedInputTests, TheFirstFailingCheckInTheDispatchOrderWins)
 {
-    Bytes badMagicAndType = datagram(Input{});
+    Bytes badMagicAndType = datagram(proto::Input{});
     badMagicAndType[0] = 0;
     badMagicAndType[3] = 0x42;
     EXPECT_EQ(failureOf([&] {
-        dispatch(badMagicAndType, Direction::CLIENT_TO_SERVER);
-    }), DecodeError::BAD_MAGIC);
+        dispatch(badMagicAndType, proto::Direction::CLIENT_TO_SERVER);
+    }), proto::DecodeError::BAD_MAGIC);
 
-    Bytes otherVersionAndType = datagram(Input{});
-    otherVersionAndType[2] = static_cast<std::uint8_t>(Header::VERSION + 1);
+    Bytes otherVersionAndType = datagram(proto::Input{});
+    otherVersionAndType[2] =
+        static_cast<std::uint8_t>(proto::Header::VERSION + 1);
     otherVersionAndType[3] = 0x42;
     EXPECT_EQ(failureOf([&] {
-        dispatch(otherVersionAndType, Direction::CLIENT_TO_SERVER);
+        dispatch(otherVersionAndType, proto::Direction::CLIENT_TO_SERVER);
     }), std::nullopt);
 
-    Bytes unknownTypeAndShortPayload = datagram(Input{});
+    Bytes unknownTypeAndShortPayload = datagram(proto::Input{});
     unknownTypeAndShortPayload[3] = 0x42;
     unknownTypeAndShortPayload.pop_back();
     EXPECT_EQ(failureOf([&] {
-        dispatch(unknownTypeAndShortPayload, Direction::CLIENT_TO_SERVER);
-    }), DecodeError::UNKNOWN_TYPE);
+        dispatch(unknownTypeAndShortPayload,
+            proto::Direction::CLIENT_TO_SERVER);
+    }), proto::DecodeError::UNKNOWN_TYPE);
 
-    Bytes wrongDirectionAndExtraByte = datagram(Shutdown{});
+    Bytes wrongDirectionAndExtraByte = datagram(proto::Shutdown{});
     wrongDirectionAndExtraByte.push_back(0);
     EXPECT_EQ(failureOf([&] {
-        dispatch(wrongDirectionAndExtraByte, Direction::CLIENT_TO_SERVER);
-    }), DecodeError::WRONG_DIRECTION);
+        dispatch(wrongDirectionAndExtraByte,
+            proto::Direction::CLIENT_TO_SERVER);
+    }), proto::DecodeError::WRONG_DIRECTION);
 
-    Bytes shortPayload = datagram(Input{});
+    Bytes shortPayload = datagram(proto::Input{});
     shortPayload.pop_back();
     EXPECT_EQ(failureOf([&] {
-        dispatch(shortPayload, Direction::CLIENT_TO_SERVER);
-    }), DecodeError::TRUNCATED);
+        dispatch(shortPayload, proto::Direction::CLIENT_TO_SERVER);
+    }), proto::DecodeError::TRUNCATED);
 
     EXPECT_EQ(failureOf([] {
-        dispatch(datagram(Input{.buttons = buttons::RESERVED}),
-            Direction::CLIENT_TO_SERVER);
-    }), DecodeError::OUT_OF_RANGE);
+        dispatch(datagram(proto::Input{.buttons = proto::buttons::RESERVED}),
+            proto::Direction::CLIENT_TO_SERVER);
+    }), proto::DecodeError::OUT_OF_RANGE);
 
-    Bytes extraByte = datagram(Input{});
+    Bytes extraByte = datagram(proto::Input{});
     extraByte.push_back(0);
     EXPECT_EQ(failureOf([&] {
-        dispatch(extraByte, Direction::CLIENT_TO_SERVER);
-    }), DecodeError::TRAILING_BYTES);
+        dispatch(extraByte, proto::Direction::CLIENT_TO_SERVER);
+    }), proto::DecodeError::TRAILING_BYTES);
 }
 
 /*
@@ -351,15 +373,16 @@ TEST(MalformedInputTests, ARosterCountOf65535InThirtyBytesIsTruncated)
     net::Packet payload{packet.bytes()};
 
     EXPECT_EQ(failureOf([&] {
-        static_cast<void>(decode<Snapshot>(payload));
-    }), DecodeError::TRUNCATED);
+        static_cast<void>(proto::decode<proto::Snapshot>(payload));
+    }), proto::DecodeError::TRUNCATED);
 }
 
 TEST(MalformedInputTests, ANameLengthOf200WithFiveBytesLeftIsTruncated)
 {
-    const Bytes bytes{Header::VERSION, 200, 'A', 'B', 'C', 'D', 'E'};
+    const Bytes bytes{proto::Header::VERSION, 200, 'A', 'B', 'C', 'D', 'E'};
 
-    EXPECT_EQ(decodeFailureOf<Hello>(bytes), DecodeError::TRUNCATED);
+    EXPECT_EQ(decodeFailureOf<proto::Hello>(bytes),
+        proto::DecodeError::TRUNCATED);
 }
 
 /*
@@ -380,15 +403,18 @@ TEST(MalformedInputTests, RandomDatagramsNeverCrashTheDecoder)
 
         for (std::uint8_t &value: bytes)
             value = static_cast<std::uint8_t>(byte(random));
-        const MessageType type = EVERY_TYPE[static_cast<std::size_t>(index)
-            % EVERY_TYPE.size()];
-        const Direction direction = isClientToServer(type)
-            ? Direction::CLIENT_TO_SERVER : Direction::SERVER_TO_CLIENT;
+        const proto::MessageType type =
+            EVERY_TYPE[static_cast<std::size_t>(index) % EVERY_TYPE.size()];
+        const proto::Direction direction = proto::isClientToServer(type)
+            ? proto::Direction::CLIENT_TO_SERVER
+            : proto::Direction::SERVER_TO_CLIENT;
         Bytes behindValidHeader = bytes;
-        if (behindValidHeader.size() >= Header::SIZE) {
-            behindValidHeader[0] = static_cast<std::uint8_t>(Header::MAGIC & 0xFF);
-            behindValidHeader[1] = static_cast<std::uint8_t>(Header::MAGIC >> 8);
-            behindValidHeader[2] = Header::VERSION;
+        if (behindValidHeader.size() >= proto::Header::SIZE) {
+            behindValidHeader[0] =
+                static_cast<std::uint8_t>(proto::Header::MAGIC & 0xFF);
+            behindValidHeader[1] =
+                static_cast<std::uint8_t>(proto::Header::MAGIC >> 8);
+            behindValidHeader[2] = proto::Header::VERSION;
             behindValidHeader[3] = static_cast<std::uint8_t>(type);
         }
         ASSERT_NO_THROW({
@@ -403,15 +429,15 @@ TEST(MalformedInputTests, RandomDatagramsNeverCrashTheDecoder)
 
 TEST(MalformedInputTests, MutatedPayloadsNeverCrashTheDecoder)
 {
-    expectEveryMutationDecodesOrFailsCleanly(Hello{.playerName = "Bob"});
-    expectEveryMutationDecodesOrFailsCleanly(Input{.inputSequence = 9,
-        .buttons = buttons::FIRE});
-    expectEveryMutationDecodesOrFailsCleanly(Disconnect{});
-    expectEveryMutationDecodesOrFailsCleanly(Welcome{.playerId = 2});
-    expectEveryMutationDecodesOrFailsCleanly(Reject{});
+    expectEveryMutationDecodesOrFailsCleanly(proto::Hello{.playerName = "Bob"});
+    expectEveryMutationDecodesOrFailsCleanly(proto::Input{.inputSequence = 9,
+        .buttons = proto::buttons::FIRE});
+    expectEveryMutationDecodesOrFailsCleanly(proto::Disconnect{});
+    expectEveryMutationDecodesOrFailsCleanly(proto::Welcome{.playerId = 2});
+    expectEveryMutationDecodesOrFailsCleanly(proto::Reject{});
     expectEveryMutationDecodesOrFailsCleanly(smallSnapshot());
-    expectEveryMutationDecodesOrFailsCleanly(Event{.eventId = 4,
-        .type = EventType::PLAYER_LEFT, .a = 1,
-        .b = static_cast<std::uint32_t>(LeaveReason::KICKED)});
-    expectEveryMutationDecodesOrFailsCleanly(Kick{});
+    expectEveryMutationDecodesOrFailsCleanly(proto::Event{.eventId = 4,
+        .type = proto::EventType::PLAYER_LEFT, .a = 1,
+        .b = static_cast<std::uint32_t>(proto::LeaveReason::KICKED)});
+    expectEveryMutationDecodesOrFailsCleanly(proto::Kick{});
 }
