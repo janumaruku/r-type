@@ -32,9 +32,9 @@ void writeLittleEndian(std::ofstream &out, std::uint32_t value, int bytes)
 /* ** A tenth of a second of silence, 16-bit mono PCM at 22050 Hz */
 void writeSilentWav(const std::filesystem::path &path)
 {
-    constexpr std::uint32_t SAMPLE_RATE = 22050;
-    constexpr std::uint32_t SAMPLES = SAMPLE_RATE / 10;
-    constexpr std::uint32_t DATA_SIZE = SAMPLES * 2;
+    constexpr std::uint32_t SAMPLE_RATE = 22050; // NOLINT
+    constexpr std::uint32_t SAMPLES = SAMPLE_RATE / 10; // NOLINT
+    constexpr std::uint32_t DATA_SIZE = SAMPLES * 2; // NOLINT
     std::ofstream out(path, std::ios::binary);
 
     out << "RIFF";
@@ -65,9 +65,9 @@ void writeBigEndian(std::ofstream &out, std::uint32_t value, int bytes)
 */
 void writeQuietQoa(const std::filesystem::path &path)
 {
-    constexpr std::uint32_t SAMPLES = 5120;
-    constexpr std::uint32_t SLICES = SAMPLES / 20;
-    constexpr std::uint32_t FRAME_SIZE = 8 + 16 + (8 * SLICES);
+    constexpr std::uint32_t SAMPLES = 5120; // NOLINT
+    constexpr std::uint32_t SLICES = SAMPLES / 20; // NOLINT
+    constexpr std::uint32_t FRAME_SIZE = 8 + 16 + (8 * SLICES); // NOLINT
     std::ofstream out(path, std::ios::binary);
 
     out << "qoaf";
