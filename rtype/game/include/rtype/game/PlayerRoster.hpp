@@ -13,7 +13,9 @@
 #include <optional>
 #include <string>
 #include <vector>
+#include <string_view>
 
+#include "engine/core/Logger.hpp"
 #include "rtype/game/Types.hpp"
 
 namespace rtype::game {
@@ -63,7 +65,13 @@ public:
     [[nodiscard]] std::uint32_t teamScore() const noexcept;
 
 private:
+    PlayerSlot *reserved(std::uint8_t playerId, std::string_view transition);
+
+    PlayerSlot *expect(std::uint8_t playerId, SlotState from,
+        std::string_view transition);
+
     std::array<std::optional<PlayerSlot>, 4> _slots;
+    engine::core::log::Logger _logger{"game"};
 };
 }
 
