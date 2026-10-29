@@ -8,7 +8,6 @@
 #ifndef R_TYPE_TYPES_HPP
 #define R_TYPE_TYPES_HPP
 
-#include <cstddef>
 #include <cstdint>
 
 namespace rtype::game {
@@ -16,6 +15,10 @@ using NetId = std::uint32_t;
 inline constexpr NetId NO_NET_ID = 0;
 inline constexpr std::uint8_t NO_PLAYER = 0xFF;
 
+/**
+ * @brief Mirrors EntityState's `kind` (RFC § 6.5). Keep the values equal to
+ * the RFC's, so the server adapter converts with a checked `static_cast`.
+ */
 enum class EntityKind : std::uint8_t {
     PLAYER_SHIP = 1,
     BYDOS_SLAVE = 2,
@@ -40,8 +43,16 @@ enum class Side : std::uint8_t {
     ENEMY,
 };
 
+/**
+ * @brief Mirrors PLAYER_LEFT's reason (RFC § 6.6). Keep the values equal to
+ * the RFC's, so the server adapter converts with a checked `static_cast`.
+ */
 enum class LeaveReason : std::uint8_t { QUIT = 0, TIMEOUT = 1, KICKED = 2 };
 
+/**
+ * @brief Mirrors PlayerInfo's `state` (RFC § 6.5). Keep the values equal to
+ * the RFC's, so the server adapter converts with a checked `static_cast`.
+ */
 enum class SlotState : std::uint8_t {
     EMPTY = 0,
     ALIVE = 1,
@@ -56,6 +67,10 @@ struct FloatRange {
     float max = 0.0F;
 };
 
+/**
+ * @brief The bits mirror INPUT's `buttons` (RFC § 6.4). Keep them equal to
+ * the RFC's, so the server adapter copies `bits` as is.
+ */
 struct InputButtons {
     static constexpr std::uint8_t UP = 1U << 0U;
     static constexpr std::uint8_t DOWN = 1U << 1U;
@@ -67,7 +82,7 @@ struct InputButtons {
 
     [[nodiscard]] constexpr bool held(const std::uint8_t button) const noexcept
     {
-        return (bits & button) == 0;
+        return (bits & button) != 0;
     }
 
     bool operator==(const InputButtons &) const = default;
