@@ -20,4 +20,11 @@ std::optional<std::uint8_t> PlayerRoster::reserve()
     }
     return std::nullopt;
 }
+
+void PlayerRoster::release(const std::uint8_t playerId)
+{
+    if (playerId >= _slots.size())
+        return;
+    _slots[playerId].reset();
+}
 }
