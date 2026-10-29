@@ -1,7 +1,6 @@
 add_library(rtype_game STATIC
-        include/rtype/game/Types.hpp
-        include/rtype/game/Rules.hpp
         src/misc.cpp
+        src/Components.cpp
 )
 
 target_include_directories(rtype_game PUBLIC include)
