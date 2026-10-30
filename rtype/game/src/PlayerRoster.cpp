@@ -193,6 +193,17 @@ bool PlayerRoster::anyAlive() const noexcept
             return true;
     return false;
 }
+
+std::uint32_t PlayerRoster::teamScore() const noexcept
+{
+    std::uint32_t total = 0;
+
+    for (const auto &slot : _slots)
+        if (slot.has_value())
+            total += slot->score;
+    return total;
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
