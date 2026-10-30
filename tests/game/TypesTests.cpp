@@ -9,7 +9,7 @@
 
 #include "rtype/game/Types.hpp"
 
-using namespace rtype::game;
+using rtype::game::InputButtons;
 
 TEST(InputButtons, HeldReportsOnlyTheSetBits)
 {
