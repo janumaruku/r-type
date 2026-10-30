@@ -155,6 +155,13 @@ bool PlayerRoster::acceptInput(const std::uint8_t playerId,
     return true;
 }
 
+const PlayerSlot *PlayerRoster::get(const std::uint8_t playerId) const
+{
+    if (playerId >= _slots.size() || !_slots[playerId].has_value())
+        return nullptr;
+    return &*_slots[playerId];
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
