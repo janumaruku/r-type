@@ -5,7 +5,7 @@
 ** MotionSystems
 */
 
-#include "rtype/game/MotionSystems.hpp"
+#include "rtype/game/Systems.hpp"
 
 #include <algorithm>
 
@@ -71,5 +71,14 @@ void playfieldSystem(engine::ecs::Registry &registry,
         if (isOutside(transform.position, collider.halfSize, despawn.margin,
                 rules))
             registry.commands().kill(entity);
+}
+
+void straightMoverSystem(engine::ecs::Registry &registry,
+    const engine::ecs::SparseSet<StraightMover> &,
+    engine::ecs::SparseSet<Velocity> &)
+{
+    for (auto &&[mover, velocity]:
+         registry.view<const StraightMover, Velocity>())
+        velocity.value = {-mover.speed, 0.0F};
 }
 }
