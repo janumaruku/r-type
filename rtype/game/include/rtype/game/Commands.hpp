@@ -18,17 +18,23 @@ namespace rtype::game {
 struct JoinPlayer {
     std::uint8_t playerId;
     std::string name;
+
+    bool operator==(const JoinPlayer &) const = default;
 };
 
 struct LeavePlayer {
     std::uint8_t playerId;
     LeaveReason reason;
+
+    bool operator==(const LeavePlayer &) const = default;
 };
 
 struct SetInput {
     std::uint8_t playerId;
     std::uint32_t inputSequence;
     InputButtons buttons;
+
+    bool operator==(const SetInput &) const = default;
 };
 
 using PlayerCommand = std::variant<JoinPlayer, LeavePlayer, SetInput>;

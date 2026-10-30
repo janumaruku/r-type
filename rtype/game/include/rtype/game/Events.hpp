@@ -20,12 +20,16 @@ struct Fired {
     NetId missile;
     Side side;
     engine::core::Vec2f position;
+
+    bool operator==(const Fired &) const = default;
 };
 
 struct EnemyKilled {
     NetId killerShip;
     NetId enemy;
     engine::core::Vec2f position;
+
+    bool operator==(const EnemyKilled &) const = default;
 };
 
 struct PlayerKilled {
@@ -33,22 +37,31 @@ struct PlayerKilled {
     NetId ship;
     std::uint8_t playerId;
     engine::core::Vec2f position;
+
+    bool operator==(const PlayerKilled &) const = default;
 };
 
 struct PlayerJoined {
     std::uint8_t playerId;
+
+    bool operator==(const PlayerJoined &) const = default;
 };
 
 struct PlayerLeft {
     std::uint8_t playerId;
     LeaveReason reason;
+
+    bool operator==(const PlayerLeft &) const = default;
 };
 
 struct GameOver {
     std::uint32_t teamScore;
+
+    bool operator==(const GameOver &) const = default;
 };
 
 struct GameRestarted {
+    bool operator==(const GameRestarted &) const = default;
 };
 
 using GameEvent = std::variant<Fired, EnemyKilled, PlayerKilled, PlayerJoined,
