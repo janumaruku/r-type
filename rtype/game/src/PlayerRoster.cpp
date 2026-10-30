@@ -87,6 +87,25 @@ bool PlayerRoster::onShipSpawned(const std::uint8_t playerId, const NetId ship)
     return true;
 }
 
+bool PlayerRoster::onShipKilled(const std::uint8_t playerId,
+    const float respawnDelay)
+{
+    PlayerSlot *slot = expect(playerId, SlotState::ALIVE, "onShipKilled");
+
+    if (slot == nullptr)
+        return false;
+    if (slot->lives > 0)
+        --slot->lives;
+    slot->shipNetId = NO_NET_ID;
+    if (slot->lives > 0) {
+        slot->state = SlotState::RESPAWNING;
+        slot->respawnTimer = respawnDelay;
+    } else {
+        slot->state = SlotState::OUT;
+    }
+    return true;
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
