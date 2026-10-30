@@ -71,9 +71,19 @@ classDiagram
         -std::array~std::optional~PlayerSlot~, 4~ _slots
         +reserve() std::optional~uint8_t~
         +release(uint8_t playerId) void
-        +get(uint8_t playerId) PlayerSlot*
+        +join(uint8_t playerId, std::string name, uint8_t lives) bool
+        +joinWaiting(uint8_t playerId, std::string name) bool
+        +onShipSpawned(uint8_t playerId, NetId ship) bool
+        +onShipKilled(uint8_t playerId, float respawnDelay) bool
+        +onGameRestarted(uint8_t lives) void
+        +advanceRespawns(float dt) std::vector~uint8_t~
+        +addScore(uint8_t playerId, uint32_t points) bool
+        +acceptInput(uint8_t playerId, uint32_t inputSequence) bool
+        +get(uint8_t playerId) PlayerSlot const*
         +active() size_t
         +allOut() bool
+        +anyAlive() bool
+        +teamScore() uint32_t
     }
     class PlayerSlot {
         +uint8_t playerId
@@ -91,11 +101,26 @@ classDiagram
         +allocate(Entity) NetId
         +find(NetId, Registry const&) std::optional~Entity~
         +releaseDead(Registry const&) void
+        +size() size_t
+    }
+    class GamePhase {
+        -Phase _phase = PLAYING
+        -float _untilReset = 0
+        +phase() Phase
+        +isOver() bool
+        +enterGameOver(float resetDelay) bool
+        +update(float dt) bool
+    }
+    class SpawnDirectorState {
+        <<struct>>
+        +float elapsed
+        +float untilNextSpawn
     }
     class EventOutbox {
         -std::vector~GameEvent~ _events
         +push(GameEvent) void
         +drain() std::vector~GameEvent~
+        +size() size_t
     }
     class PlayerCommand {
         <<variant>>
@@ -113,6 +138,8 @@ classDiagram
     Registry o-- PlayerRoster : resource
     Registry o-- NetIdAllocator : resource
     Registry o-- EventOutbox : resource
+    Registry o-- GamePhase : resource
+    Registry o-- SpawnDirectorState : resource
     Registry o-- Rules : resource
     PlayerRoster *-- PlayerSlot
     GameWorld ..> PlayerCommand : consumes
@@ -127,6 +154,8 @@ classDiagram
 | `engine::core::Rng` | spawn positions, movement patterns, fire timers |
 | `NetIdAllocator` | builders (allocate), `netIdCleanupSystem` (release) |
 | `PlayerRoster` | input, health, respawn, game-over systems |
+| `GamePhase` | `gameOverSystem` (enters and leaves GAME_OVER), `apply(JoinPlayer)` (`join` or `joinWaiting`) |
+| `SpawnDirectorState` | `spawnDirectorSystem`: elapsed time and the countdown to the next spawn, so systems hold no `static` state |
 | `EventOutbox` | every system that emits a `GameEvent` |
 | `engine::ecs::DeltaTime` | every system that moves or counts down; set by `step(dt)` |
 
@@ -147,7 +176,47 @@ classDiagram
 - **This is the Mediator pattern the subject recommends.** Systems never call the network or the audio. They push events into `EventOutbox`, and whatever owns the world decides what each event means: the server sends packets, and a future local mode could play sounds.
 - `collectReplicated()` fills a caller-owned vector with one `ReplicatedEntity{netId, kind, variant, position, velocity}` per entity that has `Replicated`. The server's `SnapshotBuilder` turns it into SNAPSHOT chunks. A player who joins mid-game gets the full world from their first snapshot, with no special case.
 - `PlayerRoster` is a resource, not a component, because lives and score must outlast the ship entity, which is destroyed and spawned again on each death.
-- `NetIdAllocator::find` only returns an entity that is still alive, thanks to generational handles. `releaseDead` forgets the NetIds of dead entities.
+- `NetIdAllocator::find` only returns an entity that is still alive, thanks to generational handles. `releaseDead` forgets the NetIds of dead entities. NetIds are never reused during a run, and running out of the 2³² − 1 values throws `engine::core::EngineError`.
+- `EventOutbox::drain` returns the events in push order and leaves the outbox empty. Every event and command struct has a defaulted `operator==`, so tests compare whole lists.
+- **Why `std::variant` for events and commands,** and not command classes with a factory: the set is closed and known at compile time, the values need no allocation, and `std::visit` refuses to compile if a case is forgotten. The Factory pattern ([ADR 0003](../decisions/0003-command-factory-handlers.md)) is for keys that arrive at run time: the network messages.
+
+### State machines
+
+**Only `PlayerRoster` changes a slot's state, and only `GamePhase` changes the game phase.** Systems read them through `const` accessors (`get` returns a `PlayerSlot const*`) and change them through the named transitions only, so no system can make an invalid transition.
+
+```mermaid
+stateDiagram-v2
+    [*] --> EMPTY : reserve()
+    EMPTY --> RESPAWNING : join() (timer 0)
+    EMPTY --> OUT : joinWaiting() (during a game over)
+    RESPAWNING --> ALIVE : onShipSpawned()
+    ALIVE --> RESPAWNING : onShipKilled(), lives left
+    ALIVE --> OUT : onShipKilled(), no life left
+    OUT --> RESPAWNING : onGameRestarted()
+    ALIVE --> RESPAWNING : onGameRestarted()
+    RESPAWNING --> RESPAWNING : onGameRestarted()
+    EMPTY --> [*] : release()
+    ALIVE --> [*] : release()
+    RESPAWNING --> [*] : release()
+    OUT --> [*] : release()
+```
+
+| Transition | From | To, and effects |
+| --- | --- | --- |
+| `reserve()` | free | EMPTY, `playerId` set. Returns the lowest free id, or `nullopt` if the 4 are taken |
+| `join(id, name, lives)` | EMPTY | RESPAWNING, with `name`, `lives`, a score of 0 and `respawnTimer = 0`. The ship appears on the next tick, through `respawnSystem` |
+| `joinWaiting(id, name)` | EMPTY | OUT, with `name` and 0 lives: joining during a game over, waiting for the restart |
+| `onShipSpawned(id, ship)` | RESPAWNING | ALIVE, `shipNetId = ship` |
+| `onShipKilled(id, delay)` | ALIVE | `lives − 1`, `shipNetId = 0`. RESPAWNING with `respawnTimer = delay` if lives are left, OUT otherwise |
+| `onGameRestarted(lives)` | every slot but EMPTY | RESPAWNING, with `lives`, a score of 0, `respawnTimer = 0` and `shipNetId = 0` |
+| `advanceRespawns(dt)` | RESPAWNING | counts the timers down to 0 and returns the ids whose timer is 0. They stay RESPAWNING until `onShipSpawned`, so a failed spawn is retried on the next tick |
+| `addScore(id, points)` | any reserved state | `score += points`: a missile can kill after its shooter died |
+| `acceptInput(id, seq)` | any reserved state | returns `true` and stores `seq` only if `seq > lastInputSequence`. A late or duplicate INPUT returns `false` without logging |
+| `release(id)` | any | free. A free slot, or an id ≥ 4, does nothing |
+
+- **A transition from the wrong state changes nothing.** It logs an error with the transition's name and the actual state, and returns `false`. The same goes for a free slot or an id ≥ 4. A bug in one system can't crash the server mid-tick, and a ship hit twice in one tick loses one life only.
+- **Queries:** `active` counts the reserved slots, EMPTY included. `allOut` is true when at least one slot has joined (any state but EMPTY) and every joined slot is OUT. `anyAlive` is true when a slot is ALIVE. `teamScore` sums the scores.
+- **`GamePhase`** has two states. `enterGameOver(delay)` goes from PLAYING to GAME_OVER and starts the countdown; it returns `false` and changes nothing when already GAME_OVER, so `GameOver` is emitted once. `update(dt)` counts down in GAME_OVER, and when the countdown reaches 0 it switches back to PLAYING and returns `true`, exactly once per game over. In PLAYING it does nothing and returns `false`.
 
 ## Systems and tick order
 
