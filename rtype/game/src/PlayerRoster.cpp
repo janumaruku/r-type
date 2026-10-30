@@ -75,6 +75,18 @@ bool PlayerRoster::joinWaiting(const std::uint8_t playerId, std::string name)
     return true;
 }
 
+bool PlayerRoster::onShipSpawned(const std::uint8_t playerId, const NetId ship)
+{
+    PlayerSlot *slot = expect(playerId, SlotState::RESPAWNING,
+        "onShipSpawned");
+
+    if (slot == nullptr)
+        return false;
+    slot->shipNetId = ship;
+    slot->state = SlotState::ALIVE;
+    return true;
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
