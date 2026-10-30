@@ -133,6 +133,17 @@ std::vector<std::uint8_t> PlayerRoster::advanceRespawns(const float dt)
     return ready;
 }
 
+bool PlayerRoster::addScore(const std::uint8_t playerId,
+    const std::uint32_t points)
+{
+    PlayerSlot *slot = reserved(playerId, "addScore");
+
+    if (slot == nullptr)
+        return false;
+    slot->score += points;
+    return true;
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
