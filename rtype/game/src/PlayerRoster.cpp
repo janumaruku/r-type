@@ -119,6 +119,20 @@ void PlayerRoster::onGameRestarted(const std::uint8_t lives)
     }
 }
 
+std::vector<std::uint8_t> PlayerRoster::advanceRespawns(const float dt)
+{
+    std::vector<std::uint8_t> ready;
+
+    for (auto &slot : _slots) {
+        if (!slot.has_value() || slot->state != SlotState::RESPAWNING)
+            continue;
+        slot->respawnTimer = std::max(0.0F, slot->respawnTimer - dt);
+        if (slot->respawnTimer <= 0.0F)
+            ready.push_back(slot->playerId);
+    }
+    return ready;
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
