@@ -11,9 +11,9 @@
 
 namespace rtype::game {
 
-void EventOutbox::push(const GameEvent &event)
+void EventOutbox::push(GameEvent event)
 {
-    _events.push_back(event);
+    _events.push_back(std::move(event));
 }
 
 std::vector<GameEvent> EventOutbox::drain()
