@@ -69,7 +69,7 @@ using GameEvent = std::variant<Fired, EnemyKilled, PlayerKilled, PlayerJoined,
 
 class EventOutbox {
 public:
-    void push(const GameEvent &event);
+    void push(GameEvent event);
 
     [[nodiscard]] std::vector<GameEvent> drain();
 
