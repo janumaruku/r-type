@@ -44,7 +44,7 @@ engine::core::Vec2f movePlayer(const engine::core::Vec2f position,
     const InputButtons buttons, const float dt, const Rules &rules)
 {
     const engine::core::Vec2f step =
-        inputDirection(buttons) * (rules.playerSpeed * dt);
+        inputDirection(buttons) * rules.playerSpeed * dt;
 
     return confineToPlayfield(position + step, rules.playerHalfSize, rules);
 }
