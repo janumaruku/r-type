@@ -162,6 +162,16 @@ const PlayerSlot *PlayerRoster::get(const std::uint8_t playerId) const
     return &*_slots[playerId];
 }
 
+std::size_t PlayerRoster::active() const noexcept
+{
+    std::size_t count = 0;
+
+    for (const auto &slot : _slots)
+        if (slot.has_value())
+            ++count;
+    return count;
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
