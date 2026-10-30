@@ -144,6 +144,17 @@ bool PlayerRoster::addScore(const std::uint8_t playerId,
     return true;
 }
 
+bool PlayerRoster::acceptInput(const std::uint8_t playerId,
+    const std::uint32_t inputSequence)
+{
+    PlayerSlot *slot = reserved(playerId, "acceptInput");
+
+    if (slot == nullptr || inputSequence <= slot->lastInputSequence)
+        return false;
+    slot->lastInputSequence = inputSequence;
+    return true;
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
