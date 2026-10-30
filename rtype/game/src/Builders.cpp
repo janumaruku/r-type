@@ -141,4 +141,49 @@ NetId makeBydosSlave(engine::ecs::Registry &registry,
 
     return netId;
 }
+
+NetId makePlayerMissile(engine::ecs::Registry &registry,
+    const engine::ecs::Entity entity, const NetId owner,
+    const std::uint8_t ownerPlayerId, const engine::core::Vec2f position)
+{
+    const auto &rules = registry.getResource<Rules>();
+    const auto netId = registry.getResource<NetIdAllocator>().allocate(entity);
+
+    registry.addComponent(entity, Transform{.position = position});
+    registry.addComponent(
+        entity,
+        Velocity{.value = {rules.playerMissileSpeed, 0.0F}}
+    );
+    registry.addComponent(
+        entity,
+        Collider{
+            .halfSize = rules.playerMissileHalfSize,
+            .layer = CollisionLayer::PLAYER_SHOT,
+        }
+    );
+    registry.addComponent(entity, Health{.current = 1, .max = 1});
+    registry.addComponent(entity, Damage{.amount = 1});
+    registry.addComponent(
+        entity,
+        Replicated{
+            .netId = netId,
+            .kind = EntityKind::PLAYER_MISSILE,
+            .variant = 0,
+        }
+    );
+    registry.addComponent(
+        entity,
+        Projectile{.owner = owner, .ownerPlayerId = ownerPlayerId}
+    );
+    registry.addComponent(
+        entity,
+        Lifetime{.remaining = rules.playerMissileLifetime}
+    );
+    registry.addComponent(
+        entity,
+        DespawnOutsidePlayfield{.margin = rules.despawnMargin}
+    );
+
+    return netId;
+}
 }
