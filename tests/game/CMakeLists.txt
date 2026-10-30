@@ -5,6 +5,7 @@ rtype_add_test(game_tests
     ComponentsTests.cpp
     EventOutboxTests.cpp
     GamePhaseTests.cpp
+    MotionSystemsTests.cpp
     MotionTests.cpp
     NetIdAllocatorTests.cpp
     PlayerRosterTests.cpp
