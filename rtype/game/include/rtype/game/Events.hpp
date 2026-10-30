@@ -8,11 +8,13 @@
 #ifndef R_TYPE_EVENTS_HPP
 #define R_TYPE_EVENTS_HPP
 
+#include <cstddef>
+#include <cstdint>
 #include <variant>
 #include <vector>
 
-#include "rtype/game/Types.hpp"
 #include "engine/core/Vec2.hpp"
+#include "rtype/game/Types.hpp"
 
 namespace rtype::game {
 struct Fired {
