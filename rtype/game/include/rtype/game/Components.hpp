@@ -35,6 +35,11 @@ struct Damage {
     std::int16_t amount = 1;
 };
 
+/**
+ * @brief Marks an entity as copied to the clients in every snapshot: its
+ * NetId, kind and variant, with its Transform and Velocity. An entity
+ * without it stays server-only.
+ */
 struct Replicated {
     NetId netId = NO_NET_ID;
     EntityKind kind = EntityKind::PLAYER_SHIP;
