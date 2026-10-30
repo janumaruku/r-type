@@ -186,6 +186,13 @@ bool PlayerRoster::allOut() const noexcept
     return anyJoined;
 }
 
+bool PlayerRoster::anyAlive() const noexcept
+{
+    for (const auto &slot : _slots)
+        if (slot.has_value() && slot->state == SlotState::ALIVE)
+            return true;
+    return false;
+}
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
