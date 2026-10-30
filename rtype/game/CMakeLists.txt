@@ -4,6 +4,7 @@ add_library(rtype_game STATIC
         src/NetIdAllocator.cpp
         src/PlayerRoster.cpp
         src/GamePhase.cpp
+        src/Events.cpp
 )
 
 target_include_directories(rtype_game PUBLIC include)
