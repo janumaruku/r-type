@@ -172,6 +172,20 @@ std::size_t PlayerRoster::active() const noexcept
     return count;
 }
 
+bool PlayerRoster::allOut() const noexcept
+{
+    bool anyJoined = false;
+
+    for (const auto &slot : _slots) {
+        if (!slot.has_value() || slot->state == SlotState::EMPTY)
+            continue;
+        if (slot->state != SlotState::OUT)
+            return false;
+        anyJoined = true;
+    }
+    return anyJoined;
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
