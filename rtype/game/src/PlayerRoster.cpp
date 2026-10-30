@@ -62,6 +62,19 @@ bool PlayerRoster::join(const std::uint8_t playerId, std::string name,
     return true;
 }
 
+bool PlayerRoster::joinWaiting(const std::uint8_t playerId, std::string name)
+{
+    PlayerSlot *slot = expect(playerId, SlotState::EMPTY, "joinWaiting");
+
+    if (slot == nullptr)
+        return false;
+    slot->name = std::move(name);
+    slot->lives = 0;
+    slot->score = 0;
+    slot->state = SlotState::OUT;
+    return true;
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
