@@ -239,19 +239,42 @@ stateDiagram-v2
 
 **Randomness** (random spawn position, sine parameters, fire timers) comes only from the `Rng` resource. With a fixed `--seed` and the same commands at the same ticks, the simulation produces the same events, which makes a determinism test possible later ([handbook](../handbook/development.md#other-kinds-of-tests-later)).
 
-**Prediction helper.** `Vec2f movePlayer(Vec2f position, InputButtons buttons, float dt, Rules const&)` is a pure function. `playerInputSystem`, `movementSystem` and `playfieldSystem` together are equivalent to calling it on a ship. The client calls the same function to predict its own ship, so both sides compute the motion the same way ([client: prediction](client.md#frame-loop-interpolation-and-prediction)).
+**Prediction helper.** The motion helpers in `rtype/game/Motion.hpp` are pure functions: no registry, no resource, no randomness.
+
+| Helper | Result |
+| --- | --- |
+| `Vec2f inputDirection(InputButtons)` | UP is −y, DOWN +y, LEFT −x, RIGHT +x. Opposite buttons cancel out, FIRE is ignored. Normalised, so a diagonal isn't faster; (0, 0) when nothing moves |
+| `Vec2f confineToPlayfield(Vec2f position, Vec2f halfSize, Rules const&)` | the position clamped so the whole box stays inside `[0, playfield]`: x in [16, 1264] and y in [7, 713] for a ship |
+| `Vec2f movePlayer(Vec2f position, InputButtons, float dt, Rules const&)` | `confineToPlayfield(position + inputDirection(buttons) × playerSpeed × dt, playerHalfSize, rules)` |
+
+`playerInputSystem`, `movementSystem` and `playfieldSystem` together are equivalent to calling `movePlayer` on a ship, because **the systems use the same helpers**: `inputDirection` for the velocity, `confineToPlayfield` for the clamp. The client calls `movePlayer` to predict its own ship, so both sides run the very same code, not a copy of it ([client: prediction](client.md#frame-loop-interpolation-and-prediction)).
 
 ## Builders
 
-Builders are free functions in `rtype/game/Builders.hpp`. Each one turns an **already spawned** entity into a player ship, a Bydos or a missile: it attaches the component set listed under [Components](#components) and allocates a NetId through the `NetIdAllocator` resource. Nothing else in the game builds a replicated entity.
+Builders are free functions in `rtype/game/Builders.hpp`. Each one turns an **already spawned** entity into a player ship, a Bydos or a missile: it attaches the component set listed under [Components](#components), allocates a NetId through the `NetIdAllocator` resource, and **returns that NetId**, so the caller can use it right away: `respawnSystem` passes it to `PlayerRoster::onShipSpawned`, and `weaponSystem` puts it in the `Fired` event. Nothing else in the game builds a replicated entity.
 
 | Builder | Builds |
 | --- | --- |
-| `makePlayerShip(Registry&, Entity, std::uint8_t playerId)` | a ship at `rules.playerSpawn[playerId]` |
-| `makeBydosSlave(Registry&, Entity, Vec2f position, MovePattern)` | an enemy |
-| `makePlayerMissile(Registry&, Entity, NetId owner, Vec2f position)` | a player missile |
-| `makeEnemyMissile(Registry&, Entity, NetId owner, Vec2f position, Vec2f direction)` | an enemy missile |
+| `NetId makePlayerShip(Registry&, Entity, uint8_t playerId)` | a ship at `rules.playerSpawn[playerId]`. A `playerId` ≥ 4 throws `EngineError` before anything is attached or allocated |
+| `NetId makeBydosSlave(Registry&, Entity, Vec2f position, MovePattern)` | an enemy, with the mover of its pattern |
+| `NetId makePlayerMissile(Registry&, Entity, NetId owner, uint8_t ownerPlayerId, Vec2f position)` | a player missile flying right |
+| `NetId makeEnemyMissile(Registry&, Entity, NetId owner, Vec2f position, Vec2f direction)` | an enemy missile flying along `direction` |
 | `registerComponents(Registry&)` | registers every component type of the game |
+
+- **Resources.** Builders read `Rules` and, for the Bydos, `engine::core::Rng` from the registry. A missing resource throws `EngineError`, through `getResource`.
+- **Each builder attaches exactly its row** of the table below, plus `Replicated{netId, kind, variant}`. No other component, so a test can check all 17 types.
+- **They don't spawn the entity and don't touch the roster.** Slot transitions belong to `PlayerRoster`, called by whoever builds the ship.
+
+| Builder | Components and values |
+| --- | --- |
+| `makePlayerShip` | `Transform{playerSpawn[playerId]}`, `Velocity{0, 0}`, `Collider{playerHalfSize, PLAYER}`, `Health{1, 1}`, `Damage{1}`, `PlayerShip{playerId, {}, respawnInvulnerability}` (every spawn starts protected), `Weapon{playerFireCooldown, 0, playerMuzzleOffset, playerMissileSpeed, (1, 0), false}`, `ConfinedToPlayfield`. `variant = playerId` |
+| `makeBydosSlave` | `Transform{position}`, `Velocity{−speed, 0}`, `Collider{enemyHalfSize, ENEMY}`, `Health{1, 1}`, `Damage{1}`, `StraightMover{speed}` **or** `SineMover{speed, position.y, amplitude, frequency, 0}`, `AimedShooter{enemyFireInterval, timer}`, `Weapon{0, 0, enemyMuzzleOffset, enemyMissileSpeed, (−1, 0), false}`, `ScoreValue{killScore}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant` = the pattern's value |
+| `makePlayerMissile` | `Transform{position}`, `Velocity{playerMissileSpeed, 0}`, `Collider{playerMissileHalfSize, PLAYER_SHOT}`, `Health{1, 1}`, `Damage{1}`, `Projectile{owner, ownerPlayerId}`, `Lifetime{playerMissileLifetime}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant = 0` |
+| `makeEnemyMissile` | `Transform{position}`, `Velocity{direction.normalized() × enemyMissileSpeed}`, `Collider{enemyMissileHalfSize, ENEMY_SHOT}`, `Health{1, 1}`, `Damage{1}`, `Projectile{owner, NO_PLAYER}`, `Lifetime{enemyMissileLifetime}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant = 0` |
+
+- **Randomness.** `makeBydosSlave` draws every random value from `Rng`, always in the same order: `speed` in `enemySpeed`, then `amplitude` and `frequency` in their ranges for a SINE, then the first fire `timer` in `enemyFireInterval`. With the same seed, the same builder calls give the same components.
+- **A zero `direction`** for `makeEnemyMissile` is a bug: it asserts in Debug, and fires straight left, (−1, 0), in Release.
+- **The missile's `position` is given by the caller,** who adds the shooter's `Weapon.muzzleOffset`, so the builders don't need to know the shooter.
 
 They're called *builders*, not factories, on purpose: "factory" in this code base means the `FactoryTemplate` pattern (a run-time key mapped to a creator, as for network message commands). Here the caller always knows at compile time what it builds, and each kind takes different parameters, so plain functions are simpler.
 
