@@ -106,6 +106,19 @@ bool PlayerRoster::onShipKilled(const std::uint8_t playerId,
     return true;
 }
 
+void PlayerRoster::onGameRestarted(const std::uint8_t lives)
+{
+    for (auto &slot : _slots) {
+        if (!slot.has_value() || slot->state == SlotState::EMPTY)
+            continue;
+        slot->lives = lives;
+        slot->score = 0;
+        slot->respawnTimer = 0.0F;
+        slot->shipNetId = NO_NET_ID;
+        slot->state = SlotState::RESPAWNING;
+    }
+}
+
 PlayerSlot *PlayerRoster::reserved(const std::uint8_t playerId,
     const std::string_view transition)
 {
