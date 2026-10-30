@@ -5,6 +5,7 @@ add_library(rtype_game STATIC
         src/PlayerRoster.cpp
         src/GamePhase.cpp
         src/Events.cpp
+        src/Builders.cpp
 )
 
 target_include_directories(rtype_game PUBLIC include)
