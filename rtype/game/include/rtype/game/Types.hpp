@@ -71,11 +71,6 @@ struct FloatRange {
     float max = 0.0F;
 };
 
-struct SpawnDirectorState {
-    float elapsed = 0.0F;
-    float untilNextSpawn = 0.0F;
-};
-
 /**
  * @brief The bits mirror INPUT's `buttons` (RFC § 6.4). Keep them equal to
  * the RFC's, so the server adapter copies `bits` as is.
