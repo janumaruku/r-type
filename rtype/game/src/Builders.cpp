@@ -6,6 +6,7 @@
 */
 
 #include "rtype/game/Builders.hpp"
+#include <cassert>
 #include <format>
 
 #include "engine/core/Errors.hpp"
@@ -178,6 +179,56 @@ NetId makePlayerMissile(engine::ecs::Registry &registry,
     registry.addComponent(
         entity,
         Lifetime{.remaining = rules.playerMissileLifetime}
+    );
+    registry.addComponent(
+        entity,
+        DespawnOutsidePlayfield{.margin = rules.despawnMargin}
+    );
+
+    return netId;
+}
+
+NetId makeEnemyMissile(engine::ecs::Registry &registry,
+    const engine::ecs::Entity entity, const NetId owner,
+    const engine::core::Vec2f position, const engine::core::Vec2f direction)
+{
+    const auto &rules = registry.getResource<Rules>();
+    const bool aimed = direction != engine::core::Vec2f{0.0F, 0.0F};
+
+    assert(aimed && "makeEnemyMissile: zero direction");
+    const engine::core::Vec2f heading = aimed ? direction.normalized()
+                                              : engine::core::Vec2f{-1.0F, 0.0F};
+    const auto netId = registry.getResource<NetIdAllocator>().allocate(entity);
+
+    registry.addComponent(entity, Transform{.position = position});
+    registry.addComponent(
+        entity,
+        Velocity{.value = heading * rules.enemyMissileSpeed}
+    );
+    registry.addComponent(
+        entity,
+        Collider{
+            .halfSize = rules.enemyMissileHalfSize,
+            .layer = CollisionLayer::ENEMY_SHOT,
+        }
+    );
+    registry.addComponent(entity, Health{.current = 1, .max = 1});
+    registry.addComponent(entity, Damage{.amount = 1});
+    registry.addComponent(
+        entity,
+        Replicated{
+            .netId = netId,
+            .kind = EntityKind::ENEMY_MISSILE,
+            .variant = 0,
+        }
+    );
+    registry.addComponent(
+        entity,
+        Projectile{.owner = owner, .ownerPlayerId = NO_PLAYER}
+    );
+    registry.addComponent(
+        entity,
+        Lifetime{.remaining = rules.enemyMissileLifetime}
     );
     registry.addComponent(
         entity,
