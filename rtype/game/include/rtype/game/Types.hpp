@@ -47,7 +47,11 @@ enum class Side : std::uint8_t {
  * @brief Mirrors PLAYER_LEFT's reason (RFC § 6.6). Keep the values equal to
  * the RFC's, so the server adapter converts with a checked `static_cast`.
  */
-enum class LeaveReason : std::uint8_t { QUIT = 0, TIMEOUT = 1, KICKED = 2 };
+enum class LeaveReason : std::uint8_t {
+    QUIT = 0,
+    TIMEOUT = 1,
+    KICKED = 2,
+};
 
 /**
  * @brief Mirrors PlayerInfo's `state` (RFC § 6.5). Keep the values equal to
@@ -65,6 +69,11 @@ enum class Phase : std::uint8_t { PLAYING, GAME_OVER };
 struct FloatRange {
     float min = 0.0F;
     float max = 0.0F;
+};
+
+struct SpawnDirectorState {
+    float elapsed = 0.0F;
+    float untilNextSpawn = 0.0F;
 };
 
 /**
