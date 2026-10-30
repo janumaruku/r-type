@@ -7,6 +7,8 @@
 
 #include "rtype/game/Events.hpp"
 
+#include <utility>
+
 namespace rtype::game {
 
 void EventOutbox::push(const GameEvent &event)
@@ -16,7 +18,7 @@ void EventOutbox::push(const GameEvent &event)
 
 std::vector<GameEvent> EventOutbox::drain()
 {
-    return _events;
+    return std::exchange(_events, {});
 }
 
 std::size_t EventOutbox::size() const noexcept
