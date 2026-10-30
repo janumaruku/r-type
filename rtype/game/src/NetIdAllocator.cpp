@@ -7,6 +7,7 @@
 
 #include "rtype/game/NetIdAllocator.hpp"
 
+#include "engine/core/Errors.hpp"
 #include "engine/ecs/Registry.hpp"
 
 namespace rtype::game {

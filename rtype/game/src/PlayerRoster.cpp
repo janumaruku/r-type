@@ -7,6 +7,7 @@
 
 #include "rtype/game/PlayerRoster.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace {

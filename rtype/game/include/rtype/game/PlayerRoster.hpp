@@ -12,8 +12,8 @@
 #include <cstdint>
 #include <optional>
 #include <string>
-#include <vector>
 #include <string_view>
+#include <vector>
 
 #include "engine/core/Logger.hpp"
 #include "rtype/game/Types.hpp"

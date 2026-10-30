@@ -8,11 +8,16 @@
 #ifndef R_TYPE_NET_ID_ALLOCATOR_HPP
 #define R_TYPE_NET_ID_ALLOCATOR_HPP
 
+#include <cstddef>
 #include <optional>
 #include <unordered_map>
 
-#include "Types.hpp"
 #include "engine/ecs/Entity.hpp"
+#include "rtype/game/Types.hpp"
+
+namespace engine::ecs {
+class Registry;
+}
 
 namespace rtype::game {
 class NetIdAllocator {
