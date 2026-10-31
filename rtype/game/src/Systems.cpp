@@ -430,4 +430,27 @@ void respawnSystem(engine::ecs::Registry &registry)
         (void)roster.onShipSpawned(playerId, ship);
     }
 }
+
+void gameOverSystem(engine::ecs::Registry &registry,
+    const engine::ecs::SparseSet<Replicated> &)
+{
+    const auto &rules = registry.getResource<Rules>();
+    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+    auto &phase = registry.getResource<GamePhase>();
+    auto &roster = registry.getResource<PlayerRoster>();
+    auto &outbox = registry.getResource<EventOutbox>();
+
+    if (!phase.isOver()) {
+        if (roster.allOut() && phase.enterGameOver(rules.gameOverResetDelay))
+            outbox.push(GameOver{.teamScore = roster.teamScore()});
+        return;
+    }
+    if (!phase.update(delta.seconds))
+        return;
+    for (auto &&[entity, replicated]: registry.indexedView<const Replicated>())
+        registry.commands().kill(entity);
+    roster.onGameRestarted(rules.playerLives);
+    registry.getResource<SpawnDirectorState>() = {};
+    outbox.push(GameRestarted{});
+}
 }
