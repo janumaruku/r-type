@@ -20,10 +20,11 @@
 #include <utility>
 #include <vector>
 
+#include <nlohmann/json.hpp>
+
 #include "engine/core/Logger.hpp"
 #include "engine/input/InputState.hpp"
 #include "engine/input/Key.hpp"
-#include "engine/input/json.hpp"
 
 namespace engine::input {
 
