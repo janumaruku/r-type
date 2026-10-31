@@ -54,6 +54,16 @@ void healthSystem(engine::ecs::Registry &registry,
 
 void lifetimeSystem(engine::ecs::Registry &registry,
     engine::ecs::SparseSet<Lifetime> &lifetimes);
+
+void spawnDirectorSystem(engine::ecs::Registry &registry,
+    const engine::ecs::SparseSet<Replicated> &replicated);
+
+void respawnSystem(engine::ecs::Registry &registry);
+
+void gameOverSystem(engine::ecs::Registry &registry,
+    const engine::ecs::SparseSet<Replicated> &replicated);
+
+void netIdCleanupSystem(engine::ecs::Registry &registry);
 }
 
 #endif //R_TYPE_SYSTEMS_HPP
