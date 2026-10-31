@@ -7,7 +7,7 @@ add_library(rtype_game STATIC
         src/Events.cpp
         src/Builders.cpp
         src/Motion.cpp
-        src/MotionSystems.cpp
+        src/Systems.cpp
 )
 
 target_include_directories(rtype_game PUBLIC include)
