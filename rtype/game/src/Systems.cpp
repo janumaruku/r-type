@@ -8,6 +8,8 @@
 #include "rtype/game/Systems.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <numbers>
 
 #include "engine/ecs/Resources.hpp"
 #include "rtype/game/Motion.hpp"
@@ -80,5 +82,32 @@ void straightMoverSystem(engine::ecs::Registry &registry,
     for (auto &&[mover, velocity]:
          registry.view<const StraightMover, Velocity>())
         velocity.value = {-mover.speed, 0.0F};
+}
+
+/*
+** The ticket's velocity, amplitude × 2π × frequency × cos(2π × frequency ×
+** age), sampled once per tick, overshoots baseY ± amplitude by up to 7.6
+** units at 60 Hz. The sine's change over the tick divided by dt is the same
+** derivative averaged over the tick, so movementSystem lands y exactly on
+** baseY + amplitude × sin(2π × frequency × age) at every tick.
+*/
+void sineMoverSystem(engine::ecs::Registry &registry,
+    engine::ecs::SparseSet<SineMover> &,
+    engine::ecs::SparseSet<Velocity> &)
+{
+    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+    constexpr float twoPi = 2.0F * std::numbers::pi_v<float>;
+
+    for (auto &&[mover, velocity]: registry.view<SineMover, Velocity>()) {
+        const float before = std::sin(twoPi * mover.frequency * mover.age);
+
+        mover.age += delta.seconds;
+        const float after = std::sin(twoPi * mover.frequency * mover.age);
+        const float vy = delta.seconds > 0.0F
+            ? mover.amplitude * (after - before) / delta.seconds
+            : 0.0F;
+
+        velocity.value = {-mover.speed, vy};
+    }
 }
 }
