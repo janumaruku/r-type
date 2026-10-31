@@ -24,7 +24,7 @@ jobs:
     if: ${{ github.repository != vars.MIRROR_URL }}
     runs-on: ubuntu-latest
     container: epitechcontent/epitest-docker
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     env:
       CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
@@ -58,13 +58,18 @@ jobs:
           elif [ -f CMakeLists.txt ]; then
             echo "Detected CMake project"
 
-            cmake --preset linux-release
-            cmake --build --preset linux-release 2>&1 | tee build.log
+            cmake --preset linux-release 2>&1 | tee build.log
+            cmake --build --preset linux-release 2>&1 | tee -a build.log
 
           else
             echo "No supported build system found"
             exit 1
           fi
+
+      - name: Annotate build errors
+        if: failure()
+        shell: bash
+        run: .github/scripts/annotate-build-log.sh build.log
 
       - name: Check executables
         if: ${{ vars.EXECUTABLES != '' }}
@@ -99,7 +104,7 @@ jobs:
     if: ${{ github.repository != vars.MIRROR_URL }}
     runs-on: ubuntu-latest
     container: ubuntu:24.04
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     env:
       CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
@@ -126,8 +131,13 @@ jobs:
         run: |
           set -eo pipefail
 
-          cmake --preset linux-release -DRTYPE_BUILD_CLIENT=OFF
-          cmake --build --preset linux-release 2>&1 | tee build-server-only.log
+          cmake --preset linux-release -DRTYPE_BUILD_CLIENT=OFF 2>&1 | tee build-server-only.log
+          cmake --build --preset linux-release 2>&1 | tee -a build-server-only.log
+
+      - name: Annotate build errors
+        if: failure()
+        shell: bash
+        run: .github/scripts/annotate-build-log.sh build-server-only.log
 
       - name: Check the server is built and nothing client-side is
         shell: bash
@@ -163,7 +173,7 @@ jobs:
     name: Windows compilation
     if: ${{ github.repository != vars.MIRROR_URL }}
     runs-on: windows-2025-vs2026
-    timeout-minutes: 15
+    timeout-minutes: 5
 
     env:
       CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
@@ -196,13 +206,21 @@ jobs:
           elseif (Test-Path "CMakeLists.txt") {
             Write-Host "Detected CMake project"
 
-            cmake --preset windows-clangcl-release
-            cmake --build --preset windows-clangcl-release --parallel
+            cmake --preset windows-clangcl-release 2>&1 | Tee-Object -FilePath build.log
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+            cmake --build --preset windows-clangcl-release --parallel 2>&1 | Tee-Object -FilePath build.log -Append
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           else {
             Write-Error "No supported build system found"
             exit 1
           }
+
+      - name: Annotate build errors
+        if: failure()
+        shell: bash
+        run: .github/scripts/annotate-build-log.sh build.log
 
       - name: Check executables
         if: ${{ vars.EXECUTABLES != '' }}
@@ -228,6 +246,14 @@ jobs:
             }
           }
 
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-windows
+          path: build.log
+          if-no-files-found: warn
+
   # ============================================================
   # Clang-Tidy
   # ============================================================
@@ -237,7 +263,6 @@ jobs:
     runs-on: ubuntu-latest
     container: epitechcontent/epitest-docker
     timeout-minutes: 10
-    needs: compilation_required
 
     env:
       CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
@@ -248,10 +273,56 @@ jobs:
       - name: Install dependencies
         run: |
           apt update
-          apt install -y cmake make git python3 clang clang-tidy bear tar zstd $RAYLIB_PACKAGES
+          apt install -y clang-tidy zstd $RAYLIB_PACKAGES
 
       - name: Checkout Repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List the files to analyse
+        id: files
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -eo pipefail
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          dirs='engine|network|rtype|apps|tests'
+
+          if [ -z "$BASE_SHA" ]; then
+            echo "No pull request base: analysing every file"
+            echo "mode=all" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed=$(git diff --name-only --diff-filter=ACMR "$BASE_SHA...$HEAD_SHA")
+
+          if grep -qE '^(\.clang-tidy|CMakeLists\.txt|CMakePresets\.json)$|^cmake/' <<< "$changed"; then
+            echo "The clang-tidy or CMake configuration changed: analysing every file"
+            echo "mode=all" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          sources=$(grep -E "^($dirs)/.*\.cpp$" <<< "$changed" || true)
+          for header in $(grep -E "^($dirs)/.*\.hpp$" <<< "$changed" || true); do
+            name=$(basename "$header")
+            sources+=$'\n'$(grep -rlE --include='*.cpp' "#include [\"<](.*/)?${name//./\\.}[\">]" \
+              engine network rtype apps tests || true)
+          done
+          sources=$(sort -u <<< "$sources" | sed '/^$/d')
+
+          if [ -z "$sources" ]; then
+            echo "No C++ source changed: nothing to analyse"
+            echo "mode=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Files to analyse:"
+          echo "$sources"
+          echo "mode=changed" >> "$GITHUB_OUTPUT"
+          echo "regex=$PWD/($(sed 's/[.+]/\\&/g' <<< "$sources" | paste -sd '|'))\$" >> "$GITHUB_OUTPUT"
 
       - name: Restore CPM cache
         uses: actions/cache@v4
@@ -262,13 +333,18 @@ jobs:
             cpm-${{ runner.os }}-
 
       - name: Build
+        if: steps.files.outputs.mode != 'none'
         shell: bash
+        env:
+          MODE: ${{ steps.files.outputs.mode }}
+          REGEX: ${{ steps.files.outputs.regex }}
         run: |
           set -eo pipefail
 
           if [ -f Makefile ]; then
             echo "Detected Makefile"
 
+            apt install -y bear
             make fclean
             bear -- make all -j
 
@@ -280,9 +356,13 @@ jobs:
 
             cmake --preset linux-debug
 
+            if [ "$MODE" = "all" ]; then
+              REGEX="$PWD/(engine|network|rtype|apps|tests)/"
+            fi
+
             python3 run-clang-tidy.py -j$(nproc) \
               -p build/linux-debug \
-              "$PWD/(engine|network|rtype|apps|tests)/" 2>&1 | tee analysis.log
+              "$REGEX" 2>&1 | tee analysis.log
 
           else
             echo "No supported build system found"
@@ -333,7 +413,7 @@ jobs:
     name: Run unit tests (Linux)
     runs-on: ubuntu-latest
     container: epitechcontent/epitest-docker
-    timeout-minutes: 15
+    timeout-minutes: 6
     needs: compilation_required
 
     env:
@@ -409,7 +489,7 @@ jobs:
   unit_test_windows:
     name: Run unit tests (Windows)
     runs-on: windows-2025-vs2026
-    timeout-minutes: 15
+    timeout-minutes: 5
     needs: compilation_required_windows
 
     env:
@@ -467,7 +547,7 @@ jobs:
       - unit_test_linux
       - unit_test_windows
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 2
 
     steps:
       - name: Checkout Repository
@@ -499,11 +579,13 @@ jobs:
     needs:
       - unit_test_linux
       - unit_test_windows
+      - compilation_server_only
+      - static_analysis
 
     if: ${{ github.repository_owner == vars.USERNAME }}
 
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 2
 
     steps:
       - name: Checkout Repository
