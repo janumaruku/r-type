@@ -16,7 +16,9 @@ endforeach ()
 set(profraw_dir "${CMAKE_BINARY_DIR}/profraw")
 set(profdata "${CMAKE_BINARY_DIR}/coverage.profdata")
 set(html_dir "${CMAKE_BINARY_DIR}/coverage_html")
+set(summary "${CMAKE_BINARY_DIR}/coverage.json")
 set(ignored "(\\.cpm-cache|_deps|tests)/")
+string(JOIN " " objects_arguments ${objects})
 
 add_custom_target(coverage
         COMMAND ${CMAKE_COMMAND} -E rm -rf ${profraw_dir}
@@ -28,5 +30,6 @@ add_custom_target(coverage
         COMMAND ${LLVM_COV} show ${objects} -instr-profile=${profdata}
         -format=html -output-dir=${html_dir}
         -ignore-filename-regex=${ignored}
+        COMMAND sh -c "${LLVM_COV} export ${objects_arguments} -instr-profile=${profdata} -summary-only -ignore-filename-regex='${ignored}' > ${summary}"
         DEPENDS ${test_targets}
         VERBATIM)
