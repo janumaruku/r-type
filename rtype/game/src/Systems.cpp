@@ -8,9 +8,12 @@
 #include "rtype/game/Systems.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstdint>
 #include <numbers>
 #include <optional>
+#include <vector>
 
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
@@ -49,6 +52,86 @@ std::optional<engine::core::Vec2f> nearestShip(
     }
 
     return nearest;
+}
+
+struct Hitbox {
+    engine::ecs::Entity entity;
+    engine::core::Vec2f position;
+    engine::core::Vec2f halfSize;
+};
+
+using LayerHitboxes = std::array<std::vector<Hitbox>, 4>;
+
+bool overlaps(const Hitbox &first, const Hitbox &second) noexcept
+{
+    const engine::core::Vec2f gap = first.position - second.position;
+
+    return std::abs(gap.x()) < first.halfSize.x() + second.halfSize.x()
+        && std::abs(gap.y()) < first.halfSize.y() + second.halfSize.y();
+}
+
+std::uint8_t hitterPlayerId(engine::ecs::Registry &registry,
+    const engine::ecs::Entity &hitter)
+{
+    if (const auto *ship = registry.getComponent<rtype::game::PlayerShip>(
+        hitter))
+        return ship->playerId;
+    if (const auto *projectile =
+        registry.getComponent<rtype::game::Projectile>(hitter))
+        return projectile->ownerPlayerId;
+    return rtype::game::NO_PLAYER;
+}
+
+void hit(engine::ecs::Registry &registry, const engine::ecs::Entity &target,
+    const engine::ecs::Entity &hitter)
+{
+    auto *health = registry.getComponent<rtype::game::Health>(target);
+    const auto *damage = registry.getComponent<rtype::game::Damage>(hitter);
+    const auto *replicated =
+        registry.getComponent<rtype::game::Replicated>(hitter);
+
+    if (health == nullptr || damage == nullptr)
+        return;
+    health->current =
+        static_cast<std::int16_t>(health->current - damage->amount);
+
+    const rtype::game::LastHit lastHit{
+        .by = replicated != nullptr
+        ? replicated->netId
+        : rtype::game::NO_NET_ID,
+        .byPlayerId = hitterPlayerId(registry, hitter),
+    };
+
+    if (auto *existing = registry.getComponent<rtype::game::LastHit>(target))
+        *existing = lastHit;
+    else
+        registry.commands().add(target, lastHit);
+}
+
+bool spend(engine::ecs::Registry &registry, const engine::ecs::Entity &missile)
+{
+    auto *health = registry.getComponent<rtype::game::Health>(missile);
+
+    if (health == nullptr || health->current <= 0)
+        return false;
+    health->current = 0;
+    return true;
+}
+
+template <typename OnOverlap>
+void forEachOverlap(const std::vector<Hitbox> &targets,
+    const std::vector<Hitbox> &hitters, OnOverlap onOverlap)
+{
+    for (const Hitbox &target: targets)
+        for (const Hitbox &hitter: hitters)
+            if (overlaps(target, hitter))
+                onOverlap(target.entity, hitter.entity);
+}
+
+const std::vector<Hitbox> &layer(const LayerHitboxes &hitboxes,
+    const rtype::game::CollisionLayer which) noexcept
+{
+    return hitboxes[static_cast<std::size_t>(which)];
 }
 }
 
@@ -191,15 +274,49 @@ void weaponSystem(engine::ecs::Registry &registry,
                 side = ship != nullptr ? Side::PLAYER : Side::ENEMY,
                 muzzle = transform.position + weapon.muzzleOffset,
                 aim = weapon.aim](engine::ecs::Registry &world,
-                const engine::ecs::Entity &missile) {
+            const engine::ecs::Entity &missile) {
                 const NetId missileId = side == Side::PLAYER
                     ? makePlayerMissile(world, missile, shooter, playerId,
-                          muzzle)
+                        muzzle)
                     : makeEnemyMissile(world, missile, shooter, muzzle, aim);
 
                 world.getResource<EventOutbox>().push(
-                    Fired{.shooter=shooter, .missile=missileId, .side=side, .position=muzzle});
+                    Fired{.shooter = shooter, .missile = missileId,
+                          .side = side, .position = muzzle,});
             });
     }
+}
+
+void collisionSystem(engine::ecs::Registry &registry,
+    const engine::ecs::SparseSet<Collider> &,
+    const engine::ecs::SparseSet<Transform> &,
+    engine::ecs::SparseSet<Health> &)
+{
+    using enum CollisionLayer;
+    LayerHitboxes hitboxes;
+
+    for (auto &&[entity, collider, transform]:
+         registry.indexedView<const Collider, const Transform>()) {
+        const auto *ship = registry.getComponent<PlayerShip>(entity);
+
+        if (ship == nullptr || ship->invulnerableFor <= 0.0F)
+            hitboxes[static_cast<std::size_t>(collider.layer)].push_back(
+                {entity, transform.position, collider.halfSize});
+    }
+    forEachOverlap(layer(hitboxes, PLAYER), layer(hitboxes, ENEMY),
+        [&registry](const auto &ship, const auto &enemy) {
+            hit(registry, ship, enemy);
+            hit(registry, enemy, ship);
+        });
+    forEachOverlap(layer(hitboxes, PLAYER), layer(hitboxes, ENEMY_SHOT),
+        [&registry](const auto &ship, const auto &missile) {
+            if (spend(registry, missile))
+                hit(registry, ship, missile);
+        });
+    forEachOverlap(layer(hitboxes, ENEMY), layer(hitboxes, PLAYER_SHOT),
+        [&registry](const auto &enemy, const auto &missile) {
+            if (spend(registry, missile))
+                hit(registry, enemy, missile);
+        });
 }
 }
