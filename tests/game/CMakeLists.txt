@@ -2,13 +2,18 @@ rtype_add_test(game_tests
     LIBS rtype_game
     SOURCES
     BuildersTests.cpp
+    CollisionTests.cpp
     ComponentsTests.cpp
+    EnemyBehaviourTests.cpp
     EventOutboxTests.cpp
     GamePhaseTests.cpp
+    HealthTests.cpp
+    LifetimeTests.cpp
     MotionSystemsTests.cpp
     MotionTests.cpp
     NetIdAllocatorTests.cpp
     PlayerRosterTests.cpp
     RulesTests.cpp
     TypesTests.cpp
+    WeaponTests.cpp
 )
