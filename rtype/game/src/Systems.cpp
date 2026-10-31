@@ -10,9 +10,12 @@
 #include <algorithm>
 #include <cmath>
 #include <numbers>
+#include <optional>
 
+#include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
 #include "rtype/game/Motion.hpp"
+#include "rtype/game/PlayerRoster.hpp"
 #include "rtype/game/Rules.hpp"
 
 namespace {
@@ -24,6 +27,26 @@ bool isOutside(const engine::core::Vec2f position,
         || position.x() + halfSize.x() < -margin
         || position.y() - halfSize.y() > rules.playfield.y() + margin
         || position.y() + halfSize.y() < -margin;
+}
+
+std::optional<engine::core::Vec2f> nearestShip(
+    engine::ecs::Registry &registry, const engine::core::Vec2f from)
+{
+    std::optional<engine::core::Vec2f> nearest;
+    float best = 0.0F;
+
+    for (auto &&[ship, transform]:
+         registry.view<const rtype::game::PlayerShip, const
+             rtype::game::Transform>()) {
+        const float distance = (transform.position - from).lengthSquared();
+
+        if (!nearest || distance < best) {
+            nearest = transform.position;
+            best = distance;
+        }
+    }
+
+    return nearest;
 }
 }
 
@@ -71,7 +94,7 @@ void playfieldSystem(engine::ecs::Registry &registry,
          registry.indexedView<const Transform, const Collider,
              const DespawnOutsidePlayfield>())
         if (isOutside(transform.position, collider.halfSize, despawn.margin,
-                rules))
+            rules))
             registry.commands().kill(entity);
 }
 
@@ -108,6 +131,36 @@ void sineMoverSystem(engine::ecs::Registry &registry,
             : 0.0F;
 
         velocity.value = {-mover.speed, vy};
+    }
+}
+
+void aimedShooterSystem(engine::ecs::Registry &registry,
+    engine::ecs::SparseSet<AimedShooter> &,
+    const engine::ecs::SparseSet<Transform> &,
+    engine::ecs::SparseSet<Weapon> &)
+{
+    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+    const auto &roster = registry.getResource<PlayerRoster>();
+    auto &rng = registry.getResource<engine::core::Rng>();
+
+    for (auto &&[shooter, transform, weapon]:
+         registry.view<AimedShooter, const Transform, Weapon>()) {
+        shooter.timer -= delta.seconds;
+        if (shooter.timer > 0.0F)
+            continue;
+        shooter.timer =
+            rng.uniformFloat(shooter.interval.min, shooter.interval.max);
+        if (!roster.anyAlive())
+            continue;
+
+        const engine::core::Vec2f muzzle =
+            transform.position + weapon.muzzleOffset;
+        const auto target = nearestShip(registry, muzzle);
+
+        if (!target || (*target - muzzle).lengthSquared() <= 0.0F)
+            continue;
+        weapon.aim = (*target - muzzle).normalized();
+        weapon.triggered = true;
     }
 }
 }
