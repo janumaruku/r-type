@@ -550,24 +550,17 @@ jobs:
     timeout-minutes: 2
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
       - name: Download Coverage Artifact
         uses: actions/download-artifact@v4
         with:
           name: coverage-html
-          path: .
-
-      - name: Debug coverage structure
-        run: |
-          tree
+          path: coverage-html
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          publish_dir: coverage-html
 
   # ============================================================
   # Push to mirror
