@@ -24,9 +24,11 @@
 #include "rtype/game/Builders.hpp"
 #include "rtype/game/Components.hpp"
 #include "rtype/game/Events.hpp"
+#include "rtype/game/GamePhase.hpp"
 #include "rtype/game/NetIdAllocator.hpp"
 #include "rtype/game/PlayerRoster.hpp"
 #include "rtype/game/Rules.hpp"
+#include "rtype/game/SpawnDirectorState.hpp"
 #include "rtype/game/Systems.hpp"
 
 namespace game_tests {
@@ -52,6 +54,8 @@ protected:
         _registry.setResource(engine::ecs::DeltaTime{});
         _registry.emplaceResource<rtype::game::PlayerRoster>();
         _registry.emplaceResource<rtype::game::EventOutbox>();
+        _registry.setResource(rtype::game::GamePhase{});
+        _registry.setResource(rtype::game::SpawnDirectorState{});
     }
 
     void addPlayerInputSystem()
@@ -116,6 +120,30 @@ protected:
     {
         _registry.addSystem<rtype::game::Lifetime>(Stage::SIMULATION,
             "lifetimeSystem", rtype::game::lifetimeSystem);
+    }
+
+    void addSpawnDirectorSystem()
+    {
+        _registry.addSystem<const rtype::game::Replicated>(Stage::SIMULATION,
+            "spawnDirectorSystem", rtype::game::spawnDirectorSystem);
+    }
+
+    void addRespawnSystem()
+    {
+        _registry.addSystem(Stage::SIMULATION, "respawnSystem",
+            rtype::game::respawnSystem);
+    }
+
+    void addGameOverSystem()
+    {
+        _registry.addSystem<const rtype::game::Replicated>(Stage::SIMULATION,
+            "gameOverSystem", rtype::game::gameOverSystem);
+    }
+
+    void addNetIdCleanupSystem()
+    {
+        _registry.addSystem(Stage::SIMULATION, "netIdCleanupSystem",
+            rtype::game::netIdCleanupSystem);
     }
 
     void tick(const int count = 1)
@@ -235,9 +263,69 @@ protected:
         return _registry.getResource<rtype::game::PlayerRoster>();
     }
 
+    rtype::game::GamePhase &phase()
+    {
+        return _registry.getResource<rtype::game::GamePhase>();
+    }
+
+    rtype::game::SpawnDirectorState &director()
+    {
+        return _registry.getResource<rtype::game::SpawnDirectorState>();
+    }
+
+    rtype::game::Rules &rules()
+    {
+        return _registry.getResource<rtype::game::Rules>();
+    }
+
+    /*
+    ** The live BYDOS_SLAVE entities, counted through Replicated::kind like
+    ** spawnDirectorSystem does.
+    */
+    [[nodiscard]] std::vector<engine::ecs::Entity> bydos()
+    {
+        std::vector<engine::ecs::Entity> found;
+
+        for (auto &&[entity, replicated]:
+             _registry.indexedView<const rtype::game::Replicated>())
+            if (replicated.kind == rtype::game::EntityKind::BYDOS_SLAVE)
+                found.push_back(entity);
+        return found;
+    }
+
+    /*
+    ** The slot of a reserved player. Throws, failing the test, if it's free.
+    */
+    [[nodiscard]] const rtype::game::PlayerSlot &slot(
+        const std::uint8_t playerId)
+    {
+        const auto *found = roster().get(playerId);
+
+        if (found == nullptr)
+            throw std::logic_error("the slot is free");
+        return *found;
+    }
+
     /*
     ** Drains the outbox and keeps the events of one type, in push order.
     */
+    [[nodiscard]] std::vector<rtype::game::GameEvent> drainEvents()
+    {
+        return _registry.getResource<rtype::game::EventOutbox>().drain();
+    }
+
+    template <typename Event>
+    [[nodiscard]] static std::size_t countOf(
+        const std::vector<rtype::game::GameEvent> &events)
+    {
+        std::size_t count = 0;
+
+        for (const auto &event: events)
+            if (std::holds_alternative<Event>(event))
+                ++count;
+        return count;
+    }
+
     template <typename Event>
     [[nodiscard]] std::vector<Event> eventsOf()
     {

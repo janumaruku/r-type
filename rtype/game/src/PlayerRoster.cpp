@@ -120,16 +120,25 @@ void PlayerRoster::onGameRestarted(const std::uint8_t lives)
     }
 }
 
+/*
+** Subtracting 1/60 from 2.0 a hundred and twenty times in float leaves
+** 1.2e-6, not 0, so a plain `<= 0` respawns a ship one tick late. The
+** tolerance, far below one tick, absorbs that rounding, and the timer is
+** then set to exactly 0.
+*/
 std::vector<std::uint8_t> PlayerRoster::advanceRespawns(const float dt)
 {
+    constexpr float tolerance = 1e-4F;
     std::vector<std::uint8_t> ready;
 
     for (auto &slot : _slots) {
         if (!slot.has_value() || slot->state != SlotState::RESPAWNING)
             continue;
-        slot->respawnTimer = std::max(0.0F, slot->respawnTimer - dt);
-        if (slot->respawnTimer <= 0.0F)
+        slot->respawnTimer -= dt;
+        if (slot->respawnTimer <= tolerance) {
+            slot->respawnTimer = 0.0F;
             ready.push_back(slot->playerId);
+        }
     }
     return ready;
 }

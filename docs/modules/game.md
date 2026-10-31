@@ -209,7 +209,7 @@ stateDiagram-v2
 | `onShipSpawned(id, ship)` | RESPAWNING | ALIVE, `shipNetId = ship` |
 | `onShipKilled(id, delay)` | ALIVE | `lives − 1`, `shipNetId = 0`. RESPAWNING with `respawnTimer = delay` if lives are left, OUT otherwise |
 | `onGameRestarted(lives)` | every slot but EMPTY | RESPAWNING, with `lives`, a score of 0, `respawnTimer = 0` and `shipNetId = 0` |
-| `advanceRespawns(dt)` | RESPAWNING | counts the timers down to 0 and returns the ids whose timer is 0. They stay RESPAWNING until `onShipSpawned`, so a failed spawn is retried on the next tick |
+| `advanceRespawns(dt)` | RESPAWNING | counts the timers down and returns the ids whose timer reached 0, within 1e-4 like [`lifetimeSystem`](#lifetime), so a 2 s respawn takes 120 ticks; their timer is then exactly 0. They stay RESPAWNING until `onShipSpawned`, so a failed spawn is retried on the next tick |
 | `addScore(id, points)` | any reserved state | `score += points`: a missile can kill after its shooter died |
 | `acceptInput(id, seq)` | any reserved state | returns `true` and stores `seq` only if `seq > lastInputSequence`. A late or duplicate INPUT returns `false` without logging |
 | `release(id)` | any | free. A free slot, or an id ≥ 4, does nothing |
@@ -234,10 +234,10 @@ stateDiagram-v2
 | 8 | `collisionSystem` | `Collider`, `Transform`, `Damage`, `PlayerShip`, `Projectile`, `Replicated` | `Health`, `LastHit` | Sorts the colliders by layer and tests only the 3 pairs that collide (see [Collisions](#collisions)). |
 | 9 | `healthSystem` | `Health`, `Replicated`, `LastHit`, `Transform`, `PlayerShip`, `ScoreValue`, rules | kill commands, roster, `EnemyKilled`, `PlayerKilled` | At 0 HP or below: records a kill. A ship loses a life (`onShipKilled`, slot to RESPAWNING or OUT) and emits `PlayerKilled`. An enemy credits its `ScoreValue` to `LastHit`'s player if that slot is still reserved, and emits `EnemyKilled`. A missile dies silently. |
 | 10 | `lifetimeSystem` | `Lifetime` | `Lifetime`, kill commands | `remaining −= dt`, and records a kill once `remaining ≤ 1e-4` (see [Lifetime](#lifetime)). |
-| 11 | `spawnDirectorSystem` | rules, roster | new enemies | Only when at least one player is ALIVE. Spawns a Bydos at x = 1312 and a random y in [40, 680] every `spawnInterval`. The interval shrinks over time. Respects `maxEnemies`. |
-| 12 | `respawnSystem` | roster | new ships | Counts down `respawnTimer`, then spawns the ship at its slot position with `invulnerableFor = 2 s`. |
-| 13 | `gameOverSystem` | roster | world reset | When `allOut()`, emits `GameOver` once. After 5 s, kills every entity, gives every connected slot 3 lives again, and emits `GameRestarted`. |
-| 14 | `netIdCleanupSystem` | `NetIdAllocator` | `NetIdAllocator` | Releases the NetIds of entities killed during this tick (`releaseDead`). Every earlier system's commands have been applied by then. |
+| 11 | `spawnDirectorSystem` | rules, roster, `GamePhase`, `SpawnDirectorState`, `Replicated`, `Rng` | `SpawnDirectorState`, new enemies | Only while a slot is ALIVE and the phase is PLAYING; otherwise its clock pauses. When `untilNextSpawn` runs out, spawns a Bydos at x = `enemySpawnX` and a random y in `enemySpawnY` unless `maxEnemies` exist, then restarts the countdown at the current interval, which shrinks over time (see [Game flow](#game-flow)). |
+| 12 | `respawnSystem` | roster | new ships, roster | For every slot whose `respawnTimer` reaches 0 (`advanceRespawns`), spawns its ship with `makePlayerShip` (its lane, invulnerable for 2 s) and marks it ALIVE. The only place a ship is spawned. |
+| 13 | `gameOverSystem` | rules, roster, `GamePhase`, `Replicated` | `GamePhase`, kill commands, roster, `SpawnDirectorState`, `GameOver`, `GameRestarted` | In PLAYING, when `allOut()`: enters GAME_OVER and emits `GameOver` once. In GAME_OVER, after `gameOverResetDelay` (5 s): kills every replicated entity, gives every joined slot 3 lives and a score of 0, resets the spawn director and emits `GameRestarted`. |
+| 14 | `netIdCleanupSystem` | `NetIdAllocator` | `NetIdAllocator` | Releases the NetIds of entities killed during this tick (`releaseDead`). It runs last, so every earlier system's kill commands have been applied. |
 
 A system declares the storages it iterates in its signature, and reads the others through `getComponent` (for example `healthSystem` reads `LastHit`, `ScoreValue`, `PlayerShip` and `Transform`). The Reads and Writes columns list both.
 
@@ -287,6 +287,37 @@ An enemy's behaviour is its set of behaviour components, each with its own syste
 ### Lifetime
 
 `lifetimeSystem` kills at `remaining ≤ 1e-4`, not `≤ 0`. In float, `1/60` isn't exact, and subtracting it from 2.0 a hundred and twenty times leaves 1.2e-6, which would kill a 2 s missile on tick 121 instead of 120. The tolerance is 160 times smaller than a tick, so it can never kill a tick early.
+
+### Game flow
+
+The 4 last systems decide when things happen. They keep no state of their own: everything lives in the `SpawnDirectorState`, `PlayerRoster` and `GamePhase` resources.
+
+- **Spawn director.**
+    - It runs only while a slot is ALIVE and the phase is PLAYING. Otherwise it returns before touching its state, so `elapsed` and `untilNextSpawn` **pause, they don't reset**: the difficulty picks up where it was when a player comes back.
+    - `untilNextSpawn` starts at 0, so the first Bydos appears on the first tick with a ship alive.
+    - When the countdown runs out, it spawns a Bydos at x = `enemySpawnX` (1312, just right of the screen) and a random y in `enemySpawnY` ([40, 680]), with the SINE pattern with probability `sineChance` (0.5), STRAIGHT otherwise. If `maxEnemies` (30) BYDOS_SLAVE already exist, counted through `Replicated::kind`, it skips the spawn.
+    - Either way, it restarts the countdown at the current interval, so a full screen delays the next try by one interval instead of retrying every tick:
+
+        ```
+        interval = max(spawnIntervalMin, spawnIntervalStart − spawnIntervalStep × floor(elapsed / spawnIntervalStepEvery))
+        ```
+
+        | `elapsed` | 0 s | 10 s | 100 s | 220 s and later |
+        | --- | --- | --- | --- | --- |
+        | interval | 1.6 s | 1.55 s | 1.1 s | 0.5 s |
+
+    - It isn't inside a view loop when it spawns, so it calls `makeBydosSlave(registry, registry.spawnEntity(), …)` directly.
+- **Respawn.** `respawnSystem` is the only place a ship is spawned. A first join (`join` leaves the timer at 0), a respawn after a death (`respawnDelay`, 2 s) and a restart all go through `advanceRespawns`, then `makePlayerShip` and `onShipSpawned` with the new NetId. The ship appears at its lane, invulnerable for `respawnInvulnerability` (2 s).
+- **Game over.** When every joined slot is OUT, `gameOverSystem` calls `enterGameOver(gameOverResetDelay)` and emits `GameOver{teamScore}`. `enterGameOver` returns `false` once the game is already over, so the event is emitted once. An empty server (nobody joined) is never `allOut`, so it never ends a game.
+- **Restart.** When the 5 s countdown ends (`GamePhase::update` returns `true`, the phase is PLAYING again), in this order:
+    1. every replicated entity is killed through the command buffer (Bydos and missiles; the ships are already dead);
+    2. `onGameRestarted(playerLives)`: **everyone joined comes back with 3 lives and a score of 0**, OUT slots included, all RESPAWNING with a timer of 0;
+    3. `SpawnDirectorState` is reset to `{}`, so the enemy interval starts again at 1.6 s;
+    4. `GameRestarted` is emitted.
+
+    `respawnSystem` runs before `gameOverSystem` in the tick, so the ships come back on the next tick.
+- **Joining during a game over.** `apply(JoinPlayer)` calls `joinWaiting` instead of `join` while the phase is GAME_OVER: the player is OUT with 0 lives until the restart, then comes back with everyone else. They don't play the end of a lost game, and they don't stop `allOut` from being true.
+- **NetId cleanup.** `netIdCleanupSystem` calls `NetIdAllocator::releaseDead`. It runs last, after every other system's kill commands have been applied, so a NetId is forgotten in the same tick its entity dies.
 
 
 ## Builders
