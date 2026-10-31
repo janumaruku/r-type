@@ -417,4 +417,17 @@ void spawnDirectorSystem(engine::ecs::Registry &registry,
     }
     state.untilNextSpawn = spawnInterval(rules, state.elapsed);
 }
+
+void respawnSystem(engine::ecs::Registry &registry)
+{
+    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+    auto &roster = registry.getResource<PlayerRoster>();
+
+    for (const std::uint8_t playerId: roster.advanceRespawns(delta.seconds)) {
+        const NetId ship = makePlayerShip(registry, registry.spawnEntity(),
+            playerId);
+
+        (void)roster.onShipSpawned(playerId, ship);
+    }
+}
 }
