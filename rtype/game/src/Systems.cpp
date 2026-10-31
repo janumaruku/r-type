@@ -350,4 +350,22 @@ void healthSystem(engine::ecs::Registry &registry,
         }
     }
 }
+
+/*
+** Subtracting 1/60 from 2.0 a hundred and twenty times in float leaves
+** 1.2e-6, not 0, so a plain `<= 0` kills a 2 s missile one tick late. The
+** tolerance, far below one tick, absorbs that rounding.
+*/
+void lifetimeSystem(engine::ecs::Registry &registry,
+    engine::ecs::SparseSet<Lifetime> &)
+{
+    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+    constexpr float tolerance = 1e-4F;
+
+    for (auto &&[entity, lifetime]: registry.indexedView<Lifetime>()) {
+        lifetime.remaining -= delta.seconds;
+        if (lifetime.remaining <= tolerance)
+            registry.commands().kill(entity);
+    }
+}
 }
