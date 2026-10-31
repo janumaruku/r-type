@@ -1,9 +1,0 @@
-# LeakSanitizer suppressions, given to every test by cmake/Tests.cmake in an
-# AddressSanitizer build. For a binary run outside ctest:
-#   export LSAN_OPTIONS=suppressions=$PWD/cmake/sanitizers/lsan.supp
-#
-# miniaudio (bundled in Raylib 5.5) doesn't free its PulseAudio context when
-# it can't reach a sound server, so opening the audio device on a machine
-# without PulseAudio or PipeWire leaks. Our code isn't in the stack.
-leak:libpulse.so
-leak:libpulsecommon

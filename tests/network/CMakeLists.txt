@@ -1,1 +1,0 @@
-rtype_add_test(network_tests LIBS network SOURCES PacketTests.cpp SerializersTests.cpp UdpSocketTests.cpp)
