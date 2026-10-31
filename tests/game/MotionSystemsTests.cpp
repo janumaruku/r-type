@@ -19,7 +19,7 @@
 #include "rtype/game/Builders.hpp"
 #include "rtype/game/Components.hpp"
 #include "rtype/game/Motion.hpp"
-#include "rtype/game/MotionSystems.hpp"
+#include "rtype/game/Systems.hpp"
 #include "rtype/game/NetIdAllocator.hpp"
 #include "rtype/game/Rules.hpp"
 
