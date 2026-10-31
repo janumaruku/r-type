@@ -20,9 +20,11 @@
 #include "engine/ecs/Resources.hpp"
 #include "rtype/game/Builders.hpp"
 #include "rtype/game/Events.hpp"
+#include "rtype/game/GamePhase.hpp"
 #include "rtype/game/Motion.hpp"
 #include "rtype/game/PlayerRoster.hpp"
 #include "rtype/game/Rules.hpp"
+#include "rtype/game/SpawnDirectorState.hpp"
 
 namespace {
 bool isOutside(const engine::core::Vec2f position,
@@ -124,6 +126,24 @@ const std::vector<Hitbox> &layer(const LayerHitboxes &hitboxes,
     const rtype::game::CollisionLayer which) noexcept
 {
     return hitboxes[static_cast<std::size_t>(which)];
+}
+
+float spawnInterval(const rtype::game::Rules &rules, const float elapsed)
+{
+    const float steps = std::floor(elapsed / rules.spawnIntervalStepEvery);
+
+    return std::max(rules.spawnIntervalMin,
+        rules.spawnIntervalStart - rules.spawnIntervalStep * steps);
+}
+
+std::size_t countBydos(engine::ecs::Registry &registry)
+{
+    std::size_t count = 0;
+
+    for (auto &&[replicated]: registry.view<const rtype::game::Replicated>())
+        if (replicated.kind == rtype::game::EntityKind::BYDOS_SLAVE)
+            ++count;
+    return count;
 }
 }
 
@@ -293,9 +313,9 @@ void collisionSystem(engine::ecs::Registry &registry,
 
         if (ship == nullptr || ship->invulnerableFor <= 0.0F)
             hitboxes[static_cast<std::size_t>(collider.layer)].push_back(
-                {.entity = entity,
-                 .box = engine::core::FloatRect::fromCenter(
-                     transform.position, collider.halfSize),});
+            {.entity = entity,
+             .box = engine::core::FloatRect::fromCenter(
+                 transform.position, collider.halfSize),});
     }
     forEachOverlap(layer(hitboxes, PLAYER), layer(hitboxes, ENEMY),
         [&registry](const auto &ship, const auto &enemy) {
@@ -337,16 +357,16 @@ void healthSystem(engine::ecs::Registry &registry,
         if (const auto *ship = registry.getComponent<PlayerShip>(entity)) {
             (void)roster.onShipKilled(ship->playerId, rules.respawnDelay);
             outbox.push(PlayerKilled{.killer = killer.by,
-                .ship = replicated.netId,
-                .playerId = ship->playerId,
-                .position = position,});
+                                     .ship = replicated.netId,
+                                     .playerId = ship->playerId,
+                                     .position = position,});
         } else if (const auto *score =
-                       registry.getComponent<ScoreValue>(entity)) {
+            registry.getComponent<ScoreValue>(entity)) {
             if (roster.get(killer.byPlayerId) != nullptr)
                 (void)roster.addScore(killer.byPlayerId, score->points);
             outbox.push(EnemyKilled{.killerShip = killer.by,
-                .enemy = replicated.netId,
-                .position = position,});
+                                    .enemy = replicated.netId,
+                                    .position = position,});
         }
     }
 }
@@ -367,5 +387,34 @@ void lifetimeSystem(engine::ecs::Registry &registry,
         if (lifetime.remaining <= tolerance)
             registry.commands().kill(entity);
     }
+}
+
+void spawnDirectorSystem(engine::ecs::Registry &registry,
+    const engine::ecs::SparseSet<Replicated> &)
+{
+    if (!registry.getResource<PlayerRoster>().anyAlive()
+        || registry.getResource<GamePhase>().phase() != Phase::PLAYING)
+        return;
+
+    const auto &rules = registry.getResource<Rules>();
+    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+    auto &state = registry.getResource<SpawnDirectorState>();
+    auto &rng = registry.getResource<engine::core::Rng>();
+
+    state.elapsed += delta.seconds;
+    state.untilNextSpawn -= delta.seconds;
+    if (state.untilNextSpawn > 0.0F)
+        return;
+    if (countBydos(registry) < rules.maxEnemies) {
+        const float y = rng.uniformFloat(rules.enemySpawnY.min,
+            rules.enemySpawnY.max);
+        const MovePattern pattern = rng.chance(rules.sineChance)
+            ? MovePattern::SINE
+            : MovePattern::STRAIGHT;
+
+        makeBydosSlave(registry, registry.spawnEntity(),
+            {rules.enemySpawnX, y}, pattern);
+    }
+    state.untilNextSpawn = spawnInterval(rules, state.elapsed);
 }
 }
