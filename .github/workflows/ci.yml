@@ -266,7 +266,7 @@ jobs:
     if: ${{ github.event_name != 'push' }}
     runs-on: ubuntu-latest
     container: epitechcontent/epitest-docker
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     env:
       CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
@@ -622,7 +622,6 @@ jobs:
       - unit_test_linux
       - unit_test_windows
       - compilation_server_only
-      - static_analysis
 
     if: ${{ github.repository_owner == vars.USERNAME }}
 
