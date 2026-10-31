@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>R-Type Coverage</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+    <script src="app.js" defer></script>
+</head>
+<body>
+<header class="page-header">
+    <div class="wrap header-row">
+        <div>
+            <h1>R-Type coverage</h1>
+            <p class="subtitle" id="source">Loading the report…</p>
+        </div>
+        <nav class="header-links">
+            <a class="button" href="details/index.html">Line-by-line report</a>
+            <a class="button ghost" id="run-link" hidden>CI run</a>
+        </nav>
+    </div>
+</header>
+
+<main class="wrap">
+    <p class="error" id="error" hidden></p>
+
+    <section aria-labelledby="summary-title">
+        <h2 id="summary-title">Summary</h2>
+        <div class="rings" id="rings"></div>
+    </section>
+
+    <section aria-labelledby="history-title">
+        <div class="section-head">
+            <h2 id="history-title">Over time</h2>
+            <p class="hint">One point per merge into <code>main</code></p>
+        </div>
+        <div class="card">
+            <div class="chart" id="history-box"><canvas id="history-chart"></canvas></div>
+            <p class="empty" id="history-empty" hidden>The history starts with the next merge into <code>main</code>.</p>
+        </div>
+    </section>
+
+    <div class="columns">
+        <section aria-labelledby="modules-title">
+            <div class="section-head">
+                <h2 id="modules-title">By module</h2>
+                <p class="hint">Lines and branches covered</p>
+            </div>
+            <div class="card">
+                <div class="chart" id="modules-box"><canvas id="modules-chart"></canvas></div>
+            </div>
+        </section>
+
+        <section aria-labelledby="uncovered-title">
+            <div class="section-head">
+                <h2 id="uncovered-title">Files to test next</h2>
+                <p class="hint">Most uncovered lines · click a bar for its lines</p>
+            </div>
+            <div class="card">
+                <div class="chart" id="uncovered-box"><canvas id="uncovered-chart"></canvas></div>
+            </div>
+        </section>
+    </div>
+
+    <section aria-labelledby="files-title">
+        <div class="section-head">
+            <h2 id="files-title">Files</h2>
+            <p class="hint" id="files-count"></p>
+        </div>
+        <div class="card">
+            <div class="filters">
+                <input type="search" id="search" placeholder="Filter by path…" aria-label="Filter by path">
+                <select id="module-filter" aria-label="Module">
+                    <option value="">All modules</option>
+                </select>
+            </div>
+            <div class="table-scroll">
+                <table id="files">
+                    <thead>
+                    <tr>
+                        <th data-sort="path" class="sortable">File</th>
+                        <th data-sort="lines" class="sortable">Lines</th>
+                        <th data-sort="functions" class="sortable">Functions</th>
+                        <th data-sort="regions" class="sortable">Regions</th>
+                        <th data-sort="branches" class="sortable">Branches</th>
+                    </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</main>
+</body>
+</html>

@@ -8,6 +8,9 @@ on:
   pull_request:
     branches-ignore:
       - 'temp/*'
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -260,9 +263,10 @@ jobs:
 
   static_analysis:
     name: Static analysis with clang tidy
+    if: ${{ github.event_name != 'push' }}
     runs-on: ubuntu-latest
     container: epitechcontent/epitest-docker
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     env:
       CPM_SOURCE_CACHE: ${{ github.workspace }}/.cpm-cache
@@ -477,7 +481,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-html
-          path: build/linux-coverage/coverage_html
+          path: |
+            build/linux-coverage/coverage_html
+            build/linux-coverage/coverage.json
           if-no-files-found: warn
 
   # ============================================================
@@ -547,7 +553,10 @@ jobs:
       - unit_test_linux
       - unit_test_windows
     runs-on: ubuntu-latest
-    timeout-minutes: 2
+    timeout-minutes: 3
+    concurrency:
+      group: coverage-pages
+      cancel-in-progress: false
 
     steps:
       - name: Checkout Repository
@@ -557,17 +566,50 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: coverage-html
-          path: .
+          path: coverage-artifact
 
-      - name: Debug coverage structure
+      - name: Fetch the published history
         run: |
-          tree
+          if git fetch --depth 1 origin gh-pages \
+            && git show FETCH_HEAD:history.json > published-history.json; then
+            echo "Published history found"
+          else
+            echo "[]" > published-history.json
+          fi
+
+      - name: Build the coverage site
+        env:
+          COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          EVENT: ${{ github.event_name }}
+          PULL_REQUEST: ${{ github.event.pull_request.number }}
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          append=()
+          if [ "$EVENT" = "push" ] && [ "$BRANCH" = "main" ]; then
+            append=(--append-history)
+          fi
+
+          python3 .github/scripts/coverage-site.py \
+            --summary coverage-artifact/coverage.json \
+            --report coverage-artifact/coverage_html \
+            --history published-history.json \
+            --template .github/coverage-site \
+            --site site \
+            --commit "$COMMIT" \
+            --branch "$BRANCH" \
+            --event "$EVENT" \
+            --pull-request "$PULL_REQUEST" \
+            --repository-url "$REPOSITORY_URL" \
+            --run-url "$RUN_URL" \
+            "${append[@]}"
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: .
+          publish_dir: site
 
   # ============================================================
   # Push to mirror
@@ -580,7 +622,6 @@ jobs:
       - unit_test_linux
       - unit_test_windows
       - compilation_server_only
-      - static_analysis
 
     if: ${{ github.repository_owner == vars.USERNAME }}
 
