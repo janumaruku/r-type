@@ -15,6 +15,7 @@
 #include <optional>
 #include <vector>
 
+#include "engine/core/Rect2.hpp"
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
 #include "rtype/game/Builders.hpp"
@@ -56,19 +57,10 @@ std::optional<engine::core::Vec2f> nearestShip(
 
 struct Hitbox {
     engine::ecs::Entity entity;
-    engine::core::Vec2f position;
-    engine::core::Vec2f halfSize;
+    engine::core::FloatRect box;
 };
 
 using LayerHitboxes = std::array<std::vector<Hitbox>, 4>;
-
-bool overlaps(const Hitbox &first, const Hitbox &second) noexcept
-{
-    const engine::core::Vec2f gap = first.position - second.position;
-
-    return std::abs(gap.x()) < first.halfSize.x() + second.halfSize.x()
-        && std::abs(gap.y()) < first.halfSize.y() + second.halfSize.y();
-}
 
 std::uint8_t hitterPlayerId(engine::ecs::Registry &registry,
     const engine::ecs::Entity &hitter)
@@ -124,7 +116,7 @@ void forEachOverlap(const std::vector<Hitbox> &targets,
 {
     for (const Hitbox &target: targets)
         for (const Hitbox &hitter: hitters)
-            if (overlaps(target, hitter))
+            if (target.box.intersects(hitter.box))
                 onOverlap(target.entity, hitter.entity);
 }
 
@@ -301,7 +293,9 @@ void collisionSystem(engine::ecs::Registry &registry,
 
         if (ship == nullptr || ship->invulnerableFor <= 0.0F)
             hitboxes[static_cast<std::size_t>(collider.layer)].push_back(
-                {entity, transform.position, collider.halfSize});
+                {.entity = entity,
+                 .box = engine::core::FloatRect::fromCenter(
+                     transform.position, collider.halfSize),});
     }
     forEachOverlap(layer(hitboxes, PLAYER), layer(hitboxes, ENEMY),
         [&registry](const auto &ship, const auto &enemy) {
