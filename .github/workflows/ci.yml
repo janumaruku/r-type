@@ -58,13 +58,18 @@ jobs:
           elif [ -f CMakeLists.txt ]; then
             echo "Detected CMake project"
 
-            cmake --preset linux-release
-            cmake --build --preset linux-release 2>&1 | tee build.log
+            cmake --preset linux-release 2>&1 | tee build.log
+            cmake --build --preset linux-release 2>&1 | tee -a build.log
 
           else
             echo "No supported build system found"
             exit 1
           fi
+
+      - name: Annotate build errors
+        if: failure()
+        shell: bash
+        run: .github/scripts/annotate-build-log.sh build.log
 
       - name: Check executables
         if: ${{ vars.EXECUTABLES != '' }}
@@ -126,8 +131,13 @@ jobs:
         run: |
           set -eo pipefail
 
-          cmake --preset linux-release -DRTYPE_BUILD_CLIENT=OFF
-          cmake --build --preset linux-release 2>&1 | tee build-server-only.log
+          cmake --preset linux-release -DRTYPE_BUILD_CLIENT=OFF 2>&1 | tee build-server-only.log
+          cmake --build --preset linux-release 2>&1 | tee -a build-server-only.log
+
+      - name: Annotate build errors
+        if: failure()
+        shell: bash
+        run: .github/scripts/annotate-build-log.sh build-server-only.log
 
       - name: Check the server is built and nothing client-side is
         shell: bash
@@ -196,13 +206,21 @@ jobs:
           elseif (Test-Path "CMakeLists.txt") {
             Write-Host "Detected CMake project"
 
-            cmake --preset windows-clangcl-release
-            cmake --build --preset windows-clangcl-release --parallel
+            cmake --preset windows-clangcl-release 2>&1 | Tee-Object -FilePath build.log
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+            cmake --build --preset windows-clangcl-release --parallel 2>&1 | Tee-Object -FilePath build.log -Append
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
           else {
             Write-Error "No supported build system found"
             exit 1
           }
+
+      - name: Annotate build errors
+        if: failure()
+        shell: bash
+        run: .github/scripts/annotate-build-log.sh build.log
 
       - name: Check executables
         if: ${{ vars.EXECUTABLES != '' }}
@@ -227,6 +245,14 @@ jobs:
               exit 1
             }
           }
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-windows
+          path: build.log
+          if-no-files-found: warn
 
   # ============================================================
   # Clang-Tidy
