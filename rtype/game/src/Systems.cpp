@@ -22,6 +22,7 @@
 #include "rtype/game/Events.hpp"
 #include "rtype/game/GamePhase.hpp"
 #include "rtype/game/Motion.hpp"
+#include "rtype/game/NetIdAllocator.hpp"
 #include "rtype/game/PlayerRoster.hpp"
 #include "rtype/game/Rules.hpp"
 #include "rtype/game/SpawnDirectorState.hpp"
@@ -452,5 +453,10 @@ void gameOverSystem(engine::ecs::Registry &registry,
     roster.onGameRestarted(rules.playerLives);
     registry.getResource<SpawnDirectorState>() = {};
     outbox.push(GameRestarted{});
+}
+
+void netIdCleanupSystem(engine::ecs::Registry &registry)
+{
+    registry.getResource<NetIdAllocator>().releaseDead(registry);
 }
 }
