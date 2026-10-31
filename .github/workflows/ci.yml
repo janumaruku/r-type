@@ -579,6 +579,8 @@ jobs:
     needs:
       - unit_test_linux
       - unit_test_windows
+      - compilation_server_only
+      - static_analysis
 
     if: ${{ github.repository_owner == vars.USERNAME }}
 
