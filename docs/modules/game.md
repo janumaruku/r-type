@@ -224,18 +224,22 @@ stateDiagram-v2
 
 | # | System | Reads | Writes | Behaviour |
 | --- | --- | --- | --- | --- |
-| 1 | `playerInputSystem` | `PlayerShip` | `Velocity`, `Weapon.triggered` | Turns held buttons into velocity using `rules.playerSpeed`. Diagonals are normalised. FIRE sets `triggered`. |
-| 2 | `enemyBrainSystem` | `EnemyBrain`, `Transform` | `Velocity`, `Weapon.triggered` | STRAIGHT moves left at `speed`. SINE sets vy so that `y = baseY + amplitude × sin(2π × frequency × age)`. Counts down `fireTimer`, then fires at the nearest ship. |
-| 3 | `weaponSystem` | `Weapon`, `Transform` | spawn commands | Decrements `timer`. When triggered and ready, records a missile spawn command, resets `timer` to `cooldown`, and emits `Fired`. The missiles exist when the system ends. |
-| 4 | `movementSystem` | `Velocity` | `Transform` | `position += value × dt` |
-| 5 | `playfieldSystem` | `ConfinedToPlayfield`, `DespawnOutsidePlayfield` | `Transform`, kill commands | Clamps ships inside the playfield. Records a kill for anything else outside its margin. |
-| 6 | `collisionSystem` | `Collider`, `Transform` | `Health` | Checks every pair of colliding layers (n ≤ ~100, so a plain double loop is fast enough). Applies `Damage` both ways. |
-| 7 | `healthSystem` | `Health`, `ScoreValue`, `Projectile` | kill commands, roster | At 0 HP: records a kill and credits the score to the missile owner's slot. For a ship, takes a life and moves the slot to RESPAWNING or OUT. Emits `EnemyKilled` or `PlayerKilled`. |
-| 8 | `lifetimeSystem` | `Lifetime` | kill commands | Records a kill at 0 |
-| 9 | `spawnDirectorSystem` | rules, roster | new enemies | Only when at least one player is ALIVE. Spawns a Bydos at x = 1312 and a random y in [40, 680] every `spawnInterval`. The interval shrinks over time. Respects `maxEnemies`. |
-| 10 | `respawnSystem` | roster | new ships | Counts down `respawnTimer`, then spawns the ship at its slot position with `invulnerableFor = 2 s`. |
-| 11 | `gameOverSystem` | roster | world reset | When `allOut()`, emits `GameOver` once. After 5 s, kills every entity, gives every connected slot 3 lives again, and emits `GameRestarted`. |
-| 12 | `netIdCleanupSystem` | `NetIdAllocator` | `NetIdAllocator` | Releases the NetIds of entities killed during this tick (`releaseDead`). Every earlier system's commands have been applied by then. |
+| 1 | `playerInputSystem` | `PlayerShip`, rules | `Velocity`, `Weapon.triggered`, `PlayerShip.invulnerableFor` | Turns held buttons into velocity using `rules.playerSpeed`. Diagonals are normalised. FIRE sets `triggered` while held. Counts `invulnerableFor` down to 0. |
+| 2 | `straightMoverSystem` | `StraightMover` | `Velocity` | `velocity = (−speed, 0)` |
+| 3 | `sineMoverSystem` | `SineMover` | `SineMover.age`, `Velocity` | Advances `age` by dt, and sets vy so that `y = baseY + amplitude × sin(2π × frequency × age)` at every tick (see [Behaviour systems](#behaviour-systems)). Runs after `straightMoverSystem`, so it wins on an entity built by hand with both movers. |
+| 4 | `aimedShooterSystem` | `AimedShooter`, `Transform`, `PlayerShip`, roster, `Rng` | `AimedShooter.timer`, `Weapon.aim`, `Weapon.triggered` | Counts `timer` down. At ≤ 0, draws a new one from `interval`, and if a slot is ALIVE, aims at the ship nearest to the muzzle and sets `triggered`. |
+| 5 | `weaponSystem` | `Weapon`, `Transform`, `Replicated`, `PlayerShip` | `Weapon`, spawn commands, `Fired` | `timer = max(0, timer − dt)`. When `triggered` and `timer == 0`, records a missile spawn command and resets `timer` to `cooldown`. Enemy weapons drop `triggered` every tick. The missiles exist when the system ends. |
+| 6 | `movementSystem` | `Velocity` | `Transform` | `position += value × dt` |
+| 7 | `playfieldSystem` | `Collider`, `ConfinedToPlayfield`, `DespawnOutsidePlayfield` | `Transform`, kill commands | Clamps ships inside the playfield. Records a kill for anything else outside its margin. |
+| 8 | `collisionSystem` | `Collider`, `Transform`, `Damage`, `PlayerShip`, `Projectile`, `Replicated` | `Health`, `LastHit` | Sorts the colliders by layer and tests only the 3 pairs that collide (see [Collisions](#collisions)). |
+| 9 | `healthSystem` | `Health`, `Replicated`, `LastHit`, `Transform`, `PlayerShip`, `ScoreValue`, rules | kill commands, roster, `EnemyKilled`, `PlayerKilled` | At 0 HP or below: records a kill. A ship loses a life (`onShipKilled`, slot to RESPAWNING or OUT) and emits `PlayerKilled`. An enemy credits its `ScoreValue` to `LastHit`'s player if that slot is still reserved, and emits `EnemyKilled`. A missile dies silently. |
+| 10 | `lifetimeSystem` | `Lifetime` | `Lifetime`, kill commands | `remaining −= dt`, and records a kill once `remaining ≤ 1e-4` (see [Lifetime](#lifetime)). |
+| 11 | `spawnDirectorSystem` | rules, roster | new enemies | Only when at least one player is ALIVE. Spawns a Bydos at x = 1312 and a random y in [40, 680] every `spawnInterval`. The interval shrinks over time. Respects `maxEnemies`. |
+| 12 | `respawnSystem` | roster | new ships | Counts down `respawnTimer`, then spawns the ship at its slot position with `invulnerableFor = 2 s`. |
+| 13 | `gameOverSystem` | roster | world reset | When `allOut()`, emits `GameOver` once. After 5 s, kills every entity, gives every connected slot 3 lives again, and emits `GameRestarted`. |
+| 14 | `netIdCleanupSystem` | `NetIdAllocator` | `NetIdAllocator` | Releases the NetIds of entities killed during this tick (`releaseDead`). Every earlier system's commands have been applied by then. |
+
+A system declares the storages it iterates in its signature, and reads the others through `getComponent` (for example `healthSystem` reads `LastHit`, `ScoreValue`, `PlayerShip` and `Transform`). The Reads and Writes columns list both.
 
 **Randomness** (random spawn position, sine parameters, fire timers) comes only from the `Rng` resource. With a fixed `--seed` and the same commands at the same ticks, the simulation produces the same events, which makes a determinism test possible later ([handbook](../handbook/development.md#other-kinds-of-tests-later)).
 
@@ -248,6 +252,42 @@ stateDiagram-v2
 | `Vec2f movePlayer(Vec2f position, InputButtons, float dt, Rules const&)` | `confineToPlayfield(position + inputDirection(buttons) × playerSpeed × dt, playerHalfSize, rules)` |
 
 `playerInputSystem`, `movementSystem` and `playfieldSystem` together are equivalent to calling `movePlayer` on a ship, because **the systems use the same helpers**: `inputDirection` for the velocity, `confineToPlayfield` for the clamp. The client calls `movePlayer` to predict its own ship, so both sides run the very same code, not a copy of it ([client: prediction](client.md#frame-loop-interpolation-and-prediction)).
+
+### Behaviour systems
+
+An enemy's behaviour is its set of behaviour components, each with its own system that only writes plain data.
+
+- **`straightMoverSystem`** sets `velocity = (−speed, 0)` every tick.
+- **`sineMoverSystem`** keeps `movementSystem` the only system that writes positions: it sets a velocity, not a position. The obvious choice, the derivative `amplitude × 2π × frequency × cos(2π × frequency × age)` sampled once per tick, overshoots `baseY ± amplitude` by up to 7.6 units at 60 Hz, because the slope changes during the tick. The system uses the derivative **averaged over the tick** instead:
+
+    ```
+    vy = amplitude × (sin(2π × frequency × (age + dt)) − sin(2π × frequency × age)) / dt
+    ```
+
+    so `y += vy × dt` lands exactly on `baseY + amplitude × sin(2π × frequency × age)` at every tick, never beyond `baseY ± amplitude`. With `dt = 0` it sets vy to 0.
+- **`aimedShooterSystem`** draws a new `timer` every time it expires, **whether or not a ship is alive**, so the `Rng` sequence only depends on the ticks. It fires only if a slot is ALIVE. The target is the ship nearest to the muzzle (`position + muzzleOffset`), found with a view over `PlayerShip` and `Transform`, which is fine for at most 4 ships. If the ship is exactly on the muzzle, there's no direction to aim in, so the shot is skipped.
+
+### Weapons
+
+- **`Weapon::aim`** is the unit direction of the next shot. A ship keeps (1, 0) from its builder, and its missiles always fly right. An enemy's `aim` is rewritten by `aimedShooterSystem` before each shot.
+- **`triggered`:** a ship's is rewritten every tick by `playerInputSystem` from FIRE, so holding FIRE fires once every `cooldown`. An enemy's is set by `aimedShooterSystem` for a single shot, and `weaponSystem` sets it back to `false` every tick, after deciding whether to fire.
+- **Where `Fired` is pushed:** a weapon that fires records `commands().spawn(init)`. The spawn is deferred, so the missile's NetId only exists when `init` runs, right after `weaponSystem`. `init` calls `makePlayerMissile` (a ship, side PLAYER) or `makeEnemyMissile` (anything else, side ENEMY, direction `aim`) at `position + muzzleOffset`, then pushes `Fired{shooter, missile, side, position}` with the NetId the builder returned. The event still belongs to the tick. `init` captures values (NetId, player id, side, muzzle, aim), never references into the registry, since it runs after the view is gone.
+
+### Collisions
+
+- **One list per layer.** `collisionSystem` copies every collider into a local hitbox (`entity` and a `FloatRect` built with `FloatRect::fromCenter(position, halfSize)`), sorted into 4 lists by `CollisionLayer`. It then loops over the 3 rows of [Which layers collide](#components) only: ship × Bydos, ship × enemy missile, Bydos × player missile. Pairs that can't collide (two Bydos, two missiles, a missile and its own side) are never tested, and every pair is tested once by construction.
+- **The overlap test** is `FloatRect::intersects`, strict: two boxes that only touch don't collide.
+- **Invulnerability:** a ship with `invulnerableFor > 0` is left out of the lists, so it skips every pair it's part of, on both sides. Every ship starts with `respawnInvulnerability` (2 s) from `makePlayerShip`, and `playerInputSystem` counts it down.
+- **A missile is spent once.** Hitting its target sets its `Health` to 0. A missile already at 0 hits nothing more in the same tick, so a missile overlapping two Bydos damages only the first one.
+- **`LastHit`:** every hit sets the target's `LastHit`. `by` is the hitter's NetId. `byPlayerId` is the ship's `playerId`, or the missile's `ownerPlayerId`, or `NO_PLAYER` for an enemy. It's added with `commands().add` the first time, then updated in place. Two adds in the same tick are applied in order, so the last hit wins.
+- **`EnemyKilled::killerShip`** is `LastHit::by`: the missile's NetId when a missile made the kill, the ship's when the ship rammed the Bydos.
+- **Order:** the 3 pair loops run in the order above, each in storage order. That's deterministic, which is all the game needs.
+- **Cost:** with 4 ships, 30 Bydos, 40 player missiles and 30 enemy missiles, that's 1,440 tests instead of 5,356 for every pair, a few microseconds per tick. A uniform grid or a sort-and-sweep can be added on top if a benchmark ever shows collisions taking a real share of the tick.
+
+### Lifetime
+
+`lifetimeSystem` kills at `remaining ≤ 1e-4`, not `≤ 0`. In float, `1/60` isn't exact, and subtracting it from 2.0 a hundred and twenty times leaves 1.2e-6, which would kill a 2 s missile on tick 121 instead of 120. The tolerance is 160 times smaller than a tick, so it can never kill a tick early.
+
 
 ## Builders
 
