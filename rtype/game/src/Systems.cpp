@@ -313,4 +313,41 @@ void collisionSystem(engine::ecs::Registry &registry,
                 hit(registry, enemy, missile);
         });
 }
+
+void healthSystem(engine::ecs::Registry &registry,
+    const engine::ecs::SparseSet<Health> &,
+    const engine::ecs::SparseSet<Replicated> &)
+{
+    const auto &rules = registry.getResource<Rules>();
+    auto &roster = registry.getResource<PlayerRoster>();
+    auto &outbox = registry.getResource<EventOutbox>();
+
+    for (auto &&[entity, health, replicated]:
+         registry.indexedView<const Health, const Replicated>()) {
+        if (health.current > 0)
+            continue;
+        registry.commands().kill(entity);
+
+        const auto *lastHit = registry.getComponent<LastHit>(entity);
+        const LastHit killer = lastHit != nullptr ? *lastHit : LastHit{};
+        const auto *transform = registry.getComponent<Transform>(entity);
+        const engine::core::Vec2f position =
+            transform != nullptr ? transform->position : engine::core::Vec2f{};
+
+        if (const auto *ship = registry.getComponent<PlayerShip>(entity)) {
+            (void)roster.onShipKilled(ship->playerId, rules.respawnDelay);
+            outbox.push(PlayerKilled{.killer = killer.by,
+                .ship = replicated.netId,
+                .playerId = ship->playerId,
+                .position = position,});
+        } else if (const auto *score =
+                       registry.getComponent<ScoreValue>(entity)) {
+            if (roster.get(killer.byPlayerId) != nullptr)
+                (void)roster.addScore(killer.byPlayerId, score->points);
+            outbox.push(EnemyKilled{.killerShip = killer.by,
+                .enemy = replicated.netId,
+                .position = position,});
+        }
+    }
+}
 }
