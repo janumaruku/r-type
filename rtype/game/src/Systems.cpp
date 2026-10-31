@@ -14,6 +14,8 @@
 
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
+#include "rtype/game/Builders.hpp"
+#include "rtype/game/Events.hpp"
 #include "rtype/game/Motion.hpp"
 #include "rtype/game/PlayerRoster.hpp"
 #include "rtype/game/Rules.hpp"
@@ -161,6 +163,43 @@ void aimedShooterSystem(engine::ecs::Registry &registry,
             continue;
         weapon.aim = (*target - muzzle).normalized();
         weapon.triggered = true;
+    }
+}
+
+void weaponSystem(engine::ecs::Registry &registry,
+    engine::ecs::SparseSet<Weapon> &,
+    const engine::ecs::SparseSet<Transform> &,
+    const engine::ecs::SparseSet<Replicated> &)
+{
+    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+
+    for (auto &&[entity, weapon, transform, replicated]:
+         registry.indexedView<Weapon, const Transform, const Replicated>()) {
+        const auto *ship = registry.getComponent<PlayerShip>(entity);
+
+        weapon.timer = std::max(0.0F, weapon.timer - delta.seconds);
+        const bool ready = weapon.triggered && weapon.timer == 0.0F;
+
+        if (ship == nullptr)
+            weapon.triggered = false;
+        if (!ready)
+            continue;
+        weapon.timer = weapon.cooldown;
+        registry.commands().spawn(
+            [shooter = replicated.netId,
+                playerId = ship != nullptr ? ship->playerId : NO_PLAYER,
+                side = ship != nullptr ? Side::PLAYER : Side::ENEMY,
+                muzzle = transform.position + weapon.muzzleOffset,
+                aim = weapon.aim](engine::ecs::Registry &world,
+                const engine::ecs::Entity &missile) {
+                const NetId missileId = side == Side::PLAYER
+                    ? makePlayerMissile(world, missile, shooter, playerId,
+                          muzzle)
+                    : makeEnemyMissile(world, missile, shooter, muzzle, aim);
+
+                world.getResource<EventOutbox>().push(
+                    Fired{.shooter=shooter, .missile=missileId, .side=side, .position=muzzle});
+            });
     }
 }
 }
