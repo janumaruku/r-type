@@ -104,7 +104,7 @@ bool isEnabled(Level lineLevel) noexcept
 
 std::optional<Level> parseLevel(std::string_view name) noexcept
 {
-    static constexpr std::pair<std::string_view, Level> NAMES[]{
+    static constexpr std::pair<std::string_view, Level> names[]{ // NOLINT
         {"trace", Level::EG_TRACE},
         {"debug", Level::EG_DEBUG},
         {"info", Level::EG_INFO},
@@ -113,7 +113,7 @@ std::optional<Level> parseLevel(std::string_view name) noexcept
         {"off", Level::EG_OFF},
     };
 
-    for (const auto &[text, value]: NAMES)
+    for (const auto &[text, value]: names)
         if (text == name)
             return value;
     return std::nullopt;
