@@ -14,7 +14,8 @@
 #include "rtype/game/SpawnDirectorState.hpp"
 #include "rtype/game/Systems.hpp"
 
-rtype::game::GameWorld::GameWorld(Rules rules, std::uint32_t seed)
+namespace rtype::game {
+GameWorld::GameWorld(Rules rules, std::uint32_t seed)
 {
     registerComponents(_registry);
 
@@ -54,4 +55,66 @@ rtype::game::GameWorld::GameWorld(Rules rules, std::uint32_t seed)
         "gameOverSystem", gameOverSystem);
     _registry.addSystem(Stage::SIMULATION, "netIdCleanupSystem",
         netIdCleanupSystem);
+}
+
+void GameWorld::apply(const PlayerCommand &command)
+{
+    std::visit([this](const auto &alternative) { handle(alternative); },
+        command);
+}
+
+void GameWorld::handle(const JoinPlayer &command)
+{
+    auto &roster = _registry.getResource<PlayerRoster>();
+    const bool gameOver =
+        _registry.getResource<GamePhase>().phase() == Phase::GAME_OVER;
+    const bool joined = gameOver
+        ? roster.joinWaiting(command.playerId, command.name)
+        : roster.join(command.playerId, command.name,
+              _registry.getResource<Rules>().playerLives);
+
+    if (joined)
+        _registry.getResource<EventOutbox>().push(
+            PlayerJoined{.playerId = command.playerId});
+}
+
+void GameWorld::handle(const LeavePlayer &command)
+{
+    auto &roster = _registry.getResource<PlayerRoster>();
+    const PlayerSlot *slot = roster.get(command.playerId);
+
+    if (slot == nullptr)
+        return;
+
+    std::vector<engine::ecs::Entity> doomed;
+
+    if (const auto ship = _registry.getResource<NetIdAllocator>().find(
+            slot->shipNetId, _registry))
+        doomed.push_back(*ship);
+    for (auto &&[entity, projectile]:
+         _registry.indexedView<const Projectile>())
+        if (projectile.ownerPlayerId == command.playerId)
+            doomed.push_back(entity);
+    for (const auto &entity: doomed)
+        _registry.killEntity(entity);
+    roster.release(command.playerId);
+    _registry.getResource<EventOutbox>().push(
+        PlayerLeft{.playerId = command.playerId, .reason = command.reason});
+}
+
+void GameWorld::handle(const SetInput &command)
+{
+    auto &roster = _registry.getResource<PlayerRoster>();
+
+    if (!roster.acceptInput(command.playerId, command.inputSequence))
+        return;
+
+    const auto ship = _registry.getResource<NetIdAllocator>().find(
+        roster.get(command.playerId)->shipNetId, _registry);
+
+    if (!ship)
+        return;
+    if (auto *player = _registry.getComponent<PlayerShip>(*ship))
+        player->buttons = command.buttons;
+}
 }

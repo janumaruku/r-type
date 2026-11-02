@@ -58,6 +58,24 @@ public:
 private:
     friend struct GameWorldTestAccess;
 
+    /**
+     * @brief `join` with the rules' lives, or `joinWaiting` during a game
+     * over, then @ref PlayerJoined. The ship spawns on the next tick.
+     */
+    void handle(const JoinPlayer &command);
+
+    /**
+     * @brief Kills the player's ship and missiles, frees the slot, then
+     * @ref PlayerLeft. A free slot does nothing.
+     */
+    void handle(const LeavePlayer &command);
+
+    /**
+     * @brief Copies the buttons onto the player's ship if the sequence is
+     * newer than the last one. Without a ship, only the sequence is kept.
+     */
+    void handle(const SetInput &command);
+
     engine::ecs::Registry _registry;
     std::uint32_t _tick = 0;
 };
