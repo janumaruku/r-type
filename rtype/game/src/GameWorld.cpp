@@ -93,6 +93,11 @@ void GameWorld::collectReplicated(std::vector<ReplicatedEntity> &out) const
     }
 }
 
+std::optional<std::uint8_t> GameWorld::reserveSlot()
+{
+    return _registry.getResource<PlayerRoster>().reserve();
+}
+
 void GameWorld::handle(const JoinPlayer &command)
 {
     auto &roster = _registry.getResource<PlayerRoster>();
