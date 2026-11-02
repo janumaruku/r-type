@@ -44,7 +44,7 @@ int parse(int argc, char *const argv[], ServerConfig &serverConfig)
 
         serverConfig.seed = seed;
     },
-    "Seed for random number generator")$
+    "Seed for random number generator")
     ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
     app.add_option_function<std::string>(
