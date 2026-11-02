@@ -29,31 +29,31 @@ GameWorld::GameWorld(Rules rules, std::uint32_t seed)
     _registry.setResource(engine::ecs::DeltaTime());
 
     _registry.addSystem<PlayerShip, Velocity, Weapon>(Stage::SIMULATION,
-        "playerInputSystem", playerInputSystem);
+        "playerInput", playerInputSystem);
     _registry.addSystem<const StraightMover, Velocity>(Stage::SIMULATION,
-        "straightMoverSystem", straightMoverSystem);
+        "straightMover", straightMoverSystem);
     _registry.addSystem<SineMover, Velocity>(Stage::SIMULATION,
-        "sineMoverSystem", sineMoverSystem);
+        "sineMover", sineMoverSystem);
     _registry.addSystem<AimedShooter, const Transform, Weapon>(
-        Stage::SIMULATION, "aimedShooterSystem", aimedShooterSystem);
+        Stage::SIMULATION, "aimedShooter", aimedShooterSystem);
     _registry.addSystem<Weapon, const Transform, const Replicated>(
-        Stage::SIMULATION, "weaponSystem", weaponSystem);
+        Stage::SIMULATION, "weapon", weaponSystem);
     _registry.addSystem<Transform, const Velocity>(Stage::SIMULATION,
-        "movementSystem", movementSystem);
+        "movement", movementSystem);
     _registry.addSystem<Transform, const Collider>(Stage::SIMULATION,
-        "playfieldSystem", playfieldSystem);
+        "playfield", playfieldSystem);
     _registry.addSystem<const Collider, const Transform, Health>(
-        Stage::SIMULATION, "collisionSystem", collisionSystem);
+        Stage::SIMULATION, "collision", collisionSystem);
     _registry.addSystem<const Health, const Replicated>(Stage::SIMULATION,
-        "healthSystem", healthSystem);
-    _registry.addSystem<Lifetime>(Stage::SIMULATION, "lifetimeSystem",
+        "health", healthSystem);
+    _registry.addSystem<Lifetime>(Stage::SIMULATION, "lifetime",
         lifetimeSystem);
     _registry.addSystem<const Replicated>(Stage::SIMULATION,
-        "spawnDirectorSystem", spawnDirectorSystem);
-    _registry.addSystem(Stage::SIMULATION, "respawnSystem", respawnSystem);
+        "spawnDirector", spawnDirectorSystem);
+    _registry.addSystem(Stage::SIMULATION, "respawn", respawnSystem);
     _registry.addSystem<const Replicated>(Stage::SIMULATION,
-        "gameOverSystem", gameOverSystem);
-    _registry.addSystem(Stage::SIMULATION, "netIdCleanupSystem",
+        "gameOver", gameOverSystem);
+    _registry.addSystem(Stage::SIMULATION, "netIdCleanup",
         netIdCleanupSystem);
 }
 
