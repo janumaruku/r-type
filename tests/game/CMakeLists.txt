@@ -8,6 +8,7 @@ rtype_add_test(game_tests
     EventOutboxTests.cpp
     GameOverTests.cpp
     GamePhaseTests.cpp
+    GameWorldTests.cpp
     HealthTests.cpp
     LifetimeTests.cpp
     MotionSystemsTests.cpp

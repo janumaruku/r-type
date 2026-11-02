@@ -125,6 +125,13 @@ public:
     template <StageConcept Stage>
     void runStage(Stage stage);
 
+    /**
+     * @brief The names of `stage`'s systems, in the order they run. A stage
+     * with no systems gives an empty vector.
+     */
+    template <StageConcept Stage>
+    [[nodiscard]] std::vector<std::string> systemNames(Stage stage) const;
+
     [[nodiscard]] CommandBuffer &commands() noexcept;
 
     void applyCommands();
@@ -154,6 +161,9 @@ private:
     };
 
     void runStageAt(std::uint8_t stage);
+
+    [[nodiscard]] std::vector<std::string> systemNamesAt(
+        std::uint8_t stage) const;
 };
 }
 

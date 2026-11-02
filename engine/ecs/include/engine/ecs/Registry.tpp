@@ -263,6 +263,12 @@ void Registry::runStage(Stage stage)
 {
     runStageAt(static_cast<std::uint8_t>(stage));
 }
+
+template <StageConcept Stage>
+std::vector<std::string> Registry::systemNames(Stage stage) const
+{
+    return systemNamesAt(static_cast<std::uint8_t>(stage));
+}
 }
 
 #endif
