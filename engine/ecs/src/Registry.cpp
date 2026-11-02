@@ -132,4 +132,17 @@ void Registry::runStageAt(const std::uint8_t stage)
         throw;
     }
 }
+
+std::vector<std::string> Registry::systemNamesAt(
+    const std::uint8_t stage) const
+{
+    std::vector<std::string> names;
+
+    if (stage >= _stages.size())
+        return names;
+    names.reserve(_stages[stage].size());
+    for (const auto &entry: _stages[stage])
+        names.push_back(entry.name);
+    return names;
+}
 }
