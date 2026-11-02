@@ -22,7 +22,7 @@ enum class MessageType : std::uint8_t;
 
 namespace rtype::server {
 
-class ClientSession;
+struct ClientSession;
 class ServerNetworkAdapter;
 
 struct IncomingMessage {
