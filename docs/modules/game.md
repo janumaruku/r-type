@@ -13,7 +13,7 @@ Every component is a plain aggregate with no methods and no pointers. Entities a
 | `Collider` | `Vec2f halfSize`, `CollisionLayer layer` | Axis-aligned box centred on `position` |
 | `Health` | `int16_t current`, `int16_t max` | The entity dies at 0 or below |
 | `Damage` | `int16_t amount` | Damage dealt on contact |
-| `Replicated` | `NetId netId`, `EntityKind kind`, `uint8_t variant` | Marks the entity for the network. The only component `collectReplicated()` reads |
+| `Replicated` | `NetId netId`, `EntityKind kind`, `uint8_t variant` | Marks the entity for the network: `collectReplicated()` sends one entry per entity that has it |
 | `PlayerShip` | `uint8_t playerId`, `InputButtons buttons`, `float invulnerableFor` | Present only on player ships |
 | `Weapon` | `float cooldown`, `float timer`, `Vec2f muzzleOffset`, `float projectileSpeed`, `Vec2f aim`, `bool triggered` | Fires when `triggered` is set and `timer` ≤ 0. `aim` is the unit direction of the next shot: (1, 0) for a ship, set by `aimedShooterSystem` for an enemy |
 | `StraightMover` | `float speed` | Moves left at `speed` |
@@ -65,7 +65,15 @@ classDiagram
         +collectReplicated(std::vector~ReplicatedEntity~&) void
         +reserveSlot() std::optional~uint8_t~
         +roster() PlayerRoster const&
+        +phase() Phase
         +tick() uint32_t
+        -handle(JoinPlayer const&) void
+        -handle(LeavePlayer const&) void
+        -handle(SetInput const&) void
+    }
+    class GameWorldTestAccess {
+        <<tests only>>
+        +registry(GameWorld&)$ Registry&
     }
     class PlayerRoster {
         -std::array~std::optional~PlayerSlot~, 4~ _slots
@@ -135,6 +143,7 @@ classDiagram
         see Rules and tuning values
     }
     GameWorld *-- Registry
+    GameWorldTestAccess ..> GameWorld : friend
     Registry o-- PlayerRoster : resource
     Registry o-- NetIdAllocator : resource
     Registry o-- EventOutbox : resource
@@ -159,7 +168,17 @@ classDiagram
 | `EventOutbox` | every system that emits a `GameEvent` |
 | `engine::ecs::DeltaTime` | every system that moves or counts down; set by `step(dt)` |
 
-- **Commands.** `JoinPlayer{playerId, name}` spawns a ship in the reserved slot with 3 lives. `LeavePlayer{playerId, reason}` destroys the ship and that player's missiles and frees the slot. `SetInput{playerId, inputSequence, buttons}` is ignored unless `inputSequence` is newer than the slot's `lastInputSequence`.
+- **Commands.** `apply` visits the `PlayerCommand` with one private `handle` overload per alternative, so a command type without a handler doesn't compile. Commands run outside any stage, between two `step` calls.
+
+    | Command | Effect |
+    | --- | --- |
+    | `JoinPlayer{playerId, name}` | `roster.join(…, rules.playerLives)`, or `roster.joinWaiting` during a game over, then `PlayerJoined`. A slot that wasn't reserved is refused by the roster (with an error logged), and no event is emitted |
+    | `LeavePlayer{playerId, reason}` | Kills the ship and every missile whose `Projectile::ownerPlayerId` is that player, frees the slot, then `PlayerLeft`. Other players' ships and missiles are untouched. A free slot does nothing. The NetIds are released by `netIdCleanupSystem` on the next step |
+    | `SetInput{playerId, inputSequence, buttons}` | Ignored unless `inputSequence` is newer than the slot's `lastInputSequence`. Otherwise copies `buttons` into the ship's `PlayerShip::buttons`, read by `playerInputSystem` on the next step. Without a ship (RESPAWNING or OUT) only the sequence is kept: the next INPUT, 16 ms later, carries the buttons again |
+
+- **Joining, step by step.** The server calls `reserveSlot()` when a client connects, then `apply(JoinPlayer)`: the slot goes EMPTY → RESPAWNING with a respawn timer of 0, and `PlayerJoined` is in the outbox at once. No ship exists yet. On the next `step`, `respawnSystem` (row 12) spawns the ship at `rules.playerSpawn[playerId]` and the slot becomes ALIVE, so the ship is in the next `collectReplicated`. `spawnDirectorSystem` (row 11) runs before it, so the first Bydos waits one more tick.
+- **`step(dt)`** writes `dt` into `DeltaTime`, runs the `SIMULATION` stage, then increments `tick()`. Every kill and spawn of the tick is applied when it returns.
+- **`phase()`** returns `GamePhase::phase()`: PLAYING or GAME_OVER.
 - **Events** say *why* something happened, for sounds, effects and banners. They are values with no references into the registry, so the adapter can keep them after `step()` returns:
 
     | Event | Fields | Emitted by |
@@ -174,10 +193,11 @@ classDiagram
 
 - **State is not an event.** Spawns, moves, deaths and roster changes reach clients through snapshots, not through events. A lost event only costs a sound or a banner, never a wrong world ([ADR 0002](../decisions/0002-state-based-replication.md)).
 - **This is the Mediator pattern the subject recommends.** Systems never call the network or the audio. They push events into `EventOutbox`, and whatever owns the world decides what each event means: the server sends packets, and a future local mode could play sounds.
-- `collectReplicated()` fills a caller-owned vector with one `ReplicatedEntity{netId, kind, variant, position, velocity}` per entity that has `Replicated`. The server's `SnapshotBuilder` turns it into SNAPSHOT chunks. A player who joins mid-game gets the full world from their first snapshot, with no special case.
+- `collectReplicated()` clears a caller-owned vector, then fills it with one `ReplicatedEntity{netId, kind, variant, position, velocity}` per entity that has `Replicated`. The position comes from `Transform` and the velocity from `Velocity`, with a zero vector if the entity lacks one. Clearing instead of reallocating lets the server pass the same vector every tick and keep its capacity. The server's `SnapshotBuilder` turns it into SNAPSHOT chunks. A player who joins mid-game gets the full world from their first snapshot, with no special case.
 - `PlayerRoster` is a resource, not a component, because lives and score must outlast the ship entity, which is destroyed and spawned again on each death.
 - `NetIdAllocator::find` only returns an entity that is still alive, thanks to generational handles. `releaseDead` forgets the NetIds of dead entities. NetIds are never reused during a run, and running out of the 2³² − 1 values throws `engine::core::EngineError`.
 - `EventOutbox::drain` returns the events in push order and leaves the outbox empty. Every event and command struct has a defaulted `operator==`, so tests compare whole lists.
+- **`GameWorldTestAccess`** is only declared in `GameWorld.hpp`, as a friend. `tests/game/GameWorldTestAccess.hpp` defines it with a static `registry(GameWorld &)`, so tests can place entities and read components. Nothing outside the tests defines it, so release code can't reach the registry.
 - **Why `std::variant` for events and commands,** and not command classes with a factory: the set is closed and known at compile time, the values need no allocation, and `std::visit` refuses to compile if a case is forgotten. The Factory pattern ([ADR 0003](../decisions/0003-command-factory-handlers.md)) is for keys that arrive at run time: the network messages.
 
 ### State machines
@@ -220,7 +240,7 @@ stateDiagram-v2
 
 ## Systems and tick order
 
-`GameWorld::step(dt)` sets the `DeltaTime` resource (`dt = 1/60 s`) and runs the `SIMULATION` stage. Its systems were added in the order below, and the order is part of the specification: moving a system changes the game. Kills and spawns requested inside a view loop go through `registry.commands()`, which the registry applies after each system ([engine: command buffer](engine.md#command-buffer)).
+`GameWorld::step(dt)` sets the `DeltaTime` resource (`dt = 1/60 s`) and runs the `SIMULATION` stage. Its systems were added in the order below, each named after its function without the `System` suffix (`"playerInput"`, `"straightMover"`…, as `registry.systemNames(Stage::SIMULATION)` returns them and the trace log prints them), and the order is part of the specification: moving a system changes the game. Kills and spawns requested inside a view loop go through `registry.commands()`, which the registry applies after each system ([engine: command buffer](engine.md#command-buffer)).
 
 | # | System | Reads | Writes | Behaviour |
 | --- | --- | --- | --- | --- |
