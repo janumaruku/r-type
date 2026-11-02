@@ -63,6 +63,13 @@ void GameWorld::apply(const PlayerCommand &command)
         command);
 }
 
+void GameWorld::step(float dt)
+{
+    _registry.getResource<engine::ecs::DeltaTime>().seconds = dt;
+    _registry.runStage(Stage::SIMULATION);
+    ++_tick;
+}
+
 void GameWorld::handle(const JoinPlayer &command)
 {
     auto &roster = _registry.getResource<PlayerRoster>();
