@@ -32,20 +32,20 @@ struct ParseResult {
 class CoutRedirect {
 public:
     explicit CoutRedirect(std::ostream& output)
-        : previous_(std::cout.rdbuf(output.rdbuf()))
+        : _previous(std::cout.rdbuf(output.rdbuf()))
     {
     }
 
     ~CoutRedirect()
     {
-        std::cout.rdbuf(previous_);
+        std::cout.rdbuf(_previous);
     }
 
     CoutRedirect(const CoutRedirect&) = delete;
     CoutRedirect& operator=(const CoutRedirect&) = delete;
 
 private:
-    std::streambuf* previous_;
+    std::streambuf* _previous;
 };
 
 ParseResult parseArgs(std::initializer_list<std::string_view> args)
