@@ -75,6 +75,24 @@ std::vector<GameEvent> GameWorld::drainEvents()
     return _registry.getResource<EventOutbox>().drain();
 }
 
+void GameWorld::collectReplicated(std::vector<ReplicatedEntity> &out) const
+{
+    out.clear();
+    for (auto &&[entity, replicated]:
+         _registry.indexedView<const Replicated>()) {
+        const auto *transform = _registry.getComponent<Transform>(entity);
+        const auto *velocity = _registry.getComponent<Velocity>(entity);
+
+        out.push_back({.netId = replicated.netId,
+            .kind = replicated.kind,
+            .variant = replicated.variant,
+            .position = transform != nullptr ? transform->position
+                                             : engine::core::Vec2f{},
+            .velocity = velocity != nullptr ? velocity->value
+                                            : engine::core::Vec2f{}});
+    }
+}
+
 void GameWorld::handle(const JoinPlayer &command)
 {
     auto &roster = _registry.getResource<PlayerRoster>();
