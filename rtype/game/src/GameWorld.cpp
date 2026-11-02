@@ -98,6 +98,11 @@ std::optional<std::uint8_t> GameWorld::reserveSlot()
     return _registry.getResource<PlayerRoster>().reserve();
 }
 
+const PlayerRoster & GameWorld::roster() const
+{
+    return _registry.getResource<PlayerRoster>();
+}
+
 void GameWorld::handle(const JoinPlayer &command)
 {
     auto &roster = _registry.getResource<PlayerRoster>();
