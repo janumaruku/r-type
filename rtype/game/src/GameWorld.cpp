@@ -103,6 +103,11 @@ const PlayerRoster & GameWorld::roster() const
     return _registry.getResource<PlayerRoster>();
 }
 
+Phase GameWorld::phase() const
+{
+    return _registry.getResource<GamePhase>().phase();
+}
+
 void GameWorld::handle(const JoinPlayer &command)
 {
     auto &roster = _registry.getResource<PlayerRoster>();
