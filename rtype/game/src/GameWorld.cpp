@@ -59,7 +59,9 @@ GameWorld::GameWorld(Rules rules, std::uint32_t seed)
 
 void GameWorld::apply(const PlayerCommand &command)
 {
-    std::visit([this](const auto &alternative) { handle(alternative); },
+    std::visit([this](const auto &alternative) {
+            handle(alternative);
+        },
         command);
 }
 
@@ -84,12 +86,14 @@ void GameWorld::collectReplicated(std::vector<ReplicatedEntity> &out) const
         const auto *velocity = _registry.getComponent<Velocity>(entity);
 
         out.push_back({.netId = replicated.netId,
-            .kind = replicated.kind,
-            .variant = replicated.variant,
-            .position = transform != nullptr ? transform->position
-                                             : engine::core::Vec2f{},
-            .velocity = velocity != nullptr ? velocity->value
-                                            : engine::core::Vec2f{}});
+                       .kind = replicated.kind,
+                       .variant = replicated.variant,
+                       .position = transform != nullptr
+                       ? transform->position
+                       : engine::core::Vec2f{},
+                       .velocity = velocity != nullptr
+                       ? velocity->value
+                       : engine::core::Vec2f{}});
     }
 }
 
@@ -98,7 +102,7 @@ std::optional<std::uint8_t> GameWorld::reserveSlot()
     return _registry.getResource<PlayerRoster>().reserve();
 }
 
-const PlayerRoster & GameWorld::roster() const
+const PlayerRoster &GameWorld::roster() const
 {
     return _registry.getResource<PlayerRoster>();
 }
@@ -121,7 +125,7 @@ void GameWorld::handle(const JoinPlayer &command)
     const bool joined = gameOver
         ? roster.joinWaiting(command.playerId, command.name)
         : roster.join(command.playerId, command.name,
-              _registry.getResource<Rules>().playerLives);
+            _registry.getResource<Rules>().playerLives);
 
     if (joined)
         _registry.getResource<EventOutbox>().push(
@@ -139,7 +143,7 @@ void GameWorld::handle(const LeavePlayer &command)
     std::vector<engine::ecs::Entity> doomed;
 
     if (const auto ship = _registry.getResource<NetIdAllocator>().find(
-            slot->shipNetId, _registry))
+        slot->shipNetId, _registry))
         doomed.push_back(*ship);
     for (auto &&[entity, projectile]:
          _registry.indexedView<const Projectile>())
