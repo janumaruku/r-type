@@ -70,6 +70,11 @@ void GameWorld::step(float dt)
     ++_tick;
 }
 
+std::vector<GameEvent> GameWorld::drainEvents()
+{
+    return _registry.getResource<EventOutbox>().drain();
+}
+
 void GameWorld::handle(const JoinPlayer &command)
 {
     auto &roster = _registry.getResource<PlayerRoster>();
