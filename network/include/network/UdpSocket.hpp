@@ -11,11 +11,13 @@
 #include <array>
 #include <asio.hpp>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <thread>
 #include <cstdint>
 #include <deque>
 #include <mutex>
+#include <optional>
 #include <vector>
 
 #include "engine/core/Logger.hpp"
@@ -26,6 +28,25 @@ namespace net {
 struct Datagram {
     std::vector<std::uint8_t> bytes;
     asio::ip::udp::endpoint from;
+};
+
+/*
+** @struct SocketStats
+** @brief What a @ref UdpSocket received, dropped and sent, per cause.
+**
+** Counts since the socket was constructed, never reset, not even by
+** @ref UdpSocket::stop() and @ref UdpSocket::start().
+** @ref UdpSocket::stats() reads the 7 values one by one, not as a single
+** atomic snapshot, which is enough for statistics.
+*/
+struct SocketStats {
+    std::uint64_t received = 0;
+    std::uint64_t droppedEmpty = 0;
+    std::uint64_t droppedOversized = 0;
+    std::uint64_t droppedQueueFull = 0;
+    std::uint64_t receiveErrors = 0;
+    std::uint64_t sent = 0;
+    std::uint64_t sendErrors = 0;
 };
 
 class UdpSocket {
@@ -50,6 +71,7 @@ public:
     [[nodiscard]] std::vector<Datagram> receiveAll(std::size_t max = 1024);
 
     [[nodiscard]] asio::ip::udp::endpoint localEndpoint() const;
+    [[nodiscard]] SocketStats stats() const;
     [[nodiscard]] std::uint64_t dropped() const;
     [[nodiscard]] bool isReceiving() const noexcept;
 
@@ -63,18 +85,72 @@ private:
     std::atomic<bool> _receiving{false};
     std::size_t _receiveErrors = 0;
 
+    /*
+    ** @struct Counters
+    ** @brief The atomic counters behind @ref SocketStats.
+    **
+    ** Written only on the IO thread and read from any thread, so relaxed
+    ** atomics are enough.
+    */
+    struct Counters {
+        std::atomic<std::uint64_t> received{0};
+        std::atomic<std::uint64_t> droppedEmpty{0};
+        std::atomic<std::uint64_t> droppedOversized{0};
+        std::atomic<std::uint64_t> droppedQueueFull{0};
+        std::atomic<std::uint64_t> receiveErrors{0};
+        std::atomic<std::uint64_t> sent{0};
+        std::atomic<std::uint64_t> sendErrors{0};
+    };
+
+    /*
+    ** @struct LogLimiter
+    ** @brief Turns a stream of events into at most one log line per second.
+    **
+    ** Used only on the IO thread. @ref record counts one event and returns
+    ** how many to log now, or 0 if the last line is less than a second old.
+    ** @ref flush returns the events still held back and starts over, so that
+    ** @ref flushLogs can log them.
+    */
+    struct LogLimiter {
+        std::chrono::steady_clock::time_point last{};
+        std::uint64_t pending = 0;
+
+        [[nodiscard]] std::uint64_t record(
+            std::chrono::steady_clock::time_point now);
+        [[nodiscard]] std::uint64_t flush();
+    };
+
+    Counters _counters;
+    LogLimiter _queueFullLog;
+    LogLimiter _oversizedLog;
+    LogLimiter _sendErrorLog;
+
+    void countReceiveError();
     void receiveNext();
     void handleReceive(const asio::error_code &error,
         std::size_t bytesReceived);
     void handleReceiveError(const asio::error_code &error);
-    void enqueueDatagram(std::size_t bytesReceived);
+    [[nodiscard]] bool enqueueDatagram(std::size_t bytesReceived);
+    void dropOversized();
+    void logQueueFull(std::uint64_t count);
+    void logOversized(std::uint64_t count);
+    void flushLogs();
     void rearmReceive();
     void retryReceiveLater();
     void giveUpReceiving();
 
     std::uint16_t _port = 0;
     asio::io_context _ioContext;
-    asio::executor_work_guard<asio::io_context::executor_type> _workGuard;
+    /*
+    ** @brief Keeps @ref _ioContext's run() from returning when no operation
+    ** is pending, as after @ref giveUpReceiving(), so that @ref sendTo()
+    ** still works.
+    **
+    ** An empty optional before @ref start() and after @ref stop(), since a
+    ** work guard can't be re-armed.
+    */
+    std::optional<asio::executor_work_guard<asio::io_context::executor_type>>
+        _workGuard;
     asio::ip::udp::socket _socket;
 
     std::thread _thread;
@@ -83,7 +159,6 @@ private:
     asio::ip::udp::endpoint _sender;
     std::mutex _mutex;
     std::deque<Datagram> _incoming;
-    std::atomic<std::uint64_t> _dropped;
 };
 
 } // namespace net

@@ -62,6 +62,15 @@ if (RTYPE_BUILD_BENCHMARKS)
 endif ()
 
 CPMAddPackage(
+        NAME nlohmann_json
+        VERSION 3.12.0
+        URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+        DOWNLOAD_ONLY YES)
+
+add_library(nlohmann_json INTERFACE)
+target_include_directories(nlohmann_json SYSTEM INTERFACE "${nlohmann_json_SOURCE_DIR}/include")
+
+CPMAddPackage(
         NAME asio
         GITHUB_REPOSITORY chriskohlhoff/asio
         GIT_TAG asio-1-30-2
