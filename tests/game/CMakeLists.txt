@@ -4,10 +4,12 @@ rtype_add_test(game_tests
     BuildersTests.cpp
     CollisionTests.cpp
     ComponentsTests.cpp
+    DeterminismTests.cpp
     EnemyBehaviourTests.cpp
     EventOutboxTests.cpp
     GameOverTests.cpp
     GamePhaseTests.cpp
+    GameWorldTests.cpp
     HealthTests.cpp
     LifetimeTests.cpp
     MotionSystemsTests.cpp
@@ -17,6 +19,7 @@ rtype_add_test(game_tests
     PlayerRosterTests.cpp
     RespawnTests.cpp
     RulesTests.cpp
+    ScenarioTests.cpp
     SpawnDirectorTests.cpp
     TypesTests.cpp
     WeaponTests.cpp

@@ -275,6 +275,7 @@ classDiagram
         +indexedView~Cs...~() IndexedView~Cs...~
         +addSystem~Cs...~(stage, name, f) void
         +runStage(stage) void
+        +systemNames(stage) std::vector~std::string~
         +commands() CommandBuffer&
         +applyCommands() void
         +setResource~T~(T value) T&
@@ -282,6 +283,7 @@ classDiagram
         +tryGetResource~T~() T*
         +emplaceResource~T~(Args&&...) T&
         -runStageAt(uint8_t) void
+        -systemNamesAt(uint8_t) std::vector~std::string~
     }
     class SystemEntry {
         +std::string name
@@ -393,13 +395,14 @@ registry.addSystem<Transform, const Velocity>(Stage::FIXED_UPDATE, "movement", m
 // movementSystem(Registry&, SparseSet<Transform>&, const SparseSet<Velocity>&)
 
 registry.runStage(Stage::FIXED_UPDATE);   // runs that stage's systems in insertion order
+registry.systemNames(Stage::FIXED_UPDATE); // {"movement", ...}, in the same order
 ```
 
 | Rule | Detail |
 | --- | --- |
 | Signature | A system receives the `Registry&` first, then one storage per listed component, in the listed order. A `const` component gives a `const SparseSet<C>&`, and a system taking a non-`const` storage for it doesn't compile. Checked at compile time with a readable `static_assert` message. |
 | Stages | Systems belong to a stage: any enumeration (`enum class` or plain `enum`) whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`), checked by `StageConcept`. Systems are kept in a vector indexed by the stage's value, so stages use small values starting at 0. `runStage` runs one stage's systems in the order they were added. A stage with no systems only applies pending commands. The server never adds render systems. |
-| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time and the number of commands it recorded (`<name> took <µs> us and ran <n> commands`), which makes the tick order and its cost visible. The time covers the system only, not the apply of its commands. The clock is read only when `TRACE` is enabled, checked once per stage, so timing costs nothing otherwise. |
+| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time and the number of commands it recorded (`<name> took <µs> us and ran <n> commands`), which makes the tick order and its cost visible. The time covers the system only, not the apply of its commands. The clock is read only when `TRACE` is enabled, checked once per stage, so timing costs nothing otherwise. `systemNames(stage)` returns the names in run order (empty for a stage with no systems), so a test can check a stage's order without running it. |
 | Registration | Adding a system registers its component types. Adding a system while a stage is running is a programming error, caught with an `assert`. |
 | Callables | Stored in `std::function`, so systems must be copyable callables (free functions and lambdas without move-only captures). Move-only state goes in a resource. The registry keeps one copy and calls it on every run, so a `mutable` lambda keeps its state across runs. |
 | Running guard | A flag is set for the whole stage and reset by an RAII object. Calling `runStage` from inside a system is a programming error, caught with an `assert`. If a system throws, the commands it recorded are discarded (the buffer is cleared), so half of a system's intentions are never applied. The same goes when applying its commands throws (for example, a spawn's `init`). Either way, the exception reaches the caller of `runStage`, the rest of that stage doesn't run, and the next `runStage` works normally. |
