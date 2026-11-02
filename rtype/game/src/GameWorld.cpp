@@ -108,6 +108,11 @@ Phase GameWorld::phase() const
     return _registry.getResource<GamePhase>().phase();
 }
 
+std::uint32_t GameWorld::tick() const noexcept
+{
+    return _tick;
+}
+
 void GameWorld::handle(const JoinPlayer &command)
 {
     auto &roster = _registry.getResource<PlayerRoster>();
