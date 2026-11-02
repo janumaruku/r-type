@@ -56,19 +56,18 @@ bool FloodTracker::shouldKick(TimePoint /*now*/) const noexcept
 
 bool FloodTracker::allow(TimePoint now)
 {
-    const bool allowed = _datagrams.record(now);
-
-    if (_datagrams.countInWindow() == 1) {
-        if (_hasTrackedWindow &&
-            (!_currentWindowFlooded ||
-                now - _trackedWindowStart >= std::chrono::seconds(2))) {
-            _floodedSeconds = 0;
+    if (!_hasTrackedWindow ||
+        now - _trackedWindowStart >= std::chrono::seconds(1)) {
+        if (_hasTrackedWindow) {
+            if (!_currentWindowFlooded)
+                _floodedSeconds = 0;
         }
-
-        _trackedWindowStart   = now;
-        _hasTrackedWindow     = true;
+        _trackedWindowStart = now;
+        _hasTrackedWindow = true;
         _currentWindowFlooded = false;
     }
+
+    const bool allowed = _datagrams.record(now);
 
     if (!allowed && !_currentWindowFlooded) {
         ++_floodedSeconds;

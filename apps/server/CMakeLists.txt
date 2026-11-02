@@ -3,6 +3,8 @@ add_library(server_logic STATIC
     src/RateLimits.cpp
     src/Session.cpp
     src/Conversions.cpp
+    src/ServerNetworkAdapter.cpp
+    src/ServerCommands.cpp
 )
 
 target_link_libraries(server_logic
