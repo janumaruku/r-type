@@ -66,8 +66,9 @@ inline ScriptedResult runScript(const std::uint32_t seed,
             const auto *join =
                 std::get_if<rtype::game::JoinPlayer>(&script[next].command);
 
-            if (join != nullptr)
+            if (join != nullptr) {
                 EXPECT_EQ(world.reserveSlot(), join->playerId);
+            }
             world.apply(script[next].command);
         }
         world.step(SCRIPT_DT);

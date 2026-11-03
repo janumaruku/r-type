@@ -21,3 +21,19 @@ add_subdirectory(session)
 add_subdirectory(event)
 add_subdirectory(goodbyes)
 add_subdirectory(snapshot)
+
+rtype_add_test(server_integration_tests
+    LIBS server_logic
+    SOURCES
+        IntegrationTests.cpp
+)
+
+target_include_directories(server_integration_tests
+    PRIVATE "${CMAKE_CURRENT_LIST_DIR}"
+)
+
+rtype_add_test(server_app_tests
+    LIBS server_logic
+    SOURCES
+        ServerAppTests.cpp
+)

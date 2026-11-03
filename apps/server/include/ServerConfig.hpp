@@ -20,6 +20,8 @@
 
 namespace rtype::server {
 
+constexpr int EPITECH_EXIT_FAIL = 84;
+
 class ConfigError : public std::invalid_argument {
     using std::invalid_argument::invalid_argument;
 };

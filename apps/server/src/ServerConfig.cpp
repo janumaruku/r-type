@@ -65,7 +65,7 @@ int parse(int argc, char *const argv[], ServerConfig &serverConfig)
             return 0;
         }
         std::cout << e.what() << "\n\n" << app.help() << std::endl;
-        return 84;
+        return EPITECH_EXIT_FAIL;
     }
     return 0;
 }
