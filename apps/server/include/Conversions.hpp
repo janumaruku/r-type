@@ -11,6 +11,7 @@
 #include <type_traits>
 
 #include "rtype/protocol/Event.hpp"
+#include "rtype/protocol/Messages.hpp"
 #include "rtype/protocol/Snapshot.hpp"
 #include "rtype/game/Events.hpp"
 #include "rtype/game/Types.hpp"
@@ -44,9 +45,14 @@ template <typename Enum>
     return static_cast<protocol::PlayerState>(state);
 }
 
+/**
+ * @brief The protocol's deserialize has already rejected the reserved bits,
+ * and the button bits are equal on both sides (checked below), so it's a
+ * plain copy.
+ */
 [[nodiscard]] constexpr game::InputButtons toGame(std::uint8_t buttons) noexcept
 {
-    return static_cast<game::InputButtons>(buttons);
+    return game::InputButtons{.bits = buttons};
 }
 
 [[nodiscard]] protocol::EntityState toProtocol(const game::ReplicatedEntity &entity) noexcept;
@@ -61,17 +67,49 @@ struct OutgoingEvent {
 
 }
 
-static_assert(rtype::server::toUnderlying(rtype::protocol::EntityKind::PLAYER_SHIP) ==
-              rtype::server::toUnderlying(rtype::game::EntityKind::PLAYER_SHIP));
+/*
+** The game keeps its own copies of these protocol values, since it can't
+** include rtype_protocol. The conversions above are plain casts, so each
+** pair of values is checked here: if one side changes, this stops compiling.
+*/
+namespace rtype::server::checks {
+template <typename Game, typename Protocol>
+constexpr bool same(Game game, Protocol protocol) noexcept
+{
+    return toUnderlying(game) == toUnderlying(protocol);
+}
 
-static_assert(rtype::server::toUnderlying(rtype::protocol::EntityKind::BYDOS_SLAVE) ==
-              rtype::server::toUnderlying(rtype::game::EntityKind::BYDOS_SLAVE));
+static_assert(same(game::EntityKind::PLAYER_SHIP,
+    protocol::EntityKind::PLAYER_SHIP));
+static_assert(same(game::EntityKind::BYDOS_SLAVE,
+    protocol::EntityKind::BYDOS_SLAVE));
+static_assert(same(game::EntityKind::PLAYER_MISSILE,
+    protocol::EntityKind::PLAYER_MISSILE));
+static_assert(same(game::EntityKind::ENEMY_MISSILE,
+    protocol::EntityKind::ENEMY_MISSILE));
 
-static_assert(rtype::server::toUnderlying(rtype::protocol::EntityKind::PLAYER_MISSILE) ==
-              rtype::server::toUnderlying(rtype::game::EntityKind::PLAYER_MISSILE));
+static_assert(same(game::LeaveReason::QUIT, protocol::LeaveReason::QUIT));
+static_assert(same(game::LeaveReason::TIMEOUT,
+    protocol::LeaveReason::TIMEOUT));
+static_assert(same(game::LeaveReason::KICKED, protocol::LeaveReason::KICKED));
 
-static_assert(rtype::server::toUnderlying(rtype::protocol::EntityKind::ENEMY_MISSILE) ==
-              rtype::server::toUnderlying(rtype::game::EntityKind::ENEMY_MISSILE));
+static_assert(same(game::SlotState::EMPTY, protocol::PlayerState::EMPTY));
+static_assert(same(game::SlotState::ALIVE, protocol::PlayerState::ALIVE));
+static_assert(same(game::SlotState::RESPAWNING,
+    protocol::PlayerState::RESPAWNING));
+static_assert(same(game::SlotState::SLOT_OUT,
+    protocol::PlayerState::PLAYER_OUT));
+
+static_assert(game::InputButtons::UP == protocol::buttons::UP);
+static_assert(game::InputButtons::DOWN == protocol::buttons::DOWN);
+static_assert(game::InputButtons::LEFT == protocol::buttons::LEFT);
+static_assert(game::InputButtons::RIGHT == protocol::buttons::RIGHT);
+static_assert(game::InputButtons::FIRE == protocol::buttons::FIRE);
+static_assert((protocol::buttons::RESERVED
+    & (game::InputButtons::UP | game::InputButtons::DOWN
+        | game::InputButtons::LEFT | game::InputButtons::RIGHT
+        | game::InputButtons::FIRE)) == 0);
+}
 
 
 #endif /* !CONVERSIONS_HPP */
