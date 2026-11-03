@@ -13,39 +13,49 @@ namespace rtype::server {
 
 void EventRepeater::add(protocol::Event event, std::uint8_t copies)
 {
-    event.eventId = _nextEventId++;
-    if (_pending.size() >= MAX_PENDING) {
-        const auto oneCopy = std::find_if(_pending.begin(), _pending.end(),
-            [](const Pending &pending) { return pending.copiesLeft == 1; });
-        if (copies > 1 && oneCopy != _pending.end())
-            _pending.erase(oneCopy);
-        else {
-            if (!_overflowLogged) {
-                _logger.warn("Event repeater queue full; dropping events");
-                _overflowLogged = true;
-            }
-            return;
-        }
-    }
     if (copies == 0)
         return;
-    _pending.push_back(Pending{.event = event, .copiesLeft = copies});
+    event.eventId = _nextEventId++;
+    _pending.push_back(
+        Pending{.event = event, .copies = copies, .copiesLeft = copies});
+    while (_pending.size() > MAX_PENDING)
+        dropOne();
+}
+
+/*
+** _pending is in the order events were added, so the first match is the
+** oldest. A 1-copy event (a shot, a kill) is only a cosmetic hint, while the
+** repeated ones (a death, a join, the game over) change what the HUD shows.
+*/
+void EventRepeater::dropOne()
+{
+    const auto oneCopy = std::ranges::find_if(_pending,
+        [](const Pending &pending) { return pending.copies == 1; });
+
+    _pending.erase(oneCopy != _pending.end() ? oneCopy : _pending.begin());
+    ++_dropped;
 }
 
 std::vector<protocol::Event> EventRepeater::takeDue()
 {
     std::vector<protocol::Event> due;
-    if (_pending.size() > MAX_PENDING)
-        _pending.erase(_pending.begin(), _pending.begin() + (_pending.size() - MAX_PENDING));
-    for (auto it = _pending.begin(); it != _pending.end();) {
-        if (it->copiesLeft == 0) {
-            it = _pending.erase(it);
-            continue;
-        }
-        due.push_back(it->event);
-        --it->copiesLeft;
-        ++it;
+
+    if (_dropped != 0) {
+        _logger.warn("Event queue full: {} event(s) dropped", _dropped);
+        _dropped = 0;
     }
+    due.reserve(_pending.size());
+    for (auto &pending : _pending) {
+        due.push_back(pending.event);
+        --pending.copiesLeft;
+    }
+    std::erase_if(_pending,
+        [](const Pending &pending) { return pending.copiesLeft == 0; });
     return due;
+}
+
+std::size_t EventRepeater::pending() const noexcept
+{
+    return _pending.size();
 }
 }
