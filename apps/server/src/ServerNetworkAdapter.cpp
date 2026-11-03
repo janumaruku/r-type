@@ -7,13 +7,10 @@
 
 #include "ServerNetworkAdapter.hpp"
 
-#include <algorithm>
 #include <cassert>
-#include <cstddef>
 #include <string>
 
 #include "Conversions.hpp"
-#include "rtype/protocol/Decode.tpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
 #include "rtype/protocol/MessageType.hpp"
