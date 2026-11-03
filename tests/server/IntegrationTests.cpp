@@ -134,17 +134,20 @@ TEST(IntegrationTests, TwoPlayersSeeMovement)
 TEST(IntegrationTests, FullServerRejectsFifthClient)
 {
     ServerFixture server;
-    std::vector<std::unique_ptr<server_test::TestClient>> clients;
-    for (int i = 0; i != 5; ++i) {
-        clients.push_back(std::make_unique<server_test::TestClient>(
+    std::vector<std::unique_ptr<server_test::TestClient>> players;
+    for (int i = 0; i != 4; ++i) {
+        players.push_back(std::make_unique<server_test::TestClient>(
             server.port()));
-        clients.back()->send(MessageType::HELLO,
+        players.back()->send(MessageType::HELLO,
             Hello{.playerName = "player"});
+        ASSERT_TRUE(players.back()->waitFor<Welcome>(
+            MessageType::WELCOME).has_value()) << "player " << i;
     }
-    for (int i = 0; i != 4; ++i)
-        EXPECT_TRUE(clients[i]->waitFor<Welcome>(
-            MessageType::WELCOME).has_value());
-    const auto reject = clients[4]->waitFor<Reject>(MessageType::REJECT);
+    server_test::TestClient fifth(server.port());
+
+    fifth.send(MessageType::HELLO, Hello{.playerName = "fifth"});
+
+    const auto reject = fifth.waitFor<Reject>(MessageType::REJECT);
     ASSERT_TRUE(reject.has_value());
     EXPECT_EQ(reject->reason, RejectReason::SERVER_FULL);
 }
