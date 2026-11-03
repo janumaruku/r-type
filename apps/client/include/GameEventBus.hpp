@@ -8,10 +8,11 @@
 #ifndef GAME_EVENT_BUS_HPP
 #define GAME_EVENT_BUS_HPP
 
+#include <cstddef>
 #include <vector>
 #include <functional>
 
-#include "protocol/Event.hpp"
+#include "rtype/protocol/Event.hpp"
 
 namespace rtype::client {
 class GameEventBus {
@@ -26,6 +27,8 @@ public:
         Subscription(const Subscription &)            = delete;
         Subscription &operator=(const Subscription &) = delete;
         ~Subscription();
+
+        Subscription(std::size_t id, GameEventBus *bus) noexcept;
 
     private:
         friend class GameEventBus;
