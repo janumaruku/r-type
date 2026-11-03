@@ -9,12 +9,23 @@
 #define GAME_EVENT_BUS_HPP
 
 #include <cstddef>
+#include <deque>
 #include <vector>
 #include <functional>
 
 #include "rtype/protocol/Event.hpp"
 
 namespace rtype::client {
+
+class EventFilter {
+public:
+    static constexpr std::size_t CAPACITY = 128;
+    [[nodiscard]] bool firstTime(std::uint32_t eventId);
+
+private:
+    std::deque<std::uint32_t> _recent;
+};
+
 class GameEventBus {
 public:
     using Handler = std::function<void(const protocol::Event &)>;

@@ -36,7 +36,7 @@ struct ReceivedMessage {
     const net::Datagram &datagram,
     const ServerLink &link, ClientLogLimiter &logs, TimePoint now);
 
-using IConnectCommand = ICommand<ConnectingScene &, net::Packet &>;
+using IConnectCommand = designPattern::ICommand<ConnectingScene &, net::Packet &>;
 using ConnectCommandFactory = designPattern::FactoryTemplate<IConnectCommand,
     protocol::MessageType>;
 
