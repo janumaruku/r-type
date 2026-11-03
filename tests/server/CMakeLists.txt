@@ -18,3 +18,6 @@ rtype_add_test(server_commands_tests
 
 add_subdirectory(config)
 add_subdirectory(session)
+add_subdirectory(event)
+add_subdirectory(goodbyes)
+add_subdirectory(snapshot)

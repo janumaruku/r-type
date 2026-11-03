@@ -9,6 +9,7 @@
 
 #include <vector>
 
+#include "engine/core/Logger.hpp"
 #include "rtype/game/GameWorld.hpp"
 #include "rtype/protocol/Event.hpp"
 
@@ -28,6 +29,8 @@ private:
     };
     std::vector<Pending> _pending;
     std::uint32_t _nextEventId = 1;
+    bool _overflowLogged = false;
+    engine::core::log::Logger _logger{"EventRepeater"};
 };
 } // namespace rtype::server
 
