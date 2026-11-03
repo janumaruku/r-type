@@ -1,6 +1,7 @@
 add_library(client_logic STATIC
         src/ServerLink.cpp
         src/ClientDispatch.cpp
+        src/ConnectingScene.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)
