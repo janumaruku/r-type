@@ -61,7 +61,7 @@ enum class SlotState : std::uint8_t {
     EMPTY = 0,
     ALIVE = 1,
     RESPAWNING = 2,
-    OUT = 3,
+    SLOT_OUT = 3,
 };
 
 enum class Phase : std::uint8_t { PLAYING, GAME_OVER };

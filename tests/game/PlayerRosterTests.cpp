@@ -47,7 +47,7 @@ void expectSameSlot(const PlayerSlot &actual, const PlayerSlot &expected)
 void reach(PlayerRoster &roster, const SlotState state)
 {
     ASSERT_EQ(roster.reserve(), 0);
-    if (state == SlotState::OUT) {
+    if (state == SlotState::SLOT_OUT) {
         ASSERT_TRUE(roster.joinWaiting(0, "Ana"));
         return;
     }
@@ -168,7 +168,7 @@ TEST(PlayerRoster, ShipKilledUntilOut)
         ASSERT_TRUE(roster.onShipSpawned(0, SHIP));
     }
     ASSERT_TRUE(roster.onShipKilled(0, RESPAWN_DELAY));
-    EXPECT_EQ(roster.get(0)->state, SlotState::OUT);
+    EXPECT_EQ(roster.get(0)->state, SlotState::SLOT_OUT);
     EXPECT_EQ(roster.get(0)->lives, 0);
     EXPECT_EQ(roster.get(0)->shipNetId, NO_NET_ID);
     EXPECT_TRUE(roster.allOut());
@@ -182,7 +182,7 @@ TEST(PlayerRoster, ShipKilledWithNoLifeGoesOutWithoutWrapping)
     ASSERT_TRUE(roster.join(0, "Ana", 0));
     ASSERT_TRUE(roster.onShipSpawned(0, SHIP));
     ASSERT_TRUE(roster.onShipKilled(0, RESPAWN_DELAY));
-    EXPECT_EQ(roster.get(0)->state, SlotState::OUT);
+    EXPECT_EQ(roster.get(0)->state, SlotState::SLOT_OUT);
     EXPECT_EQ(roster.get(0)->lives, 0);
 }
 
@@ -208,7 +208,7 @@ TEST_F(PlayerRosterLog, EveryTransitionRefusesEveryWrongState)
 
     for (const auto &transition : transitions) {
         for (const auto state : {SlotState::EMPTY, SlotState::ALIVE,
-                 SlotState::RESPAWNING, SlotState::OUT}) {
+                 SlotState::RESPAWNING, SlotState::SLOT_OUT}) {
             if (state == transition.from)
                 continue;
             SCOPED_TRACE(transition.name + " from state "
@@ -249,8 +249,8 @@ TEST(PlayerRoster, JoinWaitingThenRestart)
 {
     PlayerRoster roster;
 
-    reach(roster, SlotState::OUT);
-    EXPECT_EQ(roster.get(0)->state, SlotState::OUT);
+    reach(roster, SlotState::SLOT_OUT);
+    EXPECT_EQ(roster.get(0)->state, SlotState::SLOT_OUT);
     EXPECT_EQ(roster.get(0)->lives, 0);
     ASSERT_TRUE(roster.addScore(0, 300));
     roster.onGameRestarted(LIVES);
