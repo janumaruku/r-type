@@ -165,11 +165,11 @@ The client uses the same Command + Factory pattern as the server ([ADR 0003](../
 ```cpp
 namespace rtype::client {
 
-using IConnectCommand = engine::core::ICommand<ConnectingScene&, net::Packet&>;
-using ConnectCommandFactory = engine::core::FactoryTemplate<IConnectCommand, protocol::MessageType>;
+using IConnectCommand = designPattern::ICommand<ConnectingScene&, net::Packet&>;
+using ConnectCommandFactory = designPattern::FactoryTemplate<IConnectCommand, protocol::MessageType>;
 
-using IGameCommand = engine::core::ICommand<ClientNetworkAdapter&, net::Packet&>;
-using GameCommandFactory = engine::core::FactoryTemplate<IGameCommand, protocol::MessageType>;
+using IGameCommand = designPattern::ICommand<ClientNetworkAdapter&, net::Packet&>;
+using GameCommandFactory = designPattern::FactoryTemplate<IGameCommand, protocol::MessageType>;
 
 void ConnectingScene::registerCommands() noexcept
 {
