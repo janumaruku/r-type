@@ -4,6 +4,7 @@
 #include <array>
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -16,7 +17,10 @@ using namespace std::chrono_literals;
 using rtype::protocol::Event;
 using rtype::protocol::EventType;
 using rtype::protocol::Hello;
+using rtype::protocol::Input;
+using rtype::protocol::LeaveReason;
 using rtype::protocol::MessageType;
+using rtype::protocol::PlayerState;
 using rtype::protocol::Reject;
 using rtype::protocol::RejectReason;
 using rtype::protocol::Snapshot;
@@ -204,17 +208,42 @@ TEST(IntegrationTests, SlowClientTimesOut)
     ServerFixture server;
     server_test::TestClient silent(server.port());
     server_test::TestClient other(server.port());
-    ASSERT_TRUE(join(silent).has_value());
+    silent.send(MessageType::HELLO, Hello{.playerName = "silent"});
+    const auto welcome = silent.waitFor<Welcome>(MessageType::WELCOME);
+    ASSERT_TRUE(welcome.has_value());
     ASSERT_TRUE(join(other).has_value());
+    std::uint32_t inputSequence = 0;
+    const auto keepAlive = [&other, &inputSequence] {
+        other.send(MessageType::INPUT,
+            Input{.inputSequence = ++inputSequence, .buttons = 0});
+    };
 
-    int left = 0;
+    std::optional<Event> left;
     const auto deadline = std::chrono::steady_clock::now() + 7s;
-    while (std::chrono::steady_clock::now() < deadline && left == 0) {
-        const auto event = other.waitFor<Event>(MessageType::EVENT, 200ms);
+    while (!left && std::chrono::steady_clock::now() < deadline) {
+        keepAlive();
+        const auto event = other.waitFor<Event>(MessageType::EVENT, 100ms);
         if (event && event->type == EventType::PLAYER_LEFT)
-            left = 1;
+            left = event;
     }
-    EXPECT_EQ(left, 1);
+
+    ASSERT_TRUE(left.has_value());
+    EXPECT_EQ(left->a, welcome->playerId);
+    EXPECT_EQ(left->b, static_cast<std::uint32_t>(LeaveReason::TIMEOUT));
+    std::optional<Snapshot> snapshot;
+    for (int attempt = 0; attempt != 10
+        && (!snapshot || snapshot->roster.empty()); ++attempt) {
+        keepAlive();
+        snapshot = other.waitFor<Snapshot>(MessageType::SNAPSHOT, 200ms);
+    }
+    ASSERT_TRUE(snapshot.has_value());
+    ASSERT_FALSE(snapshot->roster.empty());
+    for (const auto &player : snapshot->roster) {
+        if (player.playerId == welcome->playerId)
+            EXPECT_EQ(player.state, PlayerState::EMPTY);
+        else if (player.name == "player")
+            EXPECT_NE(player.state, PlayerState::EMPTY);
+    }
 }
 
 TEST(IntegrationTests, MalformedTrafficKicksOnlyTheSender)
