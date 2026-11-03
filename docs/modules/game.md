@@ -13,7 +13,7 @@ Every component is a plain aggregate with no methods and no pointers. Entities a
 | `Collider` | `Vec2f halfSize`, `CollisionLayer layer` | Axis-aligned box centred on `position` |
 | `Health` | `int16_t current`, `int16_t max` | The entity dies at 0 or below |
 | `Damage` | `int16_t amount` | Damage dealt on contact |
-| `Replicated` | `NetId netId`, `EntityKind kind`, `uint8_t variant` | Marks the entity for the network. The only component `collectReplicated()` reads |
+| `Replicated` | `NetId netId`, `EntityKind kind`, `uint8_t variant` | Marks the entity for the network: `collectReplicated()` sends one entry per entity that has it |
 | `PlayerShip` | `uint8_t playerId`, `InputButtons buttons`, `float invulnerableFor` | Present only on player ships |
 | `Weapon` | `float cooldown`, `float timer`, `Vec2f muzzleOffset`, `float projectileSpeed`, `Vec2f aim`, `bool triggered` | Fires when `triggered` is set and `timer` ≤ 0. `aim` is the unit direction of the next shot: (1, 0) for a ship, set by `aimedShooterSystem` for an enemy |
 | `StraightMover` | `float speed` | Moves left at `speed` |
@@ -65,7 +65,15 @@ classDiagram
         +collectReplicated(std::vector~ReplicatedEntity~&) void
         +reserveSlot() std::optional~uint8_t~
         +roster() PlayerRoster const&
+        +phase() Phase
         +tick() uint32_t
+        -handle(JoinPlayer const&) void
+        -handle(LeavePlayer const&) void
+        -handle(SetInput const&) void
+    }
+    class GameWorldTestAccess {
+        <<tests only>>
+        +registry(GameWorld&)$ Registry&
     }
     class PlayerRoster {
         -std::array~std::optional~PlayerSlot~, 4~ _slots
@@ -135,6 +143,7 @@ classDiagram
         see Rules and tuning values
     }
     GameWorld *-- Registry
+    GameWorldTestAccess ..> GameWorld : friend
     Registry o-- PlayerRoster : resource
     Registry o-- NetIdAllocator : resource
     Registry o-- EventOutbox : resource
@@ -159,7 +168,17 @@ classDiagram
 | `EventOutbox` | every system that emits a `GameEvent` |
 | `engine::ecs::DeltaTime` | every system that moves or counts down; set by `step(dt)` |
 
-- **Commands.** `JoinPlayer{playerId, name}` spawns a ship in the reserved slot with 3 lives. `LeavePlayer{playerId, reason}` destroys the ship and that player's missiles and frees the slot. `SetInput{playerId, inputSequence, buttons}` is ignored unless `inputSequence` is newer than the slot's `lastInputSequence`.
+- **Commands.** `apply` visits the `PlayerCommand` with one private `handle` overload per alternative, so a command type without a handler doesn't compile. Commands run outside any stage, between two `step` calls.
+
+    | Command | Effect |
+    | --- | --- |
+    | `JoinPlayer{playerId, name}` | `roster.join(…, rules.playerLives)`, or `roster.joinWaiting` during a game over, then `PlayerJoined`. A slot that wasn't reserved is refused by the roster (with an error logged), and no event is emitted |
+    | `LeavePlayer{playerId, reason}` | Kills the ship and every missile whose `Projectile::ownerPlayerId` is that player, frees the slot, then `PlayerLeft`. Other players' ships and missiles are untouched. A free slot does nothing. The NetIds are released by `netIdCleanupSystem` on the next step |
+    | `SetInput{playerId, inputSequence, buttons}` | Ignored unless `inputSequence` is newer than the slot's `lastInputSequence`. Otherwise copies `buttons` into the ship's `PlayerShip::buttons`, read by `playerInputSystem` on the next step. Without a ship (RESPAWNING or OUT) only the sequence is kept: the next INPUT, 16 ms later, carries the buttons again |
+
+- **Joining, step by step.** The server calls `reserveSlot()` when a client connects, then `apply(JoinPlayer)`: the slot goes EMPTY → RESPAWNING with a respawn timer of 0, and `PlayerJoined` is in the outbox at once. No ship exists yet. On the next `step`, `respawnSystem` (row 12) spawns the ship at `rules.playerSpawn[playerId]` and the slot becomes ALIVE, so the ship is in the next `collectReplicated`. `spawnDirectorSystem` (row 11) runs before it, so the first Bydos waits one more tick.
+- **`step(dt)`** writes `dt` into `DeltaTime`, runs the `SIMULATION` stage, then increments `tick()`. Every kill and spawn of the tick is applied when it returns.
+- **`phase()`** returns `GamePhase::phase()`: PLAYING or GAME_OVER.
 - **Events** say *why* something happened, for sounds, effects and banners. They are values with no references into the registry, so the adapter can keep them after `step()` returns:
 
     | Event | Fields | Emitted by |
@@ -174,10 +193,11 @@ classDiagram
 
 - **State is not an event.** Spawns, moves, deaths and roster changes reach clients through snapshots, not through events. A lost event only costs a sound or a banner, never a wrong world ([ADR 0002](../decisions/0002-state-based-replication.md)).
 - **This is the Mediator pattern the subject recommends.** Systems never call the network or the audio. They push events into `EventOutbox`, and whatever owns the world decides what each event means: the server sends packets, and a future local mode could play sounds.
-- `collectReplicated()` fills a caller-owned vector with one `ReplicatedEntity{netId, kind, variant, position, velocity}` per entity that has `Replicated`. The server's `SnapshotBuilder` turns it into SNAPSHOT chunks. A player who joins mid-game gets the full world from their first snapshot, with no special case.
+- `collectReplicated()` clears a caller-owned vector, then fills it with one `ReplicatedEntity{netId, kind, variant, position, velocity}` per entity that has `Replicated`. The position comes from `Transform` and the velocity from `Velocity`, with a zero vector if the entity lacks one. Clearing instead of reallocating lets the server pass the same vector every tick and keep its capacity. The server's `SnapshotBuilder` turns it into SNAPSHOT chunks. A player who joins mid-game gets the full world from their first snapshot, with no special case.
 - `PlayerRoster` is a resource, not a component, because lives and score must outlast the ship entity, which is destroyed and spawned again on each death.
 - `NetIdAllocator::find` only returns an entity that is still alive, thanks to generational handles. `releaseDead` forgets the NetIds of dead entities. NetIds are never reused during a run, and running out of the 2³² − 1 values throws `engine::core::EngineError`.
 - `EventOutbox::drain` returns the events in push order and leaves the outbox empty. Every event and command struct has a defaulted `operator==`, so tests compare whole lists.
+- **`GameWorldTestAccess`** is only declared in `GameWorld.hpp`, as a friend. `tests/game/GameWorldTestAccess.hpp` defines it with a static `registry(GameWorld &)`, so tests can place entities and read components. Nothing outside the tests defines it, so release code can't reach the registry.
 - **Why `std::variant` for events and commands,** and not command classes with a factory: the set is closed and known at compile time, the values need no allocation, and `std::visit` refuses to compile if a case is forgotten. The Factory pattern ([ADR 0003](../decisions/0003-command-factory-handlers.md)) is for keys that arrive at run time: the network messages.
 
 ### State machines
@@ -220,7 +240,7 @@ stateDiagram-v2
 
 ## Systems and tick order
 
-`GameWorld::step(dt)` sets the `DeltaTime` resource (`dt = 1/60 s`) and runs the `SIMULATION` stage. Its systems were added in the order below, and the order is part of the specification: moving a system changes the game. Kills and spawns requested inside a view loop go through `registry.commands()`, which the registry applies after each system ([engine: command buffer](engine.md#command-buffer)).
+`GameWorld::step(dt)` sets the `DeltaTime` resource (`dt = 1/60 s`) and runs the `SIMULATION` stage. Its systems were added in the order below, each named after its function without the `System` suffix (`"playerInput"`, `"straightMover"`…, as `registry.systemNames(Stage::SIMULATION)` returns them and the trace log prints them), and the order is part of the specification: moving a system changes the game. Kills and spawns requested inside a view loop go through `registry.commands()`, which the registry applies after each system ([engine: command buffer](engine.md#command-buffer)).
 
 | # | System | Reads | Writes | Behaviour |
 | --- | --- | --- | --- | --- |
@@ -241,7 +261,7 @@ stateDiagram-v2
 
 A system declares the storages it iterates in its signature, and reads the others through `getComponent` (for example `healthSystem` reads `LastHit`, `ScoreValue`, `PlayerShip` and `Transform`). The Reads and Writes columns list both.
 
-**Randomness** (random spawn position, sine parameters, fire timers) comes only from the `Rng` resource. With a fixed `--seed` and the same commands at the same ticks, the simulation produces the same events, which makes a determinism test possible later ([handbook](../handbook/development.md#other-kinds-of-tests-later)).
+**Randomness** (random spawn position, sine parameters, fire timers) comes only from the `Rng` resource. With a fixed `--seed` and the same commands at the same ticks, the simulation produces the same events and the same replicated entities, bit for bit: `DeterminismTests.cpp` checks it (see [Scenario and determinism tests](#scenario-and-determinism-tests)).
 
 **Prediction helper.** The motion helpers in `rtype/game/Motion.hpp` are pure functions: no registry, no resource, no randomness.
 
@@ -402,3 +422,40 @@ One game unit is one pixel of the 1280 × 720 logical screen, and sprites are dr
 
 **Telling players apart (requirement F-12).** Player 0 is cyan, player 1 magenta, player 2 green and player 3 red. These are the colour rows of the provided sprite sheet. Every ship also shows a `P1`–`P4` label, so players stay distinguishable without relying on colour ([accessibility](../architecture/accessibility.md)).
 
+## Scenario and determinism tests
+
+The unit tests check one system or one resource at a time. These tests drive a whole `GameWorld` the way the server does, with commands, `step(1/60)` and `drainEvents()` only, to prove the parts work together and the game is reproducible.
+
+**`tests/game/ScriptedGame.hpp`** gives a script runner:
+
+```cpp
+struct ScriptedStep { std::uint32_t tick; PlayerCommand command; };
+struct ScriptedResult {
+    std::vector<std::pair<std::uint32_t, GameEvent>> events;
+    std::vector<std::vector<ReplicatedEntity>> replicated;
+};
+
+ScriptedResult runScript(std::uint32_t seed, const std::vector<ScriptedStep> &script,
+    std::uint32_t ticks, bool recordReplicated = false);
+```
+
+- It builds a `GameWorld{Rules{}, seed}`. Before each step, it applies the commands whose `tick` is the number of steps already played (tick 0 before the first step), in script order, so the script must be sorted by tick.
+- Each drained event is kept with the tick of the step that drained it. With `recordReplicated`, the replicated entities are kept after every step.
+- A `JoinPlayer` first calls `reserveSlot()`, as the server does when a client connects. The reserved id must be the command's `playerId`, so a script joins its players in slot order.
+
+**Scenarios** (`ScenarioTests.cpp`) use a fixture holding one `GameWorld`. It holds the spawn director back (`SpawnDirectorState::untilNextSpawn` set very high) so a random Bydos or its missile can't change the outcome, and places the entities each scenario needs through `GameWorldTestAccess` and the [builders](#builders):
+
+| Scenario | What it proves |
+| --- | --- |
+| Join and move | No ship before the first step after `JoinPlayer`, one after it. With RIGHT held for 60 ticks, the ship's position equals `movePlayer` exactly at every tick, so the client's prediction matches the server |
+| Shoot a Bydos | A Bydos placed on the ship's lane, FIRE held: the first `Fired` (shooter the ship, side PLAYER) comes before `EnemyKilled`, whose `killerShip` is that shot's missile; the player's score is `killScore` |
+| Die and respawn | An enemy missile placed in front of the ship once its protection is over: `PlayerKilled`, 2 lives, RESPAWNING. The ship is back 119 ticks after the death tick (the respawn timer counts down in the death tick too), at its lane, with `respawnInvulnerability` |
+| Game over and restart | One Bydos kill, then 3 deaths: `GameOver` once, with a team score of `killScore`, and the phase is GAME_OVER. `GameRestarted` comes 300 ticks (`gameOverResetDelay`) after `GameOver`, and the ship is back the tick after with 3 lives and a score of 0 |
+| Join during a game over | `PlayerJoined`, the slot is OUT with 0 lives and the game stays over. After the restart, both players are ALIVE together |
+| Leave mid-game | Both players firing, player 1 leaves: their ship and missiles are gone at once, `PlayerLeft` is drained, player 0 keeps the same ship and all its missiles, and the game goes on |
+
+**Determinism** (`DeterminismTests.cpp`) uses one script: 4 joins on ticks 0–3, then every 15 ticks random buttons for every player still in the game, drawn from an `Rng` with its own fixed seed, and player 2 leaving at tick 2404, over 3600 ticks (one minute).
+
+- **Same seed, twice:** the event lists and the replicated entities after every tick are equal. The test first checks that shots and kills happened, so an empty game can't pass it.
+- **Two seeds:** the positions where the Bydos first appear differ, so the seed really drives the randomness.
+- **The comparison is exact (`==`),** floats included: the same binary with the same inputs must give the same bits. It doesn't compare runs across compilers or platforms, whose floating-point results may differ.
