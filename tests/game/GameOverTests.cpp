@@ -86,7 +86,7 @@ TEST_F(GameOverFlow, AllSlotsOutEndsTheGameThenRestartsItAfterFiveSeconds)
     }
     EXPECT_TRUE(waiting.empty());
     EXPECT_TRUE(_registry.isAlive(leftovers.bydos));
-    EXPECT_EQ(slot(0).state, SlotState::OUT);
+    EXPECT_EQ(slot(0).state, SlotState::SLOT_OUT);
 
     director().elapsed = 42.0F;
     tick();
