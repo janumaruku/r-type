@@ -124,12 +124,29 @@ private:
     ClientLogLimiter _logs;
 };
 
+/**
+ * @brief Decodes a WELCOME and hands it to @ref ConnectingScene::onWelcome.
+ */
 class WelcomeCommand: public IConnectCommand {
-    /* execute, create */
+public:
+    bool execute(ConnectingScene &scene, net::Packet &packet) override;
+
+    bool operator()(ConnectingScene &scene, net::Packet &packet) override;
+
+    [[nodiscard]] static std::unique_ptr<IConnectCommand> create();
 };
 
+/**
+ * @brief Decodes a REJECT and hands its reason to
+ * @ref ConnectingScene::onReject.
+ */
 class RejectCommand: public IConnectCommand {
-    /* execute, create */
+public:
+    bool execute(ConnectingScene &scene, net::Packet &packet) override;
+
+    bool operator()(ConnectingScene &scene, net::Packet &packet) override;
+
+    [[nodiscard]] static std::unique_ptr<IConnectCommand> create();
 };
 }
 
