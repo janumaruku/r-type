@@ -1,3 +1,5 @@
+#include <exception>
+#include <stdexcept>
 #include <utility>
 #include <csignal>
 
@@ -7,6 +9,7 @@
 #include "ServerConfig.hpp"
 
 namespace {
+
 rtype::server::ServerApp *g_app = nullptr;
 
 void stopServer(int)
@@ -19,9 +22,8 @@ void stopServer(int)
 int main(int argc, char *argv[])
 {
     rtype::server::ServerConfig config;
-    const int result = parse(argc, argv, config);
-    if (result != 0)
-        return result;
+    if (const auto result = parse(argc, argv, config))
+        return result.value();
     try {
         rtype::server::ServerApp app(config);
         g_app = &app;
