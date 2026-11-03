@@ -8,7 +8,9 @@
 #include "ServerNetworkAdapter.hpp"
 
 #include <cassert>
+#include <chrono>
 #include <string>
+#include <thread>
 
 #include "Conversions.hpp"
 #include "rtype/protocol/Header.hpp"
@@ -21,6 +23,8 @@ namespace rtype::server {
 using protocol::classify;
 
 namespace {
+constexpr std::uint8_t SHUTDOWN_COPIES = 3;
+constexpr std::chrono::milliseconds SHUTDOWN_INTERVAL{20};
 
 void incrementErrorStat(AdapterStats &stats, protocol::DecodeError code)
 {
@@ -264,13 +268,20 @@ void ServerNetworkAdapter::flushGoodbyes()
         _socket.sendTo(endpoint, packet);
 }
 
-void ServerNetworkAdapter::broadcastShutdown()
+std::size_t ServerNetworkAdapter::broadcastShutdown()
 {
     const protocol::Shutdown shutdown;
-    for (auto &[endpoint, session] : _sessions.all()) {
-        (void)endpoint;
-        for (int copy = 0; copy != 3; ++copy)
+    std::size_t sent = 0;
+
+    for (std::uint8_t copy = 0; copy != SHUTDOWN_COPIES; ++copy) {
+        if (copy != 0)
+            std::this_thread::sleep_for(SHUTDOWN_INTERVAL);
+        for (auto &[endpoint, session] : _sessions.all()) {
+            (void)endpoint;
             sendTo(session, protocol::MessageType::SHUTDOWN, shutdown);
+            ++sent;
+        }
     }
+    return sent;
 }
 } // namespace rtype::server

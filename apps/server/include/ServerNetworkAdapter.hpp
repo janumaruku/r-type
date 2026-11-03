@@ -87,7 +87,14 @@ public:
     void flushEvents();
     void sendSnapshots();
     void flushGoodbyes();
-    void broadcastShutdown();
+    /**
+     * @brief Sends SHUTDOWN to every session 3 times, 20 ms apart, then
+     * returns. The only place outside the tick that sends, and it blocks
+     * for 40 ms.
+     * @return How many datagrams it handed to the socket, so the caller can
+     * wait for them to leave before stopping the socket.
+     */
+    [[nodiscard]] std::size_t broadcastShutdown();
 
 private:
     void registerCommands() noexcept;
