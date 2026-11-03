@@ -55,7 +55,7 @@ struct EventConverter {
     OutgoingEvent operator()(const game::PlayerLeft &value) const
     {
         return makeOutgoing(protocol::EventType::PLAYER_LEFT, value.playerId,
-            toUnderlying(value.reason));
+            toUnderlying(toProtocol(value.reason)));
     }
 
     OutgoingEvent operator()(const game::GameOver &value) const

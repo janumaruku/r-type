@@ -30,6 +30,48 @@ public:
     }
 };
 
+class RefusingCommand final: public rtype::server::IServerCommand {
+public:
+    static std::unique_ptr<rtype::server::IServerCommand> create()
+    {
+        return std::make_unique<RefusingCommand>();
+    }
+
+    bool execute(rtype::server::ServerNetworkAdapter &,
+        rtype::server::IncomingMessage &) override
+    {
+        return false;
+    }
+
+    bool operator()(rtype::server::ServerNetworkAdapter &adapter,
+        rtype::server::IncomingMessage &message) override
+    {
+        return execute(adapter, message);
+    }
+};
+
+TEST(CommandsTests, RefusedMessageCountsOneOutOfRangeOffence)
+{
+    net::UdpSocket socket(0);
+    socket.start();
+    game::GameWorld world(game::Rules{}, 1);
+    rtype::server::SessionManager sessions;
+    rtype::server::ServerCommandFactory commands;
+    commands.registerCreator<RefusingCommand>(proto::MessageType::INPUT);
+    rtype::server::ServerNetworkAdapter adapter(socket, world, sessions,
+        &commands);
+    const auto from = endpointFor(23);
+    ASSERT_EQ(world.reserveSlot(), 0);
+    sessions.add(from, 0, "Player", {});
+
+    adapter.handle(datagram(from, proto::MessageType::INPUT,
+        proto::Input{}), {});
+
+    EXPECT_EQ(adapter.stats().totalOutOfRange, 1U);
+    EXPECT_NE(sessions.find(from), nullptr);
+    socket.stop();
+}
+
 TEST(CommandsTests, InputIsAppliedToAJoinedPlayer)
 {
     Fixture fixture;

@@ -28,7 +28,7 @@ struct IncomingMessage;
 
 struct AdapterStats {
     std::uint32_t totalDatagramsHandled = 0;
-    std::uint32_t toatBadSize           = 0;
+    std::uint32_t totalBadSize          = 0;
     std::uint32_t totalBadMagic         = 0;
     std::uint32_t totalUnknownType      = 0;
     std::uint32_t totalWrongDirection   = 0;

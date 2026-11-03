@@ -30,7 +30,7 @@ constexpr std::chrono::milliseconds SHUTDOWN_INTERVAL{20};
 void incrementErrorStat(AdapterStats &stats, protocol::DecodeError code)
 {
     switch (code) {
-    case protocol::DecodeError::BAD_SIZE: ++stats.toatBadSize; break;
+    case protocol::DecodeError::BAD_SIZE: ++stats.totalBadSize; break;
     case protocol::DecodeError::BAD_MAGIC: ++stats.totalBadMagic; break;
     case protocol::DecodeError::UNKNOWN_TYPE: ++stats.totalUnknownType; break;
     case protocol::DecodeError::WRONG_DIRECTION: ++stats.totalWrongDirection; break;
@@ -144,7 +144,6 @@ void ServerNetworkAdapter::handlePacketError(
     const net::PacketError &error, TimePoint now)
 {
     const auto code = classify(error);
-    incrementErrorStat(_stats, code);
 
     if (shouldLog(datagram.from, code, now)) {
         if (session == nullptr && isQuiet(code))
@@ -154,6 +153,8 @@ void ServerNetworkAdapter::handlePacketError(
     }
     if (session != nullptr)
         countOffence(*session, code, now);
+    else
+        incrementErrorStat(_stats, code);
 }
 
 /*
@@ -202,14 +203,17 @@ void ServerNetworkAdapter::handleUnexpectedError(ClientSession *session,
         kick(session->endpoint, protocol::KickReason::PROTOCOL_ERROR);
 }
 
+/*
+** Every rejected datagram is counted once in the stats under its code: here
+** when it comes from a session (a decode error, or a command that refused
+** the message with OUT_OF_RANGE), in handlePacketError otherwise.
+*/
 void ServerNetworkAdapter::countOffence(ClientSession &session,
     protocol::DecodeError code, TimePoint now)
 {
-    if (!session.offences.record(now)) {
+    incrementErrorStat(_stats, code);
+    if (!session.offences.record(now))
         kick(session.endpoint, protocol::KickReason::PROTOCOL_ERROR);
-        return;
-    }
-    (void)code;
 }
 
 void ServerNetworkAdapter::removeClient(const asio::ip::udp::endpoint &endpoint,
@@ -291,8 +295,12 @@ void ServerNetworkAdapter::sendSnapshots()
 
     for (auto &[endpoint, session] : _sessions.all()) {
         (void)endpoint;
+        const auto *const slot = _world.roster().get(session.playerId);
+        const std::uint32_t processed =
+            slot != nullptr ? slot->lastInputSequence : 0;
+
         for (auto &chunk : chunks) {
-            chunk.lastProcessedInput = session.lastProcessedInput;
+            chunk.lastProcessedInput = processed;
             sendTo(session, protocol::MessageType::SNAPSHOT, chunk);
         }
     }

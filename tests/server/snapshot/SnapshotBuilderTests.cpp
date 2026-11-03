@@ -107,10 +107,15 @@ TEST(SnapshotBuilderTests, SendSnapshotsUsesEachSessionsProcessedInput)
     asio::io_context io;
     asio::ip::udp::socket first(io, {asio::ip::address_v4::loopback(), 0});
     asio::ip::udp::socket second(io, {asio::ip::address_v4::loopback(), 0});
-    auto &firstSession = sessions.add(first.local_endpoint(), 0, "one", {});
-    auto &secondSession = sessions.add(second.local_endpoint(), 1, "two", {});
-    firstSession.lastProcessedInput = 10;
-    secondSession.lastProcessedInput = 20;
+    for (std::uint8_t playerId = 0; playerId != 2; ++playerId) {
+        ASSERT_EQ(world.reserveSlot(), playerId);
+        world.apply(rtype::game::JoinPlayer{.playerId = playerId,
+            .name = playerId == 0 ? "one" : "two"});
+    }
+    (void)sessions.add(first.local_endpoint(), 0, "one", {});
+    (void)sessions.add(second.local_endpoint(), 1, "two", {});
+    world.apply(rtype::game::SetInput{.playerId = 0, .inputSequence = 10, .buttons = {}});
+    world.apply(rtype::game::SetInput{.playerId = 1, .inputSequence = 20, .buttons = {}});
     for (std::uint32_t id = 1; id <= 60; ++id)
         rtype::game::GameWorldTestAccess::addEntity(
             world, id, EntityKind::BYDOS_SLAVE);

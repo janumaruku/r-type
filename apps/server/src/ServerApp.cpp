@@ -100,7 +100,7 @@ void ServerApp::logStats()
     _world.collectReplicated(entities);
     const auto socket = _socket.stats();
     const auto &adapter = _adapter.stats();
-    const auto offences = adapter.totalBadMagic + adapter.toatBadSize +
+    const auto offences = adapter.totalBadMagic + adapter.totalBadSize +
         adapter.totalUnknownType + adapter.totalWrongDirection +
         adapter.totalTruncated + adapter.totalTrailingBytes +
         adapter.totalOutOfRange;
