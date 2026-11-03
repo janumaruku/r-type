@@ -11,6 +11,8 @@ namespace rtype::server {
 
 namespace {
 constexpr std::chrono::milliseconds SEND_TIMEOUT{200};
+constexpr std::chrono::nanoseconds TICK_PERIOD =
+    std::chrono::nanoseconds(std::chrono::seconds(1)) / 60;
 
 ServerConfig withSeed(ServerConfig config)
 {
@@ -25,7 +27,7 @@ ServerApp::ServerApp(ServerConfig config):
     _socket(_config.port),
     _world(game::Rules{}, *_config.seed),
     _adapter(_socket, _world, _sessions),
-    _ticker(std::chrono::milliseconds(1000 / 60))
+    _ticker(TICK_PERIOD)
 {
     engine::core::log::setLevel(_config.logLevel);
     _logger.info("server seed {}", *_config.seed);
