@@ -129,6 +129,40 @@ TEST(DispatchTests, ShutdownGoesToEverySessionThreeTimesTwentyMsApart)
     EXPECT_TRUE(server_test::receive(fixture.client, 1, 50ms).empty());
 }
 
+/*
+** A HELLO header with no body: TRUNCATED, which is logged even from an
+** address with no session.
+*/
+net::Datagram truncatedHello(const asio::ip::udp::endpoint &from)
+{
+    auto hello = datagram(from, proto::MessageType::HELLO,
+        proto::Hello{.playerName = "x"});
+
+    hello.bytes.resize(proto::Header::SIZE + 1);
+    return hello;
+}
+
+asio::ip::udp::endpoint stranger(unsigned index)
+{
+    return {asio::ip::address_v4(0x0A000000U + index), 4242};
+}
+
+TEST(DispatchTests, LogLimiterStaysBoundedUnderAFloodOfAddresses)
+{
+    using Adapter = rtype::server::ServerNetworkAdapter;
+    Fixture fixture;
+
+    for (unsigned i = 0; i != Adapter::MAX_LOG_ENTRIES + 500; ++i)
+        fixture.send(truncatedHello(stranger(i)));
+    EXPECT_EQ(fixture.adapter.loggedAddresses(), Adapter::MAX_LOG_ENTRIES);
+    EXPECT_EQ(fixture.adapter.stats().totalTruncated,
+        Adapter::MAX_LOG_ENTRIES + 500);
+
+    fixture.now += 2s;
+    fixture.send(truncatedHello(stranger(100000)));
+    EXPECT_EQ(fixture.adapter.loggedAddresses(), 1U);
+}
+
 TEST(DispatchTests, VersionMismatchesAreRejected)
 {
     Fixture fixture;

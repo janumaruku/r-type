@@ -8,6 +8,11 @@
 #ifndef SERVER_NETWORK_ADAPTER_HPP
 #define SERVER_NETWORK_ADAPTER_HPP
 
+#include <cstddef>
+#include <map>
+#include <optional>
+#include <utility>
+
 #include "EventRepeater.hpp"
 #include "Goodbyes.hpp"
 #include "SnapshotBuilder.hpp"
@@ -36,6 +41,7 @@ struct AdapterStats {
 class ServerNetworkAdapter {
 public:
     static constexpr std::uint32_t FIRST_SEQUENCE = 1;
+    static constexpr std::size_t MAX_LOG_ENTRIES = 1024;
 
     explicit ServerNetworkAdapter(::net::UdpSocket &socket,
         game::GameWorld &world, SessionManager &sessions,
@@ -83,6 +89,12 @@ public:
     [[nodiscard]] SessionManager &sessions() noexcept;
     [[nodiscard]] const AdapterStats &stats() const noexcept;
 
+    /**
+     * @brief How many (address, error code) pairs the log limiter remembers,
+     * never more than @ref MAX_LOG_ENTRIES. For tests.
+     */
+    [[nodiscard]] std::size_t loggedAddresses() const noexcept;
+
     void publish(const std::vector<game::GameEvent> &events);
     void flushEvents();
     void sendSnapshots();
@@ -108,6 +120,8 @@ private:
         const std::exception &error);
     void countOffence(ClientSession &session, protocol::DecodeError code,
         TimePoint now);
+    [[nodiscard]] bool shouldLog(const asio::ip::udp::endpoint &from,
+        protocol::DecodeError code, TimePoint now);
 
     net::UdpSocket &_socket;
     game::GameWorld &_world;
@@ -115,9 +129,10 @@ private:
     ServerCommandFactory _defaultCommands;
     ServerCommandFactory *_commands;
     RejectLimiter _rejects;
-    std::map<asio::ip::udp::endpoint,
-        std::map<protocol::DecodeError, TimePoint>>
+    std::map<std::pair<asio::ip::udp::endpoint, protocol::DecodeError>,
+        TimePoint>
         _lastProtocolLogs;
+    std::optional<TimePoint> _lastPrune;
     AdapterStats _stats;
     engine::core::log::Logger _logger{"Server"};
     EventRepeater _repeater;
