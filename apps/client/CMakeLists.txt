@@ -4,6 +4,7 @@ add_library(client_logic STATIC
         src/ConnectingScene.cpp
         src/GameEventBus.cpp
         src/GameCommands.cpp
+        src/SnapshotAssembler.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)

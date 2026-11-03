@@ -12,6 +12,7 @@
 #include <map>
 #include <optional>
 #include <cstdint>
+#include "rtype/protocol/Snapshot.hpp"
 
 namespace rtype::client {
 class SnapshotAssembler {
