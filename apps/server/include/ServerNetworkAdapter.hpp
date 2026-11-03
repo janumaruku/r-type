@@ -11,7 +11,6 @@
 #include "EventRepeater.hpp"
 #include "Goodbyes.hpp"
 #include "SnapshotBuilder.hpp"
-#include "engine/core/FactoryTemplate.hpp"
 #include "network/UdpSocket.hpp"
 #include "rtype/game/GameWorld.hpp"
 #include "rtype/protocol/Messages.hpp"

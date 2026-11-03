@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "engine/core/Logger.hpp"
-#include "rtype/game/GameWorld.hpp"
 #include "rtype/protocol/Event.hpp"
 
 namespace rtype::server {
