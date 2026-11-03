@@ -37,7 +37,7 @@ struct ServerConfig {
    // [[nodiscard]] static ServerConfig parse(int argc, char *const argv[]);
 };
 
-int parse(int argc, char *const argv[], ServerConfig &config);
+std::optional<int> parse(int argc, char *const argv[], ServerConfig &config);
 
 }
 #endif

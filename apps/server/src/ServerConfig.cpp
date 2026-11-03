@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <optional>
 #include <string>
 #include <system_error>
 #include <type_traits>
@@ -21,7 +22,7 @@
 #include "engine/core/Logger.hpp"
 
 namespace rtype::server {
-int parse(int argc, char *const argv[], ServerConfig &serverConfig)
+std::optional<int> parse(int argc, char *const argv[], ServerConfig &serverConfig)
 {
     CLI::App app{"R-type game server", "rtype-server"};
 
@@ -67,6 +68,6 @@ int parse(int argc, char *const argv[], ServerConfig &serverConfig)
         std::cout << e.what() << "\n\n" << app.help() << std::endl;
         return EPITECH_EXIT_FAIL;
     }
-    return 0;
+    return std::nullopt;
 }
 } // namespace rtype::server

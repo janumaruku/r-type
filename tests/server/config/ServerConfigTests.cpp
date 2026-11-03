@@ -74,7 +74,7 @@ ParseResult parseArgs(std::initializer_list<std::string_view> args)
         exitCode = rtype::server::parse(
             static_cast<int>(argv.size()),
             argv.data(),
-            config);
+            config).value();
     }
 
     return {exitCode, config, output.str()};
