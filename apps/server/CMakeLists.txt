@@ -1,5 +1,6 @@
 add_library(server_logic STATIC
     src/ServerConfig.cpp
+    src/ServerApp.cpp
     src/RateLimits.cpp
     src/Session.cpp
     src/Conversions.cpp
