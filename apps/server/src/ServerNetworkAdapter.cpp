@@ -23,6 +23,7 @@ namespace rtype::server {
 using protocol::classify;
 
 namespace {
+constexpr std::chrono::seconds LOG_INTERVAL{1};
 constexpr std::uint8_t SHUTDOWN_COPIES = 3;
 constexpr std::chrono::milliseconds SHUTDOWN_INTERVAL{20};
 
@@ -145,10 +146,7 @@ void ServerNetworkAdapter::handlePacketError(
     const auto code = classify(error);
     incrementErrorStat(_stats, code);
 
-    auto &lastLogged = _lastProtocolLogs[datagram.from][code];
-    if (lastLogged == TimePoint{} ||
-        now - lastLogged >= std::chrono::seconds(1)) {
-        lastLogged = now;
+    if (shouldLog(datagram.from, code, now)) {
         if (session == nullptr && isQuiet(code))
             _logger.debug(error.what());
         else
@@ -156,6 +154,44 @@ void ServerNetworkAdapter::handlePacketError(
     }
     if (session != nullptr)
         countOffence(*session, code, now);
+}
+
+/*
+** At most one line per second per address and code. Anyone can send from
+** any address, so the table is bounded: when it's full, the entries older
+** than a second (which would allow a line anyway) are removed, at most once
+** a second so a flood of new addresses can't make every datagram scan it.
+** If it's still full, the new address isn't logged: the stats still count it.
+*/
+bool ServerNetworkAdapter::shouldLog(const asio::ip::udp::endpoint &from,
+    protocol::DecodeError code, TimePoint now)
+{
+    const auto key = std::pair{from, code};
+    const auto it = _lastProtocolLogs.find(key);
+
+    if (it != _lastProtocolLogs.end()) {
+        if (now - it->second < LOG_INTERVAL)
+            return false;
+        it->second = now;
+        return true;
+    }
+    if (_lastProtocolLogs.size() >= MAX_LOG_ENTRIES) {
+        if (_lastPrune && now - *_lastPrune < LOG_INTERVAL)
+            return false;
+        _lastPrune = now;
+        std::erase_if(_lastProtocolLogs, [now](const auto &entry) {
+            return now - entry.second >= LOG_INTERVAL;
+        });
+        if (_lastProtocolLogs.size() >= MAX_LOG_ENTRIES)
+            return false;
+    }
+    _lastProtocolLogs.emplace(key, now);
+    return true;
+}
+
+std::size_t ServerNetworkAdapter::loggedAddresses() const noexcept
+{
+    return _lastProtocolLogs.size();
 }
 
 void ServerNetworkAdapter::handleUnexpectedError(ClientSession *session,
