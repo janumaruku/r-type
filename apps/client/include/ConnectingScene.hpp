@@ -125,6 +125,8 @@ public:
      */
     void onEnter(FrameContext &context) override;
 
+    void onExit(FrameContext &context) override;
+
     // the 3 other IScene functions
 private:
     void registerCommands() noexcept;
