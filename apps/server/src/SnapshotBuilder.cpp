@@ -34,14 +34,14 @@ std::vector<protocol::EntityState> convertEntities(
 }
 }
 
-const std::vector<protocol::Snapshot> &SnapshotBuilder::
-    build(const game::GameWorld &world, std::uint32_t lastProcessedInput)
+std::vector<protocol::Snapshot> &SnapshotBuilder::build(
+    const game::GameWorld &world)
 {
     world.collectReplicated(_entities);
     const auto roster = rosterToProtocol(world.roster());
     protocol::Snapshot s{
         .serverTick = world.tick(),
-        .lastProcessedInput = lastProcessedInput,
+        .lastProcessedInput = 0,
         .roster = std::vector<protocol::PlayerInfo>(roster.begin(), roster.end()),
         .entities = convertEntities(_entities),
     };

@@ -44,7 +44,7 @@ TEST(SnapshotBuilderTests, BuildsRosterAndEntitiesThatDeserialize)
             world, id, EntityKind::BYDOS_SLAVE);
 
     SnapshotBuilder builder;
-    const auto &chunks = builder.build(world, 10);
+    const auto &chunks = builder.build(world);
 
     ASSERT_EQ(chunks.size(), 1U);
     EXPECT_EQ(chunks.front().roster.size(), 4U);
@@ -111,17 +111,27 @@ TEST(SnapshotBuilderTests, SendSnapshotsUsesEachSessionsProcessedInput)
     auto &secondSession = sessions.add(second.local_endpoint(), 1, "two", {});
     firstSession.lastProcessedInput = 10;
     secondSession.lastProcessedInput = 20;
+    for (std::uint32_t id = 1; id <= 60; ++id)
+        rtype::game::GameWorldTestAccess::addEntity(
+            world, id, EntityKind::BYDOS_SLAVE);
 
     adapter.sendSnapshots();
 
-    const auto firstPackets = server_test::receive(first, 1);
-    const auto secondPackets = server_test::receive(second, 1);
-    ASSERT_EQ(firstPackets.size(), 1U);
-    ASSERT_EQ(secondPackets.size(), 1U);
-    EXPECT_EQ(server_test::readMessage<rtype::protocol::Snapshot>(
-        firstPackets.front()).lastProcessedInput, 10U);
-    EXPECT_EQ(server_test::readMessage<rtype::protocol::Snapshot>(
-        secondPackets.front()).lastProcessedInput, 20U);
+    const auto firstPackets = server_test::receive(first, 2);
+    const auto secondPackets = server_test::receive(second, 2);
+    ASSERT_EQ(firstPackets.size(), 2U);
+    ASSERT_EQ(secondPackets.size(), 2U);
+    for (std::size_t chunk = 0; chunk != 2; ++chunk) {
+        const auto mine = server_test::readMessage<rtype::protocol::Snapshot>(
+            firstPackets[chunk]);
+        const auto theirs = server_test::readMessage<
+            rtype::protocol::Snapshot>(secondPackets[chunk]);
+
+        EXPECT_EQ(mine.lastProcessedInput, 10U) << "chunk " << chunk;
+        EXPECT_EQ(theirs.lastProcessedInput, 20U) << "chunk " << chunk;
+        EXPECT_EQ(mine.serverTick, theirs.serverTick);
+        EXPECT_EQ(mine.entities, theirs.entities);
+    }
     socket.stop();
 }
 
