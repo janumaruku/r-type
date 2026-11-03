@@ -21,7 +21,7 @@
 
 namespace rtype::server {
 
-constexpr std::uint8_t MAX_PLAYERS = 4;
+using protocol::MAX_PLAYERS;
 
 template <typename Enum>
 [[nodiscard]] constexpr std::underlying_type_t<Enum> toUnderlying(Enum value) noexcept

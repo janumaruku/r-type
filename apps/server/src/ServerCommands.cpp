@@ -67,8 +67,6 @@ bool InputCommand::execute(ServerNetworkAdapter &adapter,
     if (message.session == nullptr)
         return false;
     const auto input = protocol::decode<protocol::Input>(message.packet);
-    if (input.inputSequence > message.session->lastProcessedInput)
-        message.session->lastProcessedInput = input.inputSequence;
     adapter.world().apply(game::SetInput{message.session->playerId,
         input.inputSequence, toGame(input.buttons)});
     return true;

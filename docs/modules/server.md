@@ -58,7 +58,6 @@ classDiagram
         +uint8_t playerId
         +std::string name
         +TimePoint lastHeard
-        +uint32_t lastProcessedInput
         +uint32_t sendSequence
         +WindowCounter offences
         +FloodTracker datagrams
@@ -240,7 +239,7 @@ Adding a message type means one new command class and one `registerCreator` line
 6. `adapter.flushEvents()` sends one copy of every pending event to every session. An event with 3 copies goes out on 3 consecutive ticks with the same `eventId`.
 7. `adapter.flushGoodbyes()` sends the due copy of each queued KICK (see [Leaving](#joining-leaving-and-crashing)).
 8. Every 600 ticks (10 s), `logStats()` prints one line: players, entities, tick overruns, datagrams in and out, drops, offences and kicks.
-9. On even ticks (30 Hz), `adapter.sendSnapshots()`. `SnapshotBuilder` builds the snapshot **once** (the tick, the roster from `rosterToProtocol`, every entity through `toProtocol`) and splits it into chunks. Only `lastProcessedInput` differs between clients, so it's set on each chunk just before that client's copy is encoded. Each chunk is one datagram.
+9. On even ticks (30 Hz), `adapter.sendSnapshots()`. `SnapshotBuilder` builds the snapshot **once** (the tick, the roster from `rosterToProtocol`, every entity through `toProtocol`) and splits it into chunks. Only `lastProcessedInput` differs between clients, so it's set on each chunk just before that client's copy is encoded. It's the slot's `lastInputSequence`, which the game updates when it accepts a newer INPUT. Each chunk is one datagram.
 
 Every datagram sent to a session is numbered with that session's own sequence, starting at 1 (RFC § 4). A REJECT goes to an address with no session, so it's always sequence 1.
 

@@ -18,7 +18,6 @@ struct ClientSession {
     std::uint8_t playerId = 0;
     std::string name;
     TimePoint lastHeard;
-    std::uint32_t lastProcessedInput = 0;
     std::uint32_t sendSequence = 0;
     WindowCounter offences{10, std::chrono::seconds(1)};
     FloodTracker datagrams;

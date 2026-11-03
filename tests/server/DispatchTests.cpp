@@ -240,6 +240,8 @@ TEST(DispatchTests, ElevenMalformedDatagramsKickTheSession)
         fixture.send({std::vector<std::uint8_t>(malformed.bytes.begin(),
             malformed.bytes.end() - 1), from});
     EXPECT_EQ(fixture.sessions.find(from), nullptr);
+    EXPECT_EQ(fixture.adapter.stats().totalTruncated, 11U)
+        << "each bad datagram is counted once, not twice";
     const auto events = fixture.world.drainEvents();
     EXPECT_TRUE(std::any_of(events.begin(), events.end(),
         [](const game::GameEvent &event) {
@@ -283,7 +285,8 @@ TEST(DispatchTests, ThreeFloodedSecondsKickTheSession)
             const auto *const session = fixture.sessions.find(from);
 
             ASSERT_NE(session, nullptr);
-            EXPECT_EQ(session->lastProcessedInput, 240U)
+            EXPECT_EQ(fixture.world.roster().get(session->playerId)
+                    ->lastInputSequence, 240U)
                 << "the 60 INPUTs over 240 in one second are dropped";
         }
         if (second == 1)
