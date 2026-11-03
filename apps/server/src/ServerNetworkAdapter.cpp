@@ -91,6 +91,11 @@ bool ServerNetworkAdapter::allowDatagram(ClientSession *session,
     return false;
 }
 
+/*
+** A command can add the session (HELLO) or remove it (DISCONNECT), and
+** removing it frees `session`. So once the command has run, the session is
+** looked up again by address instead of going through the old pointer.
+*/
 void ServerNetworkAdapter::processDatagram(const ::net::Datagram &datagram,
     ClientSession *session, TimePoint now)
 {
@@ -116,13 +121,17 @@ void ServerNetworkAdapter::processDatagram(const ::net::Datagram &datagram,
         .packet = packet,
         .receivedAt = now,
     };
-    if (!_commands->create(header.type)->execute(*this, message)) {
-        if (session != nullptr)
-            countOffence(*session, protocol::DecodeError::OUT_OF_RANGE, now);
+    const bool accepted =
+        _commands->create(header.type)->execute(*this, message);
+    auto *const current = _sessions.find(datagram.from);
+
+    if (current == nullptr)
+        return;
+    if (!accepted) {
+        countOffence(*current, protocol::DecodeError::OUT_OF_RANGE, now);
         return;
     }
-    if (session != nullptr)
-        session->lastHeard = now;
+    current->lastHeard = now;
 }
 
 void ServerNetworkAdapter::handlePacketError(
