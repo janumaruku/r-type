@@ -185,20 +185,34 @@ TEST(DispatchTests, VersionMismatchesAreRejected)
 TEST(DispatchTests, FifthHelloIsRejected)
 {
     Fixture fixture;
+    const auto fifth = fixture.client.local_endpoint();
+
     for (unsigned i = 0; i != 4; ++i)
         fixture.send(datagram(endpointFor(i), proto::MessageType::HELLO,
             proto::Hello{.playerName = "Player"}));
-    fixture.send(datagram(endpointFor(4), proto::MessageType::HELLO,
+    fixture.send(datagram(fifth, proto::MessageType::HELLO,
         proto::Hello{.playerName = "Player"}));
     EXPECT_EQ(fixture.sessions.size(), 4U);
+    EXPECT_EQ(fixture.sessions.find(fifth), nullptr);
+
+    const auto replies = server_test::receive(fixture.client, 2, 100ms);
+
+    ASSERT_EQ(replies.size(), 1U);
+    EXPECT_EQ(server_test::readHeader(replies[0]).type,
+        proto::MessageType::REJECT);
+    EXPECT_EQ(readMessage<proto::Reject>(replies[0]).reason,
+        proto::RejectReason::SERVER_FULL);
 }
 
 TEST(DispatchTests, UnknownInputIsDropped)
 {
     Fixture fixture;
-    fixture.send(datagram(endpointFor(5), proto::MessageType::INPUT,
+    fixture.send(datagram(fixture.client.local_endpoint(),
+        proto::MessageType::INPUT,
         proto::Input{.inputSequence = 1, .buttons = proto::buttons::RIGHT}));
     EXPECT_EQ(fixture.sessions.size(), 0U);
+    EXPECT_TRUE(server_test::receive(fixture.client, 1, 50ms).empty());
+    EXPECT_EQ(fixture.adapter.stats().totalKicked, 0U);
 }
 
 TEST(DispatchTests, ShutdownFromSessionCountsWrongDirection)
@@ -257,13 +271,24 @@ TEST(DispatchTests, ThreeFloodedSecondsKickTheSession)
     fixture.send(datagram(from, proto::MessageType::HELLO,
         proto::Hello{.playerName = "Player"}));
     ASSERT_EQ(server_test::receive(fixture.client, 1).size(), 1U);
-    const auto input = datagram(from, proto::MessageType::INPUT,
-        proto::Input{});
+    std::uint32_t sequence = 0;
+
     for (int second = 0; second != 3; ++second) {
         fixture.now = rtype::server::TimePoint{} +
             std::chrono::seconds(second);
         for (int packet = 0; packet != 300; ++packet)
-            fixture.send(input);
+            fixture.send(datagram(from, proto::MessageType::INPUT,
+                proto::Input{.inputSequence = ++sequence}));
+        if (second == 0) {
+            const auto *const session = fixture.sessions.find(from);
+
+            ASSERT_NE(session, nullptr);
+            EXPECT_EQ(session->lastProcessedInput, 240U)
+                << "the 60 INPUTs over 240 in one second are dropped";
+        }
+        if (second == 1)
+            EXPECT_NE(fixture.sessions.find(from), nullptr)
+                << "2 flooded seconds aren't enough to kick";
     }
     EXPECT_EQ(fixture.sessions.find(from), nullptr);
     EXPECT_EQ(fixture.adapter.stats().totalKicked, 1U);
