@@ -39,6 +39,14 @@ void ConnectingScene::onEnter(FrameContext &context)
     }
 }
 
+/*
+** Nothing to do: on WELCOME the link was moved into the GameScene, otherwise
+** it's destroyed with this scene, and destroying it stops the socket.
+*/
+void ConnectingScene::onExit([[maybe_unused]] FrameContext &context)
+{
+}
+
 void ConnectingScene::onWelcome(const protocol::Welcome &welcome)
 {
     if (!_welcome)
