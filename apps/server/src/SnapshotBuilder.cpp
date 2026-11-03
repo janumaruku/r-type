@@ -7,29 +7,31 @@
 
 #include "SnapshotBuilder.hpp"
 
+#include <algorithm>
+#include <iterator>
 #include <vector>
 
 #include "Conversions.hpp"
 #include "rtype/protocol/Snapshot.hpp"
 
 namespace rtype::server {
-
-std::vector<protocol::EntityState> convertEntities(const std::vector<
-    game::ReplicatedEntity> &entities)
+namespace {
+/*
+** Goes through toProtocol, the one place that maps a ReplicatedEntity, so
+** no field (the variant, the player's colour) can be forgotten here.
+*/
+std::vector<protocol::EntityState> convertEntities(
+    const std::vector<game::ReplicatedEntity> &entities)
 {
     std::vector<protocol::EntityState> result;
+
     result.reserve(entities.size());
-    for (const auto &entity: entities) {
-        result.push_back(protocol::EntityState{
-            .netId = entity.netId,
-            .kind  = static_cast<protocol::EntityKind>(entity.kind),
-            .x     = entity.position.x(),
-            .y     = entity.position.y(),
-            .vx    = entity.velocity.x(),
-            .vy    = entity.velocity.y(),
+    std::ranges::transform(entities, std::back_inserter(result),
+        [](const game::ReplicatedEntity &entity) {
+            return toProtocol(entity);
         });
-    }
     return result;
+}
 }
 
 const std::vector<protocol::Snapshot> &SnapshotBuilder::

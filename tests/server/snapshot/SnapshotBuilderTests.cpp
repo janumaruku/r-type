@@ -7,11 +7,12 @@
 
 namespace rtype::game {
 struct GameWorldTestAccess {
-    static void addEntity(GameWorld &world, NetId netId, EntityKind kind)
+    static void addEntity(GameWorld &world, NetId netId, EntityKind kind,
+        std::uint8_t variant = 0)
     {
         const auto entity = world._registry.spawnEntity();
         world._registry.addComponent(entity,
-            Replicated{.netId = netId, .kind = kind});
+            Replicated{.netId = netId, .kind = kind, .variant = variant});
         world._registry.addComponent(entity,
             Transform{.position = engine::core::Vec2f{}});
         world._registry.addComponent(entity,
@@ -53,6 +54,30 @@ TEST(SnapshotBuilderTests, BuildsRosterAndEntitiesThatDeserialize)
     EXPECT_NO_THROW((void)server_test::readMessage<rtype::protocol::Snapshot>(
         {std::vector<std::uint8_t>(packet.bytes().begin(), packet.bytes().end()),
             server_test::endpointFor(1)}));
+}
+
+TEST(SnapshotBuilderTests, KeepsEachEntitysVariant)
+{
+    GameWorld world(rtype::game::Rules{}, 1);
+
+    for (std::uint8_t variant = 0; variant != 4; ++variant)
+        rtype::game::GameWorldTestAccess::addEntity(world, variant + 1U,
+            EntityKind::PLAYER_SHIP, variant);
+    rtype::game::GameWorldTestAccess::addEntity(world, 5,
+        EntityKind::BYDOS_SLAVE, 1);
+
+    SnapshotBuilder builder;
+    const auto &chunks = builder.build(world);
+
+    ASSERT_EQ(chunks.size(), 1U);
+    ASSERT_EQ(chunks.front().entities.size(), 5U);
+    for (const auto &entity : chunks.front().entities) {
+        const std::uint8_t expected = entity.netId == 5
+            ? 1
+            : static_cast<std::uint8_t>(entity.netId - 1);
+
+        EXPECT_EQ(entity.variant, expected) << "netId " << entity.netId;
+    }
 }
 
 TEST(SnapshotBuilderTests, SplitsNinetyFourEntitiesAndKeepsRosterInFirstChunk)
