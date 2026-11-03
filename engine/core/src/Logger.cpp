@@ -233,7 +233,7 @@ LogLine::~LogLine() noexcept
         const std::string contextPart = context.empty()
             ? ""
             : std::format(" [{}]", context);
-        const std::string prefix = std::format("[{:%T}] [{}] [{}]{}",
+        const std::string prefix = std::format("[{:%T}] [{}] [thread:{}]{}",
             timestamp, levelName(level), threadName, contextPart);
         const std::string message = buffer.str();
         State &shared = state();
