@@ -23,6 +23,17 @@ void ConnectingScene::registerCommands() noexcept
     _commands.registerCreator<RejectCommand>(protocol::MessageType::REJECT);
 }
 
+void ConnectingScene::onWelcome(const protocol::Welcome &welcome)
+{
+    if (!_welcome)
+        _welcome = welcome;
+}
+
+void ConnectingScene::onReject(protocol::RejectReason reason)
+{
+    _rejected = reason;
+}
+
 bool WelcomeCommand::execute(ConnectingScene &scene, net::Packet &packet)
 {
     scene.onWelcome(protocol::decode<protocol::Welcome>(packet));
