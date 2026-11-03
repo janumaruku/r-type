@@ -5,6 +5,9 @@ add_library(server_logic STATIC
     src/Conversions.cpp
     src/ServerNetworkAdapter.cpp
     src/ServerCommands.cpp
+    src/SnapshotBuilder.cpp
+    src/EventRepeater.cpp
+    src/Goodbyes.cpp
 )
 
 target_link_libraries(server_logic

@@ -16,7 +16,8 @@
 namespace rtype::server {
 class SnapshotBuilder {
 public:
-    [[nodiscard]] const std::vector<protocol::Snapshot> &build(const game::GameWorld &world);
+    [[nodiscard]] const std::vector<protocol::Snapshot> &build(
+        const game::GameWorld &world, std::uint32_t lastProcessedInput = 0);
 
 private:
     std::vector<game::ReplicatedEntity> _entities;

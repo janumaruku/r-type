@@ -7,10 +7,12 @@
 
 #include "ServerNetworkAdapter.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstddef>
 #include <string>
 
+#include "Conversions.hpp"
 #include "rtype/protocol/Decode.tpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
@@ -181,7 +183,7 @@ void ServerNetworkAdapter::kick(const asio::ip::udp::endpoint &endpoint,
     if (session == nullptr)
         return;
     const protocol::Kick message{.reason = reason};
-    for (int i = 0; i != 3; ++i)
+    for (int copy = 0; copy != 3; ++copy)
         sendTo(*session, protocol::MessageType::KICK, message);
     ++_stats.totalKicked;
     _logger.warn("Kicking client " + endpoint.address().to_string() + ":" +
@@ -214,4 +216,48 @@ void ServerNetworkAdapter::reject(const asio::ip::udp::endpoint &endpoint,
     return _stats;
 }
 
+void ServerNetworkAdapter::publish(const std::vector<game::GameEvent> &events)
+{
+    for (const auto &event : events) {
+        const auto outgoing = toProtocol(event);
+        _repeater.add(outgoing.event, outgoing.copies);
+    }
+}
+
+void ServerNetworkAdapter::flushEvents()
+{
+    const auto events = _repeater.takeDue();
+    for (auto &[endpoint, session] : _sessions.all()) {
+        (void)endpoint;
+        for (const auto &event : events)
+            sendTo(session, protocol::MessageType::EVENT, event);
+    }
+}
+
+void ServerNetworkAdapter::sendSnapshots()
+{
+    for (auto &[endpoint, session] : _sessions.all()) {
+        (void)endpoint;
+        const auto &chunks = _snapshotBuilder.build(_world,
+            session.lastProcessedInput);
+        for (const auto &chunk : chunks)
+            sendTo(session, protocol::MessageType::SNAPSHOT, chunk);
+    }
+}
+
+void ServerNetworkAdapter::flushGoodbyes()
+{
+    for (auto &[endpoint, packet] : _goodbyes.takeDue())
+        _socket.sendTo(endpoint, packet);
+}
+
+void ServerNetworkAdapter::broadcastShutdown()
+{
+    const protocol::Shutdown shutdown;
+    for (auto &[endpoint, session] : _sessions.all()) {
+        (void)endpoint;
+        for (int copy = 0; copy != 3; ++copy)
+            sendTo(session, protocol::MessageType::SHUTDOWN, shutdown);
+    }
+}
 } // namespace rtype::server

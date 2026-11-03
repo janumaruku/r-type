@@ -8,6 +8,9 @@
 #ifndef SERVER_NETWORK_ADAPTER_HPP
 #define SERVER_NETWORK_ADAPTER_HPP
 
+#include "EventRepeater.hpp"
+#include "Goodbyes.hpp"
+#include "SnapshotBuilder.hpp"
 #include "engine/core/FactoryTemplate.hpp"
 #include "network/UdpSocket.hpp"
 #include "rtype/game/GameWorld.hpp"
@@ -60,7 +63,11 @@ public:
     [[nodiscard]] SessionManager &sessions() noexcept;
     [[nodiscard]] const AdapterStats &stats() const noexcept;
 
-    // outbound side: subtask 3
+    void publish(const std::vector<game::GameEvent> &events);
+    void flushEvents();
+    void sendSnapshots();
+    void flushGoodbyes();
+    void broadcastShutdown();
 
 private:
     void registerCommands() noexcept;
@@ -82,9 +89,13 @@ private:
     rtype::server::ServerCommandFactory *_commands;
     RejectLimiter _rejects;
     std::map<asio::ip::udp::endpoint,
-        std::map<protocol::DecodeError, TimePoint>> _lastProtocolLogs;
+        std::map<protocol::DecodeError, TimePoint>>
+        _lastProtocolLogs;
     AdapterStats _stats;
     engine::core::log::Logger _logger{"Server"};
+    rtype::server::EventRepeater _repeater;
+    rtype::server::Goodbyes _goodbyes;
+    rtype::server::SnapshotBuilder _snapshotBuilder;
 };
 
 } // namespace rtype::server

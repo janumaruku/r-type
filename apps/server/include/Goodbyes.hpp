@@ -8,18 +8,23 @@
 #ifndef GOODBYES_HPP
 #define GOODBYES_HPP
 
+#include <cstdint>
 #include <vector>
 
+#include "asio.hpp"
 
-#include "rtype/protocol/Event.hpp"
+#include "network/Packet.hpp"
 
 namespace rtype::server {
 class Goodbyes {
 public:
-    void add(const asio::ip::udp::endpoint &to, protocol::MessageType type, net::Packet packet);
+    Goodbyes() = default;
+    void add(const asio::ip::udp::endpoint &to, net::Packet packet);
     [[nodiscard]] std::vector<std::pair<asio::ip::udp::endpoint, net::Packet>> takeDue();
 
 private:
+    static constexpr uint8_t BASE_COPIES = 3;
+
     struct Pending { asio::ip::udp::endpoint to; net::Packet packet; std::uint8_t copiesLeft; };
     std::vector<Pending> _pending;
 };
