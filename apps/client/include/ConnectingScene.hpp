@@ -50,11 +50,19 @@ enum class Action : std::uint8_t {
 void bindDefaults(engine::input::ActionMap<Action> & actions);
 
 /*
+** TODO(RTP-120): temporary stub with only the fields ConnectingScene reads.
+** Delete it once RTP-120 is merged into dev and include ClientConfig.hpp.
+*/
+struct ClientConfig {
+    std::string host = "127.0.0.1";
+    std::uint16_t port = 4242;
+    std::string name;
+};
+
+/*
 ** TODO(RTP-121): temporary, belongs to Scenes.hpp.
 ** TODO(RTP-122): the real one has `const SpriteCatalog &sprites`.
-** TODO(RTP-120): the real one has `const ClientConfig &config` and
-** `const ClientSettings &settings`; onEnter needs config.host, config.port
-** and config.name.
+** TODO(RTP-120): the real one also has `const ClientSettings &settings`.
 */
 struct FrameContext {
     engine::input::InputState &input;
@@ -63,7 +71,7 @@ struct FrameContext {
     engine::render::TextureCache &textures;
     engine::render::FontCache &fonts;
     // const SpriteCatalog &sprites;
-    // const ClientConfig &config;
+    const ClientConfig &config;
     // const ClientSettings &settings;
     TimePoint now;
 };
@@ -110,7 +118,14 @@ public:
 
     void onReject(protocol::RejectReason reason);
 
-    // the 4 IScene functions
+    /**
+     * @brief Opens the link: resolves the server, starts the socket and
+     * sends the first HELLO. A @ref engine::core::NetworkError is kept in
+     * `_startError` for the first @ref update to show.
+     */
+    void onEnter(FrameContext &context) override;
+
+    // the 3 other IScene functions
 private:
     void registerCommands() noexcept;
 

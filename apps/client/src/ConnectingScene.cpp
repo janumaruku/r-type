@@ -9,6 +9,8 @@
 
 #include <memory>
 
+#include "ServerLink.tpp"
+#include "engine/core/Errors.hpp"
 #include "rtype/protocol/Decode.hpp"
 
 namespace rtype::client {
@@ -21,6 +23,20 @@ void ConnectingScene::registerCommands() noexcept
 {
     _commands.registerCreator<WelcomeCommand>(protocol::MessageType::WELCOME);
     _commands.registerCreator<RejectCommand>(protocol::MessageType::REJECT);
+}
+
+void ConnectingScene::onEnter(FrameContext &context)
+{
+    try {
+        _link = std::make_unique<ServerLink>();
+        _link->server = resolveServer(context.config.host,
+            context.config.port);
+        _link->socket.start();
+        _link->send(protocol::MessageType::HELLO,
+            protocol::Hello{.playerName = context.config.name});
+    } catch (const engine::core::NetworkError &error) {
+        _startError = error.what();
+    }
 }
 
 void ConnectingScene::onWelcome(const protocol::Welcome &welcome)
