@@ -10,6 +10,8 @@
 namespace rtype::server {
 
 namespace {
+constexpr std::chrono::milliseconds SEND_TIMEOUT{200};
+
 ServerConfig withSeed(ServerConfig config)
 {
     if (!config.seed)
@@ -46,10 +48,27 @@ int ServerApp::run()
         tick();
         _ticker.waitNext();
     }
-    _adapter.broadcastShutdown();
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    const auto before = _socket.stats();
+    const auto queued = _adapter.broadcastShutdown();
+
+    waitForSends(before.sent + before.sendErrors + queued);
     _socket.stop();
     return 0;
+}
+
+void ServerApp::waitForSends(std::uint64_t target)
+{
+    const auto deadline = Clock::now() + SEND_TIMEOUT;
+
+    while (Clock::now() < deadline) {
+        const auto stats = _socket.stats();
+
+        if (stats.sent + stats.sendErrors >= target)
+            return;
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    _logger.warn("Shutdown: not every SHUTDOWN left within {} ms",
+        SEND_TIMEOUT.count());
 }
 
 void ServerApp::requestStop() noexcept

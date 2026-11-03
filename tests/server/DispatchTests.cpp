@@ -102,6 +102,33 @@ TEST(DispatchTests, RejectToAnAddressWithoutSessionIsSequenceOne)
     EXPECT_EQ(server_test::readHeader(rejects[0]).sequence, 1U);
 }
 
+TEST(DispatchTests, ShutdownGoesToEverySessionThreeTimesTwentyMsApart)
+{
+    Fixture fixture;
+    const auto from = fixture.client.local_endpoint();
+
+    fixture.sessions.add(from, 0, "Alice", fixture.now);
+    fixture.sessions.add(endpointFor(30), 1, "Bob", fixture.now);
+
+    const auto start = std::chrono::steady_clock::now();
+    const auto sent = fixture.adapter.broadcastShutdown();
+    const auto elapsed = std::chrono::steady_clock::now() - start;
+
+    EXPECT_EQ(sent, 6U);
+    EXPECT_GE(elapsed, 40ms);
+
+    const auto shutdowns = server_test::receive(fixture.client, 3);
+
+    ASSERT_EQ(shutdowns.size(), 3U);
+    for (std::uint32_t copy = 0; copy != 3; ++copy) {
+        EXPECT_EQ(server_test::readHeader(shutdowns[copy]).type,
+            proto::MessageType::SHUTDOWN);
+        EXPECT_EQ(server_test::readHeader(shutdowns[copy]).sequence,
+            copy + 1);
+    }
+    EXPECT_TRUE(server_test::receive(fixture.client, 1, 50ms).empty());
+}
+
 TEST(DispatchTests, VersionMismatchesAreRejected)
 {
     Fixture fixture;
