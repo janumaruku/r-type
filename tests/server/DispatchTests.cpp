@@ -45,6 +45,39 @@ TEST(DispatchTests, SameHelloRepairsWelcomeWithoutCreatingSession)
     EXPECT_EQ(server_test::receive(fixture.client, 2).size(), 2U);
 }
 
+TEST(DispatchTests, SessionDatagramsAreNumberedFromOne)
+{
+    Fixture fixture;
+    const auto from = fixture.client.local_endpoint();
+    const auto hello = datagram(from, proto::MessageType::HELLO,
+        proto::Hello{.playerName = "Alice"});
+
+    fixture.send(hello);
+    fixture.send(hello);
+
+    const auto welcomes = server_test::receive(fixture.client, 2);
+
+    ASSERT_EQ(welcomes.size(), 2U);
+    EXPECT_EQ(server_test::readHeader(welcomes[0]).sequence, 1U);
+    EXPECT_EQ(server_test::readHeader(welcomes[1]).sequence, 2U);
+}
+
+TEST(DispatchTests, RejectToAnAddressWithoutSessionIsSequenceOne)
+{
+    Fixture fixture;
+    const auto from = fixture.client.local_endpoint();
+
+    fixture.send(datagram(from, proto::MessageType::HELLO,
+        proto::Hello{.protocolVersion = 2, .playerName = "Alice"}));
+
+    const auto rejects = server_test::receive(fixture.client, 1);
+
+    ASSERT_EQ(rejects.size(), 1U);
+    EXPECT_EQ(server_test::readHeader(rejects[0]).type,
+        proto::MessageType::REJECT);
+    EXPECT_EQ(server_test::readHeader(rejects[0]).sequence, 1U);
+}
+
 TEST(DispatchTests, VersionMismatchesAreRejected)
 {
     Fixture fixture;

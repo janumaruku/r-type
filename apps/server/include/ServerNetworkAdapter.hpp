@@ -35,6 +35,8 @@ struct AdapterStats {
 
 class ServerNetworkAdapter {
 public:
+    static constexpr std::uint32_t FIRST_SEQUENCE = 1;
+
     explicit ServerNetworkAdapter(::net::UdpSocket &socket,
         game::GameWorld &world, SessionManager &sessions,
         ServerCommandFactory *commands = nullptr);
@@ -46,16 +48,27 @@ public:
         protocol::KickReason reason);
     void reject(const asio::ip::udp::endpoint &endpoint,
         protocol::RejectReason reason, TimePoint now);
+    /**
+     * @brief Sends `message` to a client with a session, numbered with the
+     * session's next sequence: the first datagram is 1 (RFC § 4).
+     */
     void sendTo(ClientSession &session, protocol::MessageType type,
         const auto &message)
     {
+        ++session.sendSequence;
         _socket.sendTo(session.endpoint,
-            protocol::makePacket(type, session.sendSequence++, message));
+            protocol::makePacket(type, session.sendSequence, message));
     }
+
+    /**
+     * @brief Sends `message` to an address with no session (REJECT). It's the
+     * only datagram that address gets, so it's sequence 1 (RFC § 4).
+     */
     void sendUnsessioned(const asio::ip::udp::endpoint &endpoint,
         protocol::MessageType type, const auto &message)
     {
-        _socket.sendTo(endpoint, protocol::makePacket(type, 0, message));
+        _socket.sendTo(endpoint,
+            protocol::makePacket(type, FIRST_SEQUENCE, message));
     }
 
     [[nodiscard]] game::GameWorld &world() noexcept;
@@ -81,20 +94,20 @@ private:
     void countOffence(ClientSession &session, protocol::DecodeError code,
         TimePoint now);
 
-    ::net::UdpSocket &_socket;
+    net::UdpSocket &_socket;
     game::GameWorld &_world;
     SessionManager &_sessions;
-    rtype::server::ServerCommandFactory _defaultCommands;
-    rtype::server::ServerCommandFactory *_commands;
+    ServerCommandFactory _defaultCommands;
+    ServerCommandFactory *_commands;
     RejectLimiter _rejects;
     std::map<asio::ip::udp::endpoint,
         std::map<protocol::DecodeError, TimePoint>>
         _lastProtocolLogs;
     AdapterStats _stats;
     engine::core::log::Logger _logger{"Server"};
-    rtype::server::EventRepeater _repeater;
-    rtype::server::Goodbyes _goodbyes;
-    rtype::server::SnapshotBuilder _snapshotBuilder;
+    EventRepeater _repeater;
+    Goodbyes _goodbyes;
+    SnapshotBuilder _snapshotBuilder;
 };
 
 } // namespace rtype::server

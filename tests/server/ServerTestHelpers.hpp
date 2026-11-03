@@ -70,6 +70,15 @@ inline std::vector<net::Datagram> receive(asio::ip::udp::socket &socket,
     return result;
 }
 
+inline rtype::protocol::Header readHeader(const net::Datagram &datagram)
+{
+    net::Packet packet(datagram.bytes);
+    rtype::protocol::Header header;
+
+    packet >> header;
+    return header;
+}
+
 template <typename Message>
 Message readMessage(const net::Datagram &datagram)
 {
