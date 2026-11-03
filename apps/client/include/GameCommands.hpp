@@ -8,13 +8,36 @@
 #ifndef GAME_COMMANDS_HPP
 #define GAME_COMMANDS_HPP
 
-#include "core/ICommand.hpp"
+#include "ClientNetworkAdapter.hpp"
+#include "engine/core/ICommand.hpp"
 
-using IGameCommand = rtype::core::ICommand<rtype::protocol::Event>;
+namespace rtype::client {
 
-class SnapshotCommand : public IGameCommand { /* execute, create */ };
-class EventCommand : public IGameCommand { /* execute, create */ };
-class ShutdownCommand : public IGameCommand { /* execute, create */ };
-class KickCommand : public IGameCommand { /* execute, create */ };
+class SnapshotCommand: public IGameCommand {
+public:
+    bool execute(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    bool operator()(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    static std::unique_ptr<IGameCommand> create();
+};
 
+class EventCommand: public IGameCommand {
+public:
+    bool execute(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    bool operator()(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    static std::unique_ptr<IGameCommand> create();
+};
+class ShutdownCommand: public IGameCommand {
+public:
+    bool execute(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    bool operator()(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    static std::unique_ptr<IGameCommand> create();
+};
+class KickCommand: public IGameCommand {
+public:
+    bool execute(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    bool operator()(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    static std::unique_ptr<IGameCommand> create();
+};
+
+} // namespace rtype::client
 #endif /* !GAME_COMMANDS_HPP_ */
