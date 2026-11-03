@@ -14,6 +14,30 @@ using server_test::endpointFor;
 using server_test::readMessage;
 using namespace std::chrono_literals;
 
+/*
+** A kick is queued, not sent: each flushGoodbyes (one per tick) sends one
+** copy of the same KICK, 3 ticks in a row, then nothing.
+*/
+void expectKickOnThreeTicks(Fixture &fixture, proto::KickReason reason)
+{
+    EXPECT_TRUE(server_test::receive(fixture.client, 1, 50ms).empty());
+    std::uint32_t sequence = 0;
+
+    for (int tick = 0; tick != 3; ++tick) {
+        fixture.adapter.flushGoodbyes();
+
+        const auto kicks = server_test::receive(fixture.client, 1);
+
+        ASSERT_EQ(kicks.size(), 1U) << "tick " << tick;
+        EXPECT_EQ(readMessage<proto::Kick>(kicks[0]).reason, reason);
+        if (tick == 0)
+            sequence = server_test::readHeader(kicks[0]).sequence;
+        EXPECT_EQ(server_test::readHeader(kicks[0]).sequence, sequence);
+    }
+    fixture.adapter.flushGoodbyes();
+    EXPECT_TRUE(server_test::receive(fixture.client, 1, 50ms).empty());
+}
+
 TEST(DispatchTests, HelloCreatesSessionSendsWelcomeAndJoinsWorld)
 {
     Fixture fixture;
@@ -148,11 +172,7 @@ TEST(DispatchTests, ElevenMalformedDatagramsKickTheSession)
             return left != nullptr && left->playerId == 0 &&
                 left->reason == game::LeaveReason::KICKED;
         }));
-    const auto kicks = server_test::receive(fixture.client, 3);
-    ASSERT_EQ(kicks.size(), 3U);
-    for (const auto &kick : kicks)
-        EXPECT_EQ(readMessage<proto::Kick>(kick).reason,
-            proto::KickReason::PROTOCOL_ERROR);
+    expectKickOnThreeTicks(fixture, proto::KickReason::PROTOCOL_ERROR);
 }
 
 TEST(DispatchTests, DisconnectCopiesAreIdempotent)
@@ -186,11 +206,7 @@ TEST(DispatchTests, ThreeFloodedSecondsKickTheSession)
     }
     EXPECT_EQ(fixture.sessions.find(from), nullptr);
     EXPECT_EQ(fixture.adapter.stats().totalKicked, 1U);
-    const auto kicks = server_test::receive(fixture.client, 3);
-    ASSERT_EQ(kicks.size(), 3U);
-    for (const auto &kick : kicks)
-        EXPECT_EQ(readMessage<proto::Kick>(kick).reason,
-            proto::KickReason::RATE_LIMITED);
+    expectKickOnThreeTicks(fixture, proto::KickReason::RATE_LIMITED);
 }
 
 }
