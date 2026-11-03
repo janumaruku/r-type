@@ -2,6 +2,8 @@ add_library(client_logic STATIC
         src/ServerLink.cpp
         src/ClientDispatch.cpp
         src/ConnectingScene.cpp
+        src/GameEventBus.cpp
+        src/GameCommands.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)
@@ -13,6 +15,7 @@ target_link_libraries(client_logic PUBLIC
         engine_audio
         network
         rtype_protocol
+        rtype_game
         project_options
 )
 
