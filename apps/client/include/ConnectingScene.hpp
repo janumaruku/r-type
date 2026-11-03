@@ -127,9 +127,21 @@ public:
 
     void onExit(FrameContext &context) override;
 
-    // the 3 other IScene functions
+    /**
+     * @brief Handles the server's answers, then moves on: to the game on
+     * WELCOME, to a message on REJECT, a start error or after 5 s of
+     * silence, and out on QUIT. Resends HELLO every 0.5 s meanwhile.
+     */
+    [[nodiscard]] SceneRequest update(FrameContext &context,
+        float dt) override;
+
+    // draw
 private:
     void registerCommands() noexcept;
+
+    void receive(const FrameContext &context);
+
+    void sendHello(const FrameContext &context);
 
     std::unique_ptr<ServerLink> _link;
     ConnectCommandFactory _commands;
@@ -164,6 +176,106 @@ public:
     bool operator()(ConnectingScene &scene, net::Packet &packet) override;
 
     [[nodiscard]] static std::unique_ptr<IConnectCommand> create();
+};
+
+/*
+** TODO(RTP-121): temporary stub of MessageScene, so ConnectingScene::update
+** can switch to it. Delete it once RTP-121 is merged into dev and include
+** Scenes.hpp. The accessors are only here so the stub compiles under
+** -Wunused-private-field and the tests can check which message was chosen.
+*/
+class MessageScene: public IScene {
+public:
+    MessageScene(std::string title, std::string detail, bool canReconnect):
+        _title(std::move(title)), _detail(std::move(detail)),
+        _canReconnect(canReconnect)
+    {
+    }
+
+    void onEnter([[maybe_unused]] FrameContext &context) override
+    {
+    }
+
+    void onExit([[maybe_unused]] FrameContext &context) override
+    {
+    }
+
+    [[nodiscard]] SceneRequest update([[maybe_unused]] FrameContext &context,
+        [[maybe_unused]] float dt) override
+    {
+        return {};
+    }
+
+    void draw([[maybe_unused]] engine::render::RenderQueue &queue,
+        [[maybe_unused]] const FrameContext &context) override
+    {
+    }
+
+    [[nodiscard]] const std::string &title() const noexcept
+    {
+        return _title;
+    }
+
+    [[nodiscard]] const std::string &detail() const noexcept
+    {
+        return _detail;
+    }
+
+    [[nodiscard]] bool canReconnect() const noexcept
+    {
+        return _canReconnect;
+    }
+
+private:
+    std::string _title;
+    std::string _detail;
+    bool _canReconnect;
+};
+
+/*
+** TODO(RTP-126): temporary stub of GameScene, so ConnectingScene::update can
+** hand it the link on WELCOME. Delete it once RTP-126 is merged into dev;
+** the real constructor also takes `const SpriteCatalog &` (RTP-122).
+*/
+class GameScene: public IScene {
+public:
+    GameScene(std::unique_ptr<ServerLink> link, protocol::Welcome welcome):
+        _link(std::move(link)), _welcome(welcome)
+    {
+    }
+
+    void onEnter([[maybe_unused]] FrameContext &context) override
+    {
+    }
+
+    void onExit([[maybe_unused]] FrameContext &context) override
+    {
+    }
+
+    [[nodiscard]] SceneRequest update([[maybe_unused]] FrameContext &context,
+        [[maybe_unused]] float dt) override
+    {
+        return {};
+    }
+
+    void draw([[maybe_unused]] engine::render::RenderQueue &queue,
+        [[maybe_unused]] const FrameContext &context) override
+    {
+    }
+
+    [[nodiscard]] const ServerLink &link() const noexcept
+    {
+        return *_link;
+    }
+
+    [[nodiscard]] const protocol::Welcome &welcome() const noexcept
+    {
+        return _welcome;
+    }
+
+private:
+    std::unique_ptr<ServerLink> _link;
+    protocol::Welcome _welcome;
 };
 }
 

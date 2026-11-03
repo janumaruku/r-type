@@ -7,13 +7,35 @@
 
 #include "ConnectingScene.hpp"
 
+#include <format>
 #include <memory>
 
 #include "ServerLink.tpp"
 #include "engine/core/Errors.hpp"
+#include "engine/core/Logger.hpp"
 #include "rtype/protocol/Decode.hpp"
+#include "rtype/protocol/ProtocolError.hpp"
 
 namespace rtype::client {
+namespace {
+constexpr float HELLO_INTERVAL = 0.5F;
+constexpr float CONNECT_TIMEOUT = 5.0F;
+
+[[nodiscard]] SceneRequest showMessage(std::string title, std::string detail,
+    bool canReconnect)
+{
+    return SceneRequest::change(std::make_unique<MessageScene>(
+        std::move(title), std::move(detail), canReconnect));
+}
+
+[[nodiscard]] SceneRequest showRejection(protocol::RejectReason reason)
+{
+    if (reason == protocol::RejectReason::VERSION_MISMATCH)
+        return showMessage("Version mismatch", "Update your client", false);
+    return showMessage("Server full", "4 players are already playing", true);
+}
+}
+
 ConnectingScene::ConnectingScene()
 {
     registerCommands();
@@ -32,11 +54,64 @@ void ConnectingScene::onEnter(FrameContext &context)
         _link->server = resolveServer(context.config.host,
             context.config.port);
         _link->socket.start();
-        _link->send(protocol::MessageType::HELLO,
-            protocol::Hello{.playerName = context.config.name});
+        sendHello(context);
     } catch (const engine::core::NetworkError &error) {
         _startError = error.what();
     }
+}
+
+SceneRequest ConnectingScene::update(FrameContext &context, float dt)
+{
+    if (_startError)
+        return showMessage("Can't reach the server", *_startError, true);
+    receive(context);
+    if (_welcome)
+        return SceneRequest::change(
+            std::make_unique<GameScene>(std::move(_link), *_welcome));
+    if (_rejected)
+        return showRejection(*_rejected);
+    _elapsed += dt;
+    if (_elapsed >= CONNECT_TIMEOUT)
+        return showMessage("Server unreachable",
+            std::format("{}:{} did not answer", context.config.host,
+                context.config.port), true);
+    _sinceHello += dt;
+    if (_sinceHello >= HELLO_INTERVAL) {
+        _sinceHello -= HELLO_INTERVAL;
+        sendHello(context);
+    }
+    if (context.actions.wasTriggered(Action::QUIT, context.input))
+        return SceneRequest::quit();
+    return SceneRequest::stay();
+}
+
+/*
+** Runs the command of every datagram that passes checkFromServer. A message
+** with no command here (a SNAPSHOT that overtook the WELCOME) is ignored.
+*/
+void ConnectingScene::receive(const FrameContext &context)
+{
+    for (const auto &datagram: _link->socket.receiveAll()) {
+        auto message = checkFromServer(datagram, *_link, _logs, context.now);
+
+        if (!message || !_commands.hasKey(message->header.type))
+            continue;
+        try {
+            _commands.create(message->header.type)
+                ->execute(*this, message->packet);
+            _link->lastHeard = context.now;
+        } catch (const net::PacketError &error) {
+            if (_logs.shouldLog(protocol::classify(error), context.now))
+                engine::core::log::Logger("client").warn(
+                    "Dropped a message from the server: {}", error.what());
+        }
+    }
+}
+
+void ConnectingScene::sendHello(const FrameContext &context)
+{
+    _link->send(protocol::MessageType::HELLO,
+        protocol::Hello{.playerName = context.config.name});
 }
 
 /*
