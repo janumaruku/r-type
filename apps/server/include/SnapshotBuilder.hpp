@@ -16,8 +16,14 @@
 namespace rtype::server {
 class SnapshotBuilder {
 public:
-    [[nodiscard]] const std::vector<protocol::Snapshot> &build(
-        const game::GameWorld &world, std::uint32_t lastProcessedInput = 0);
+    /**
+     * @brief Builds this tick's snapshot once for every client: the roster
+     * and every replicated entity, split into chunks. `lastProcessedInput`
+     * is left at 0, since it's the only field that differs per client: the
+     * caller sets it on each chunk just before sending it.
+     */
+    [[nodiscard]] std::vector<protocol::Snapshot> &build(
+        const game::GameWorld &world);
 
 private:
     std::vector<game::ReplicatedEntity> _entities;

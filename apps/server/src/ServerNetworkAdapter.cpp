@@ -240,14 +240,21 @@ void ServerNetworkAdapter::flushEvents()
     }
 }
 
+/*
+** The snapshot is built once per snapshot tick, not once per client. Only
+** lastProcessedInput differs between clients, so it's set on each chunk
+** just before that client's copy is encoded.
+*/
 void ServerNetworkAdapter::sendSnapshots()
 {
+    auto &chunks = _snapshotBuilder.build(_world);
+
     for (auto &[endpoint, session] : _sessions.all()) {
         (void)endpoint;
-        const auto &chunks = _snapshotBuilder.build(_world,
-            session.lastProcessedInput);
-        for (const auto &chunk : chunks)
+        for (auto &chunk : chunks) {
+            chunk.lastProcessedInput = session.lastProcessedInput;
             sendTo(session, protocol::MessageType::SNAPSHOT, chunk);
+        }
     }
 }
 
