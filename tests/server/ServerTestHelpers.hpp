@@ -46,11 +46,11 @@ net::Datagram datagramWithVersion(const asio::ip::udp::endpoint &from,
 }
 
 inline std::vector<net::Datagram> receive(asio::ip::udp::socket &socket,
-    std::size_t count)
+    std::size_t count, std::chrono::milliseconds timeout = 1s)
 {
     socket.non_blocking(true);
     std::vector<net::Datagram> result;
-    const auto deadline = std::chrono::steady_clock::now() + 1s;
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
     std::array<std::uint8_t, 1200> bytes{};
     while (result.size() < count &&
         std::chrono::steady_clock::now() < deadline) {

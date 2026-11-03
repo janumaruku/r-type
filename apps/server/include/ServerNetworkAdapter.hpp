@@ -44,6 +44,14 @@ public:
     void handle(const ::net::Datagram &datagram, TimePoint now);
     void removeClient(const asio::ip::udp::endpoint &endpoint,
         game::LeaveReason reason);
+
+    /**
+     * @brief Queues a KICK for the endpoint in @ref Goodbyes, so
+     * @ref flushGoodbyes sends it on 3 consecutive ticks even though the
+     * session is gone, then removes the client with LeaveReason::KICKED.
+     * The 3 copies are the same datagram, with the same sequence: a client
+     * that gets two of them can drop the duplicate.
+     */
     void kick(const asio::ip::udp::endpoint &endpoint,
         protocol::KickReason reason);
     void reject(const asio::ip::udp::endpoint &endpoint,

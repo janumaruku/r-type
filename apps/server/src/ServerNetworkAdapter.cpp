@@ -188,9 +188,9 @@ void ServerNetworkAdapter::kick(const asio::ip::udp::endpoint &endpoint,
     auto *const session = _sessions.find(endpoint);
     if (session == nullptr)
         return;
-    const protocol::Kick message{.reason = reason};
-    for (int copy = 0; copy != 3; ++copy)
-        sendTo(*session, protocol::MessageType::KICK, message);
+    ++session->sendSequence;
+    _goodbyes.add(endpoint, protocol::makePacket(protocol::MessageType::KICK,
+        session->sendSequence, protocol::Kick{.reason = reason}));
     ++_stats.totalKicked;
     _logger.warn("Kicking client " + endpoint.address().to_string() + ":" +
         std::to_string(endpoint.port()) + " (" +
