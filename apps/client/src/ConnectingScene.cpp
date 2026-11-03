@@ -7,6 +7,8 @@
 
 #include "ConnectingScene.hpp"
 
+#include <cassert>
+#include <cstdint>
 #include <format>
 #include <memory>
 
@@ -20,6 +22,10 @@ namespace rtype::client {
 namespace {
 constexpr float HELLO_INTERVAL = 0.5F;
 constexpr float CONNECT_TIMEOUT = 5.0F;
+constexpr std::int16_t HUD_LAYER = 1000;
+constexpr std::uint8_t TEXT_SIZE = 20;
+constexpr float TEXT_X = 40.0F;
+constexpr float TEXT_Y = 340.0F;
 
 [[nodiscard]] SceneRequest showMessage(std::string title, std::string detail,
     bool canReconnect)
@@ -34,6 +40,31 @@ constexpr float CONNECT_TIMEOUT = 5.0F;
         return showMessage("Version mismatch", "Update your client", false);
     return showMessage("Server full", "4 players are already playing", true);
 }
+}
+
+/*
+** TODO(RTP-121): temporary, belongs to Scenes.cpp.
+*/
+SceneRequest SceneRequest::stay()
+{
+    return {};
+}
+
+/*
+** TODO(RTP-121): temporary, belongs to Scenes.cpp.
+*/
+SceneRequest SceneRequest::change(std::unique_ptr<IScene> next)
+{
+    assert(next != nullptr);
+    return {.kind = Kind::CHANGE, .next = std::move(next)};
+}
+
+/*
+** TODO(RTP-121): temporary, belongs to Scenes.cpp.
+*/
+SceneRequest SceneRequest::quit()
+{
+    return {.kind = Kind::QUIT, .next = nullptr};
 }
 
 ConnectingScene::ConnectingScene()
@@ -83,6 +114,22 @@ SceneRequest ConnectingScene::update(FrameContext &context, float dt)
     if (context.actions.wasTriggered(Action::QUIT, context.input))
         return SceneRequest::quit();
     return SceneRequest::stay();
+}
+
+/*
+** TODO(RTP-120): TEXT_SIZE becomes context.settings.hudFontSize, like
+** MessageScene, once ClientSettings is in FrameContext.
+*/
+void ConnectingScene::draw(engine::render::RenderQueue &queue,
+    const FrameContext &context)
+{
+    queue.push(engine::render::TextCmd{.font = {},
+        .text = std::format("Connecting to {}:{}... {:.0f} s",
+            context.config.host, context.config.port, _elapsed),
+        .characterSize = TEXT_SIZE,
+        .position = {TEXT_X, TEXT_Y},
+        .color = engine::core::Color::WHITE,
+        .layer = HUD_LAYER});
 }
 
 /*

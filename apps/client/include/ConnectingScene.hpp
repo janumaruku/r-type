@@ -135,7 +135,13 @@ public:
     [[nodiscard]] SceneRequest update(FrameContext &context,
         float dt) override;
 
-    // draw
+    /**
+     * @brief "Connecting to host:port..." with the seconds waited, on the
+     * HUD layer. Changes nothing, so drawing twice gives the same picture.
+     */
+    void draw(engine::render::RenderQueue &queue,
+        const FrameContext &context) override;
+
 private:
     void registerCommands() noexcept;
 
