@@ -6,9 +6,14 @@
 */
 
 #include "client/src/ClientSettings.hpp"
+
+#include <cstring>
+
 #include "client/src/ClientConfig.hpp"
 #include <fstream>
 #include <iostream>
+
+#include "engine/core/Logger.hpp"
 
 namespace rtype::client
 {
@@ -16,6 +21,8 @@ namespace rtype::client
     {
         if (!std::filesystem::exists(path)) {
             // call log (file not found)
+            engine::core::log::Logger logger("ClientSettings");
+            logger.warn("failed to find file: {}", std::strerror(errno));
             return ClientSettings{};
         }
         std::ifstream file(path);
