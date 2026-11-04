@@ -122,6 +122,9 @@ INSTANTIATE_TEST_SUITE_P(
         std::string{"+5"},
         std::string{"42x"},
         std::string{""},
+        std::string{"0x10"},
+        std::string{"1_000"},
+        std::string{" 5"},
         std::string{"-1"}));
 
 class SeedRejected : public testing::TestWithParam<std::string> {};
@@ -141,6 +144,9 @@ INSTANTIATE_TEST_SUITE_P(
         std::string{"-1"},
         std::string{"+5"},
         std::string{"42x"},
+        std::string{"0x10"},
+        std::string{"1_000"},
+        std::string{" 5"},
         std::string{""}));
 
 TEST(ServerConfigTests, RejectsUnknownLogLevel)
