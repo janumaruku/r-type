@@ -55,15 +55,19 @@ classDiagram
         +asio::ip::udp::endpoint server
         +uint32_t sendSequence
         +TimePoint lastHeard
-        +send(net::Packet const&) void
+        +send~Message~(protocol::MessageType, Message const&) void
     }
     class ConnectingScene {
         -std::unique_ptr~ServerLink~ _link
         -ConnectCommandFactory _commands
         -float _sinceHello
         -float _elapsed
+        -std::optional~protocol::Welcome~ _welcome
+        -std::optional~protocol::RejectReason~ _rejected
+        -std::optional~std::string~ _startError
+        -ClientLogLimiter _logs
         +onWelcome(protocol::Welcome const&) void
-        +onReject(protocol::Reject const&) void
+        +onReject(protocol::RejectReason) void
     }
     class GameScene {
         -std::unique_ptr~ServerLink~ _link
@@ -154,7 +158,7 @@ classDiagram
 
 ### Scenes
 
-- **`ConnectingScene`** resolves `-h`/`-p` with `asio::ip::udp::resolver`, starts a `ServerLink` on a free local port, and sends HELLO every 0.5 s. Its `WelcomeCommand` and `RejectCommand` call back into it. On WELCOME it moves the `ServerLink` into a new `GameScene`, so the socket is never recreated. On REJECT, or after 5 s with no answer, it switches to a `MessageScene` with the reason.
+- **`ConnectingScene`** opens its link in `onEnter`, not in its constructor, so building the scene never throws: `resolveServer` resolves `-h`/`-p` to an IPv4 endpoint with `asio::ip::udp::resolver`, then it starts a `ServerLink` on a free local port and sends HELLO, again every 0.5 s. An unknown host or an unavailable port (`NetworkError`) is kept and shown by the first `update` as "Can't reach the server". Its `WelcomeCommand` and `RejectCommand` call back into it; only the first WELCOME counts, since every HELLO gets one. On WELCOME it moves the `ServerLink` into a new `GameScene`, so the socket is never recreated. On REJECT, or after 5 s with no answer, it switches to a `MessageScene` with the reason. Meanwhile it draws "Connecting to host:port..." with the seconds waited.
 - **`GameScene`** is the game itself (next sections). It switches to a `MessageScene` when the server sends SHUTDOWN or stays silent for 5 s.
 - **`MessageScene`** shows a title and a detail line ("Server full", "Connection lost", "Server closed"). ENTER reconnects through a new `ConnectingScene`, ESCAPE quits.
 
@@ -187,7 +191,17 @@ void ClientNetworkAdapter::registerCommands() noexcept
 }
 ```
 
-Each scene's `handle()` decodes the header inside a `try`/`catch (const net::PacketError&)`, exactly as the server does. It drops datagrams that are malformed, that don't come from the server's endpoint, or whose type has no registered command (`hasKey`). A late repeat of WELCOME in game is dropped that way. A valid datagram from the server sets `link.lastHeard`.
+Both scenes check each datagram with the same function, `checkFromServer(datagram, link, logs, now)` (`ClientDispatch.hpp`), in the order of the [RFC's error handling](../protocol/RFC-rtype.md#10-error-handling):
+
+1. **Not from the server:** dropped silently if `datagram.from != link.server`. Anyone can send to the client's port, so logging these would let a stranger fill the log.
+2. **Size:** `protocol::checkDatagramSize`.
+3. **Header:** the `net::Packet` is built from the bytes and the `Header` read from it (a bad magic throws).
+4. **Version:** dropped silently if it isn't 1.
+5. **Direction:** `protocol::checkType(type, Direction::SERVER_TO_CLIENT)`, so an unknown type, or a HELLO sent back to the client, is rejected.
+
+On success it returns the header and the packet positioned right after it, ready for the command's `decode`. A `net::PacketError` is caught, logged as `classify(error)` if `ClientLogLimiter::shouldLog` allows it (at most one line per second per `DecodeError`, so a flood of bad datagrams can't flood the log), and the datagram is dropped. Unlike the server, the client counts no offences: it can't kick the server.
+
+The scene then runs the command only if its type has one (`hasKey`), so a message meant for the other scene is dropped: a SNAPSHOT that overtakes the WELCOME while connecting, or a late repeat of WELCOME in game. The command runs inside its own `try`/`catch (const net::PacketError&)`, logged through the same limiter, since `decode` throws for a truncated body or trailing bytes. A message that decodes sets `link.lastHeard`.
 
 ## Applying snapshots
 
