@@ -20,6 +20,17 @@ struct Size {
     bool operator==(const Size &) const = default;
 };
 
+struct Offset {
+    double x = 0;
+    double y = 0;
+
+    bool operator==(const Offset &) const = default;
+
+    Offset operator+(Offset o) const;
+
+    Offset operator-(Offset o) const;
+};
+
 }
 
 #endif //R_TYPE_DIMENSIONS_HPP
