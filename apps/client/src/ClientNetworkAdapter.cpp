@@ -6,6 +6,7 @@
 */
 
 #include "ClientNetworkAdapter.hpp"
+#include "ServerLink.tpp"
 
 #include "GameCommands.hpp"
 #include "rtype/protocol/Header.hpp"
@@ -92,7 +93,8 @@ EventFilter &ClientNetworkAdapter::seenEvents() noexcept
 
 void ClientNetworkAdapter::leave(LeaveCause cause) noexcept
 {
-    _leave = cause;
+    if (_leave == LeaveCause::NONE)
+        _leave = cause;
 }
 
 LeaveCause &ClientNetworkAdapter::leaveCause() noexcept

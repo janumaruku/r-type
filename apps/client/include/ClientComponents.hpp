@@ -41,6 +41,12 @@ struct PlayerLabel {
     std::uint8_t playerId;
 };
 
+struct HighContrastOutline {};
+
+struct ShipTilt {
+    float lastY = 0.0F;
+};
+
 } // namespace rtype::client
 
 #endif /* !CLIENT_COMPONENTS_HPP_ */

@@ -5,6 +5,9 @@ add_library(client_logic STATIC
         src/GameEventBus.cpp
         src/GameCommands.cpp
         src/SnapshotAssembler.cpp
+        src/ClientNetworkAdapter.cpp
+        src/ClientWorld.cpp
+        src/SpriteCatalog.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)

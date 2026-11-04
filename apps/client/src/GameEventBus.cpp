@@ -11,6 +11,20 @@
 
 namespace rtype::client {
 
+bool EventFilter::firstTime(std::uint32_t eventId)
+{
+    auto it = std::ranges::find(_recent, eventId);
+
+    if (it != _recent.end())
+        return false;
+    _recent.push_back(eventId);
+
+    if (_recent.size() > CAPACITY)
+        _recent.pop_front();
+
+    return true;
+}
+
 GameEventBus::Subscription::Subscription(std::size_t id,
     GameEventBus *bus) noexcept: _bus(bus), _id(id)
 {}
@@ -25,6 +39,8 @@ GameEventBus::Subscription &GameEventBus::Subscription::operator=(
     Subscription &&other) noexcept
 {
     if (this != &other) {
+        if (_bus != nullptr)
+            _bus->unsubscribe(_id);
         _bus = other._bus;
         _id  = other._id;
         other._bus = nullptr;
@@ -52,12 +68,24 @@ void GameEventBus::publish(const protocol::Event &event)
 
 void GameEventBus::dispatch()
 {
-    for (const auto &event : _pending) {
-        for (const auto &[_, handler] : _handlers) {
+    std::vector<protocol::Event> events;
+    events.swap(_pending);
+
+    std::vector<std::size_t> handlerIds;
+    handlerIds.reserve(_handlers.size());
+    for (const auto &[id, _] : _handlers)
+        handlerIds.push_back(id);
+
+    for (const auto &event : events) {
+        for (const auto id : handlerIds) {
+            const auto it = std::ranges::find_if(_handlers,
+                [id](const auto &entry) { return entry.first == id; });
+            if (it == _handlers.end())
+                continue;
+            auto handler = it->second;
             handler(event);
         }
     }
-    _pending.clear();
 }
 
 std::size_t GameEventBus::subscribers() const noexcept
