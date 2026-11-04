@@ -5,101 +5,124 @@
 ** ClientConfig.hpp
 */
 
-#include "client/src/ClientConfig.hpp"
+#include "ClientConfig.hpp"
+
 #include <algorithm>
 #include <charconv>
 #include <CLI/CLI.hpp>
 #include <cstdlib>
 
+#include "rtype/protocol/Messages.hpp"
 
+namespace rtype::client {
+namespace {
+constexpr std::string_view PROGRAM = "r-type-client";
 
-namespace rtype::client
+/*
+** CLI11 converts "+5", "0x10", "0b101", "1_000" or " 5" to a number before
+** CLI::Range sees it. This validator runs on the raw text first, so only
+** plain decimal digits reach the conversion.
+*/
+const CLI::Validator WHOLE_NUMBER(
+    [](const std::string &value) {
+        const bool digitsOnly = !value.empty()
+            && std::ranges::all_of(value, [](unsigned char character) {
+                return std::isdigit(character) != 0;
+            });
+
+        return digitsOnly
+            ? std::string{}
+            : "'" + value + "' is not a whole number";
+    },
+    "", "WHOLE_NUMBER");
+}
+
+std::unique_ptr<CLI::App> makeApp(ClientConfig &config,
+    std::string_view program)
 {
-        ClientConfig ClientConfig::parse(std::span<const std::string_view> args)
-        {
-            ClientConfig config;
-            config.name = defaultName();
-            CLI::App app{"R-Type Client", "rtype-client"};
+    auto app = std::make_unique<CLI::App>("R-Type game client",
+        std::string(program));
 
-            app.set_help_flag("--help", "Display help information");
+    app->set_help_flag("--help", "Prints usage and exits with 0");
 
-            app.add_option("-h,--host", config.host, "Server host")
-                ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+    app->add_option("-h,--host", config.host, "Server host")
+       ->capture_default_str()
+       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
-            app.add_option_function<std::string>("-p,--port", [&config](const std::string &portStr) {
-                uint16_t parsedPort = 0;
-                const auto [ptr, ec] = std::from_chars(portStr.data(), portStr.data() + portStr.size(), parsedPort);
-                if (ec != std::errc{} || ptr != portStr.data() + portStr.size() || parsedPort == 0) {
-                    throw CLI::ValidationError("--port", "Invalid port number: " + portStr);
-                }
-                config.port = parsedPort;
-            }, "Server port")
-            ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+    app->add_option("-p,--port", config.port,
+           "UDP port to bind on to communicate with the server")
+       ->type_name("PORT")
+       ->check(WHOLE_NUMBER)
+       ->check(CLI::Range(1, 65535))
+       ->capture_default_str()
+       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
-            app.add_option_function<std::string>("-n,--name", [&config](const std::string &nameStr) {
-                std::string n = nameStr;
-                if (n.length() > 16) {
-                    n = n.substr(0, 16);
-                }
-                config.name = n;
-            }, "Player name")
-            ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+    app->add_option_function<std::string>("-n,--name",
+           [&config](const std::string &nameStr) {
+               config.name = protocol::sanitizeName(nameStr, 1);
+           }, "Player name")
+       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
-            app.add_flag("--fullscreen", config.fullscreen, "Enable fullscreen");
+    app->add_flag("--fullscreen", config.fullscreen, "Enable fullscreen");
 
-            app.add_option_function<std::string>("--log-level", [&config](const std::string &levelStr) {
-                auto levelOpt = engine::core::log::parseLevel(levelStr);
-                if (!levelOpt.has_value()) {
-                    throw CLI::ValidationError("--log-level", "Unknown log level: " + levelStr);
-                }
-                config.logLevel = *levelOpt;
-            }, "Logging level")
-            ->check(CLI::IsMember({"debug", "trace", "warn", "info", "error"}))
-            ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
-            std::vector<std::string> argList;
-            argList.reserve(args.size());
-            for (auto sv : args)
-                argList.emplace_back(sv);
-            try {
-                app.parse(argList);
-            } catch (const CLI::CallForHelp &) {
-                throw HelpRequested{};
-            } catch (const CLI::ParseError &e) {
-                throw ConfigError(e.what());
-            }
-            if (config.host.empty())
-                throw ConfigError("Empty host provided");
-            return config;
-        }
+    app->add_option_function<std::string>("--log-level",
+           [&config](const std::string &name) {
+               config.logLevel = engine::core::log::parseLevel(name).value();
+           }, "Minimum level printed")
+       ->check(CLI::IsMember({"trace", "debug", "info", "warn", "error"}))
+       ->default_str("info")
+       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
-        // TODO make it compatible with windows too
-        std::string ClientConfig::defaultName()
-        {
-            #ifdef _WIN32
-                char *user = nullptr;
-                std::size_t userSize = 0;
-                _dupenv_s(&user, &userSize, "USER");
-                if (user == nullptr)
-                    _dupenv_s(&user, &userSize, "USERNAME");
-                if (user == nullptr)
-                    return "";
-                std::string username(user);
-                std::free(user);
-                if (username.length() > 16)
-                    username = username.substr(0, 16);
-                return username;
-            #else
-                const char *user = std::getenv("USER");
+    return app;
+}
 
-                if (!user)
-                    user = std::getenv("USERNAME");
-                if (!user)
-                    return "";
-                std::string username(user);
-                if (username.length() > 16)
-                    username = username.substr(0, 16);
-                return username;
-            #endif
-        }
+ClientConfig ClientConfig::parse(std::span<const std::string_view> args)
+{
+    ClientConfig config;
+    config.name = defaultName();
+    auto app = makeApp(config, PROGRAM);
+    std::vector<std::string> argList(args.rbegin(), args.rend());
+    
+    try {
+        app->parse(argList);
+    } catch (const CLI::CallForHelp &) {
+        throw HelpRequested{};
+    } catch (const CLI::ParseError &e) {
+        throw ConfigError(e.what());
+    }
+    if (config.host.empty())
+        throw ConfigError("Empty host provided");
+    return config;
+}
+
+// TODO make it compatible with windows too
+std::string ClientConfig::defaultName()
+{
+    #ifdef _WIN32
+    char *user = nullptr;
+    std::size_t userSize = 0;
+    _dupenv_s(&user, &userSize, "USER");
+    if (user == nullptr)
+        _dupenv_s(&user, &userSize, "USERNAME");
+    if (user == nullptr)
+        return "";
+    std::string username(user);
+    std::free(user);
+    if (username.length() > 16)
+        username = username.substr(0, 16);
+    return username;
+    #else
+    const char *user = std::getenv("USER");
+
+    if (!user)
+        user = std::getenv("USERNAME");
+    if (!user)
+        return "";
+    std::string username(user);
+    if (username.length() > 16)
+        username = username.substr(0, 16);
+    return username;
+    #endif
+}
 
 } // namespace rtype::client
