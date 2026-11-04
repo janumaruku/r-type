@@ -5,11 +5,11 @@
 ** ClientSettings.hpp
 */
 
-#include "client/src/ClientSettings.hpp"
+#include "ClientSettings.hpp"
 
 #include <cstring>
 
-#include "client/src/ClientConfig.hpp"
+#include "ClientConfig.hpp"
 #include <fstream>
 #include <iostream>
 
