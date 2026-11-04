@@ -9,7 +9,6 @@
 #define GAME_COMMANDS_HPP
 
 #include "ClientNetworkAdapter.hpp"
-#include "engine/core/ICommand.hpp"
 
 namespace rtype::client {
 

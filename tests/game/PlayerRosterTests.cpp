@@ -54,8 +54,9 @@ void reach(PlayerRoster &roster, const SlotState state)
     if (state == SlotState::EMPTY)
         return;
     ASSERT_TRUE(roster.join(0, "Ana", LIVES));
-    if (state == SlotState::ALIVE)
+    if (state == SlotState::ALIVE) {
         ASSERT_TRUE(roster.onShipSpawned(0, SHIP));
+    }
 }
 
 }
