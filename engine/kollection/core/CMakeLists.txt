@@ -1,6 +1,7 @@
 add_library(kollection_core STATIC
         src/Dimensions.cpp
         src/Styles.cpp
+        src/BoxConstraints.cpp
 )
 
 target_include_directories(kollection_core PUBLIC include)
