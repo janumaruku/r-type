@@ -58,6 +58,7 @@ add_subdirectory(engine)
 
 if (RTYPE_BUILD_CLIENT AND RTYPE_BUILD_EXAMPLES)
     add_subdirectory(apps/render_demo)
+    add_subdirectory(apps/kollection_demo)
 endif ()
 
 if (RTYPE_BUILD_BENCHMARKS)

@@ -1,6 +1,7 @@
 add_subdirectory(core)
 add_subdirectory(input)
 add_subdirectory(ecs)
+add_subdirectory(kollection)
 
 add_subdirectory(runtime)
 if (RTYPE_BUILD_CLIENT)
