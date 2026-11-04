@@ -8,10 +8,13 @@
 #ifndef R_TYPE_CLIENTCONFIG_HPP
 #define R_TYPE_CLIENTCONFIG_HPP
 
-#include "engine/core/Logger.hpp"
-#include <string>
 #include <cstdint>
 #include <span>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+
+#include "engine/core/Logger.hpp"
 
 namespace rtype::client {
 struct ClientConfig {
@@ -35,4 +38,4 @@ class HelpRequested: public std::exception {
 };
 
 }
-#endif // namespace rtype::client
+#endif //R_TYPE_CLIENTCONFIG_HPP
