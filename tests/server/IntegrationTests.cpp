@@ -74,7 +74,11 @@ std::optional<Snapshot> join(server_test::TestClient &client)
 {
     client.send(MessageType::HELLO, Hello{.playerName = "player"});
     EXPECT_TRUE(client.waitFor<Welcome>(MessageType::WELCOME).has_value());
-    return client.waitFor<Snapshot>(MessageType::SNAPSHOT);
+    auto snapshot = client.waitFor<Snapshot>(MessageType::SNAPSHOT);
+    EXPECT_TRUE(client.unexpected().empty())
+        << "first unexpected message: " << client.unexpected().front();
+    EXPECT_EQ(client.malformed(), 0U);
+    return snapshot;
 }
 
 TEST(IntegrationTests, JoinReceivesWelcomeAndOwnShip)
