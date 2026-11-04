@@ -56,6 +56,19 @@ struct EdgeInsets {
 
     bool operator==(const EdgeInsets &) const = default;
 };
+
+struct Alignment {
+    double x = 0;
+    double y = 0;
+
+    static constexpr Alignment center();
+
+    static constexpr Alignment topLeft();
+
+    [[nodiscard]] Offset inscribe(Size child, Size parent) const;
+
+    bool operator==(const Alignment &) const = default;
+};
 }
 
 #endif //R_TYPE_DIMENSIONS_HPP

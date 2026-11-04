@@ -58,4 +58,28 @@ double EdgeInsets::vertical() const
 {
     return top + bottom;
 }
+
+Offset Alignment::inscribe(Size child, Size parent) const
+{
+    return {
+        .x = (parent.width - child.width) * (x + 1) / 2,
+        .y = (parent.height - child.height) * (y + 1) / 2,
+    };
+}
+
+constexpr Alignment Alignment::center()
+{
+    return {
+        .x = 0,
+        .y = 0,
+    };
+}
+
+constexpr Alignment Alignment::topLeft()
+{
+    return {
+        .x = -1,
+        .y = -1,
+    };
+}
 }
