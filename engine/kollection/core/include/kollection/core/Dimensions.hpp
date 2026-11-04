@@ -14,8 +14,8 @@ namespace kollection::core {
 inline constexpr double INF = std::numeric_limits<double>::infinity();
 
 struct Size {
-    double w = 0;
-    double h = 0;
+    double width = 0;
+    double height = 0;
 
     bool operator==(const Size &) const = default;
 };
@@ -34,10 +34,27 @@ struct Offset {
 struct Rect {
     double x = 0;
     double y = 0;
-    double w = 0;
-    double h = 0;
+    double width = 0;
+    double height = 0;
 
-    bool contains(Offset p) const;
+    [[nodiscard]] bool contains(Offset p) const;
+};
+
+struct EdgeInsets {
+    double left = 0;
+    double top = 0;
+    double right = 0;
+    double bottom = 0;
+
+    static EdgeInsets all(double v);
+
+    static EdgeInsets symmetric(double h, double v);
+
+    [[nodiscard]] double horizontal() const;
+
+    [[nodiscard]] double vertical() const;
+
+    bool operator==(const EdgeInsets &) const = default;
 };
 }
 
