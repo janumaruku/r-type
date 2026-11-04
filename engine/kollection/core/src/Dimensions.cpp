@@ -8,44 +8,45 @@
 #include "kollection/core/Dimensions.hpp"
 
 namespace kollection::core {
-Offset Offset::operator+(Offset o) const
+Offset Offset::operator+(Offset other) const
 {
     return {
-        .x = x + o.x,
-        .y = y + o.y,
+        .x = x + other.x,
+        .y = y + other.y,
     };
 }
 
-Offset Offset::operator-(Offset o) const
+Offset Offset::operator-(Offset other) const
 {
     return {
-        .x = x - o.x,
-        .y = y - o.y,
+        .x = x - other.x,
+        .y = y - other.y,
     };
 }
 
-bool Rect::contains(Offset p) const
+bool Rect::contains(Offset point) const
 {
-    return p.x >= x && p.y >= y && p.x < x + width && p.y < y + height;
+    return point.x >= x && point.y >= y && point.x < x + width
+        && point.y < y + height;
 }
 
-EdgeInsets EdgeInsets::all(double v)
+EdgeInsets EdgeInsets::all(double inset)
 {
     return {
-        .left = v,
-        .top = v,
-        .right = v,
-        .bottom = v,
+        .left = inset,
+        .top = inset,
+        .right = inset,
+        .bottom = inset,
     };
 }
 
-EdgeInsets EdgeInsets::symmetric(double h, double v)
+EdgeInsets EdgeInsets::symmetric(double horizontalInset, double verticalInset)
 {
     return {
-        .left = h,
-        .top = v,
-        .right = h,
-        .bottom = v,
+        .left = horizontalInset,
+        .top = verticalInset,
+        .right = horizontalInset,
+        .bottom = verticalInset,
     };
 }
 
@@ -64,22 +65,6 @@ Offset Alignment::inscribe(Size child, Size parent) const
     return {
         .x = (parent.width - child.width) * (x + 1) / 2,
         .y = (parent.height - child.height) * (y + 1) / 2,
-    };
-}
-
-constexpr Alignment Alignment::center()
-{
-    return {
-        .x = 0,
-        .y = 0,
-    };
-}
-
-constexpr Alignment Alignment::topLeft()
-{
-    return {
-        .x = -1,
-        .y = -1,
     };
 }
 }
