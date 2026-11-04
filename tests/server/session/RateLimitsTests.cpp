@@ -86,6 +86,48 @@ TEST(FloodTrackerTests, KicksAfterThreeConsecutiveFloodedSeconds)
     EXPECT_TRUE(tracker.shouldKick(T0 + 3s));
 }
 
+TEST(FloodTrackerTests, QuietSecondsBreakTheStreak)
+{
+    FloodTracker tracker;
+
+    EXPECT_EQ(sendDatagrams(tracker, T0, 300), 240U);
+    EXPECT_EQ(sendDatagrams(tracker, T0 + 1s, 300), 240U);
+
+    EXPECT_EQ(sendDatagrams(tracker, T0 + 12s, 300), 240U);
+    EXPECT_FALSE(tracker.shouldKick(T0 + 13s))
+        << "10 silent seconds sit between the 2nd and the 3rd flood";
+
+    EXPECT_EQ(sendDatagrams(tracker, T0 + 13s, 300), 240U);
+    EXPECT_EQ(sendDatagrams(tracker, T0 + 14s, 300), 240U);
+    EXPECT_TRUE(tracker.shouldKick(T0 + 15s));
+}
+
+TEST(FloodTrackerTests, ACalmSecondBreaksTheStreak)
+{
+    FloodTracker tracker;
+
+    EXPECT_EQ(sendDatagrams(tracker, T0, 300), 240U);
+    EXPECT_EQ(sendDatagrams(tracker, T0 + 1s, 300), 240U);
+    EXPECT_EQ(sendDatagrams(tracker, T0 + 2s, 100), 100U);
+    EXPECT_EQ(sendDatagrams(tracker, T0 + 3s, 300), 240U);
+    EXPECT_EQ(sendDatagrams(tracker, T0 + 4s, 300), 240U);
+    EXPECT_FALSE(tracker.shouldKick(T0 + 5s));
+
+    EXPECT_EQ(sendDatagrams(tracker, T0 + 5s, 300), 240U);
+    EXPECT_TRUE(tracker.shouldKick(T0 + 6s));
+}
+
+TEST(FloodTrackerTests, AnOldStreakNoLongerKicks)
+{
+    FloodTracker tracker;
+
+    for (const auto second : {0s, 1s, 2s})
+        EXPECT_EQ(sendDatagrams(tracker, T0 + second, 300), 240U);
+    ASSERT_TRUE(tracker.shouldKick(T0 + 3s));
+
+    EXPECT_FALSE(tracker.shouldKick(T0 + 10s));
+}
+
 TEST(RejectLimiterTests, LimitsEachEndpointToOneDatagramPerSecond)
 {
     RejectLimiter limiter;
