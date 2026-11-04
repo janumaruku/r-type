@@ -8,9 +8,11 @@
 #include "ClientConfig.hpp"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <CLI/CLI.hpp>
 #include <cstdlib>
+#include <optional>
 
 #include "rtype/protocol/Messages.hpp"
 
@@ -44,6 +46,26 @@ const CLI::Validator WHOLE_NUMBER(
 std::string printableName(std::string_view name)
 {
     return name.empty() ? std::string{} : protocol::sanitizeName(name, 0);
+}
+
+std::optional<std::string> readEnvironment(const char *name)
+{
+#ifdef _WIN32
+    char *value = nullptr;
+    std::size_t size = 0;
+
+    if (_dupenv_s(&value, &size, name) != 0 || value == nullptr)
+        return std::nullopt;
+    std::string result(value);
+    std::free(value);
+    return result;
+#else
+    const char *value = std::getenv(name);
+
+    if (value == nullptr)
+        return std::nullopt;
+    return std::string(value);
+#endif
 }
 }
 
@@ -105,29 +127,18 @@ ClientConfig ClientConfig::parse(std::span<const std::string_view> args)
     return config;
 }
 
-// TODO make it compatible with windows too
 std::string ClientConfig::defaultName()
 {
-    #ifdef _WIN32
-    char *user = nullptr;
-    std::size_t userSize = 0;
-    _dupenv_s(&user, &userSize, "USER");
-    if (user == nullptr)
-        _dupenv_s(&user, &userSize, "USERNAME");
-    if (user == nullptr)
-        return "";
-    std::string username = printableName(user);
-    std::free(user);
-    return username;
-    #else
-    const char *user = std::getenv("USER");
+#ifdef _WIN32
+    constexpr std::array<const char *, 2> variables{"USERNAME", "USER"};
+#else
+    constexpr std::array<const char *, 2> variables{"USER", "USERNAME"};
+#endif
 
-    if (!user)
-        user = std::getenv("USERNAME");
-    if (!user)
-        return "";
-    return printableName(user);
-    #endif
+    for (const char *variable : variables)
+        if (const auto user = readEnvironment(variable))
+            return printableName(*user);
+    return "";
 }
 
 } // namespace rtype::client
