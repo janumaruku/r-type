@@ -192,4 +192,29 @@ TEST(ClientConfigTests, DefaultNameIsMadePrintable)
 
     EXPECT_EQ(ClientConfig::defaultName(), "Al?ce");
 }
+
+TEST(ClientConfigTests, DefaultNameReadsThePlatformVariableFirst)
+{
+    const ScopedEnv user("USER", "unix");
+    const ScopedEnv username("USERNAME", "windows");
+
+#ifdef _WIN32
+    EXPECT_EQ(ClientConfig::defaultName(), "windows");
+#else
+    EXPECT_EQ(ClientConfig::defaultName(), "unix");
+#endif
+}
+
+TEST(ClientConfigTests, DefaultNameFallsBackToTheOtherVariable)
+{
+#ifdef _WIN32
+    const ScopedEnv first("USERNAME", nullptr);
+    const ScopedEnv second("USER", "fallback");
+#else
+    const ScopedEnv first("USER", nullptr);
+    const ScopedEnv second("USERNAME", "fallback");
+#endif
+
+    EXPECT_EQ(ClientConfig::defaultName(), "fallback");
+}
 }
