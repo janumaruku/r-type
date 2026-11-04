@@ -10,6 +10,7 @@ rtype_add_test(client_tests
         ClientWorldTests.cpp
         ClientConfigTests.cpp
         ClientSettingsTests.cpp
+        KeybindingsFileTests.cpp
 )
 
 target_compile_definitions(client_tests PRIVATE

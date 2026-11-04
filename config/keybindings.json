@@ -1,24 +1,32 @@
 {
-  "keybindings": [
+  "config": [
     {
-      "name": "FIRE",
-      "keys": ["SPACE", "KEY_A"]
+      "name": "MOVE_UP",
+      "keys": ["UP", "KEY_W"]
     },
     {
-      "name": "UP",
-      "keys": ["UP", "KEY_Z"]
-    },
-    {
-      "name": "LEFT",
-      "keys": ["LEFT", "KEY_Q"]
-    },
-    {
-      "name": "DOWN",
+      "name": "MOVE_DOWN",
       "keys": ["DOWN", "KEY_S"]
     },
     {
-      "name": "RIGHT",
+      "name": "MOVE_LEFT",
+      "keys": ["LEFT", "KEY_A"]
+    },
+    {
+      "name": "MOVE_RIGHT",
       "keys": ["RIGHT", "KEY_D"]
+    },
+    {
+      "name": "FIRE",
+      "keys": ["SPACE", "LCTRL"]
+    },
+    {
+      "name": "CONFIRM",
+      "keys": ["ENTER"]
+    },
+    {
+      "name": "QUIT",
+      "keys": ["ESCAPE"]
     }
   ]
 }
