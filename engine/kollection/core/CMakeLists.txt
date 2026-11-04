@@ -1,5 +1,5 @@
 add_library(kollection_core STATIC
-    src/Dimensions.cpp
+        src/Dimensions.cpp
         src/Styles.cpp
 )
 

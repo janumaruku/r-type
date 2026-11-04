@@ -8,14 +8,19 @@
 #include "kollection/core/Styles.hpp"
 
 namespace kollection::core {
-const Color Color::BLACK = {.r = 0, .g = 0, .b = 0};
-const Color Color::WHITE = {.r = 255, .g = 255, .b = 255};
-const Color Color::BLUE = {.r = 0, .g = 0, .b = 255};
-const Color Color::TRANSPARENT = {.r = 0, .g = 0, .b = 0, .a = 0};
-
-TextStyle TextStyle::merge(const TextStyle &o) const
+namespace {
+template <typename T>
+void setUnsetStyle(std::optional<T> &field,
+    const std::optional<T> &fallback)
 {
-    auto out = o;
+    if (!field)
+        field = fallback;
+}
+}
+
+TextStyle TextStyle::merge(const TextStyle &overrides) const
+{
+    auto out = overrides;
 
     setUnsetStyle(out.fg, this->fg);
     setUnsetStyle(out.bg, this->bg);
