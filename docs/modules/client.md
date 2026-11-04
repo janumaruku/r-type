@@ -8,7 +8,7 @@ The client displays the server's world and sends the player's buttons back. It k
 r-type_client [-h HOST] [-p PORT] [-n NAME] [--fullscreen] [--log-level LEVEL] [--help]
 ```
 
-The defaults are `-h 127.0.0.1`, `-p 4242`, and `-n` set to the OS user name, cut to 16 characters. Bad arguments exit with 84. Key bindings and volumes are read from `config/client.cfg` and `config/keybindings.cfg` if those files exist.
+The defaults are `-h 127.0.0.1`, `-p 4242`, and `-n` set to the OS user name, cut to 16 characters. Bad arguments exit with 84. Key bindings are read from `config/keybindings.json`, and volumes and the other settings from `config/client.json`, if those files exist. `--fullscreen` overrides `fullscreen` from `client.json`.
 
 ## Threads
 
@@ -255,7 +255,7 @@ On a LAN the correction is invisible. With high latency, the player still sees t
 
 **Starfield (F-02, F-08).** There are 3 parallax layers of procedurally placed stars: 70 far stars at 20 u/s, 40 mid stars at 55 u/s and 20 near stars at 120 u/s. A star that leaves the left edge wraps to the right at a new random y. The starfield runs entirely on the client and is driven by `dt`, so its speed doesn't depend on frame rate, and it needs no network traffic.
 
-**Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.cfg`, which maps each `(EntityKind, variant)` to a sheet, frame rectangles and a frame time. The rectangles are measured from the sprite sheets provided with the subject. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`.
+**Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.json`, which maps each `(EntityKind, variant)` to a sheet, frame rectangles and a frame time. The rectangles are measured from the sprite sheets provided with the subject. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`.
 
 **Sound (F-13).**
 
@@ -268,4 +268,4 @@ On a LAN the correction is invisible. With high latency, the player still sees t
 | EVENT PLAYER_JOINED / PLAYER_LEFT | `ui_join.wav` / `ui_leave.wav` |
 | In game | `stage1.ogg` looping music |
 
-**HUD.** Each slot shows `P1`–`P4`, the player's name, lives and score (all from the roster), plus the team score, the ping, and transient banners such as "P3 lost connection" or "GAME OVER – restarting in 5". All HUD text uses the font size from `client.cfg` (default 20 px at 720p).
+**HUD.** Each slot shows `P1`–`P4`, the player's name, lives and score (all from the roster), plus the team score, the ping, and transient banners such as "P3 lost connection" or "GAME OVER – restarting in 5". All HUD text uses the font size from `client.json` (default 20 px at 720p).
