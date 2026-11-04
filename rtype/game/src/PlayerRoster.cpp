@@ -20,7 +20,7 @@ std::string_view toString(const rtype::game::SlotState state)
         return "ALIVE";
     case rtype::game::SlotState::RESPAWNING:
         return "RESPAWNING";
-    case rtype::game::SlotState::OUT:
+    case rtype::game::SlotState::SLOT_OUT:
         return "OUT";
     }
     return "UNKNOWN";
@@ -72,7 +72,7 @@ bool PlayerRoster::joinWaiting(const std::uint8_t playerId, std::string name)
     slot->name = std::move(name);
     slot->lives = 0;
     slot->score = 0;
-    slot->state = SlotState::OUT;
+    slot->state = SlotState::SLOT_OUT;
     return true;
 }
 
@@ -102,7 +102,7 @@ bool PlayerRoster::onShipKilled(const std::uint8_t playerId,
         slot->state = SlotState::RESPAWNING;
         slot->respawnTimer = respawnDelay;
     } else {
-        slot->state = SlotState::OUT;
+        slot->state = SlotState::SLOT_OUT;
     }
     return true;
 }
@@ -189,7 +189,7 @@ bool PlayerRoster::allOut() const noexcept
     for (const auto &slot : _slots) {
         if (!slot.has_value() || slot->state == SlotState::EMPTY)
             continue;
-        if (slot->state != SlotState::OUT)
+        if (slot->state != SlotState::SLOT_OUT)
             return false;
         anyJoined = true;
     }

@@ -34,48 +34,63 @@ std::uint32_t WindowCounter::countInWindow() const noexcept
     return _count;
 }
 
+TimePoint WindowCounter::windowStart() const noexcept
+{
+    return _windowStart;
+}
+
+/*
+** Every entry left after the pruning is younger than WINDOW, and an entry
+** is only added when _global allows it. Its fixed windows let LIMIT through
+** at the end of one window and LIMIT more at the start of the next, so the
+** map holds at most 2 x LIMIT addresses, whatever the sender spoofs.
+*/
 bool RejectLimiter::allow(const asio::ip::udp::endpoint &to, TimePoint now)
 {
-    auto it = _lastByAddress.find(to);
+    std::erase_if(_lastByAddress, [now](const auto &entry) {
+        return now - entry.second >= WINDOW;
+    });
 
-    if (it != _lastByAddress.end() &&
-        now - it->second < std::chrono::seconds(1))
+    if (_lastByAddress.contains(to) || !_global.record(now))
         return false;
 
-    if (!_global.record(now))
-        return false;
-
-    _lastByAddress[to] = now;
+    _lastByAddress.emplace(to, now);
     return true;
 }
 
-bool FloodTracker::shouldKick(TimePoint /*now*/) const noexcept
+std::size_t RejectLimiter::trackedAddresses() const noexcept
 {
-    return _floodedSeconds >= 3;
+    return _lastByAddress.size();
 }
 
+/*
+** Windows start at the first datagram after the previous one ended, so
+** they last at least WINDOW each. A flooded window that starts less than 2
+** windows after the previous flooded one directly follows it; a quiet or a
+** calm second in between pushes it 2 windows or more away, and the streak
+** starts over at 1.
+*/
 bool FloodTracker::allow(TimePoint now)
 {
-    const bool allowed = _datagrams.record(now);
+    if (_datagrams.record(now))
+        return true;
 
-    if (_datagrams.countInWindow() == 1) {
-        if (_hasTrackedWindow &&
-            (!_currentWindowFlooded ||
-                now - _trackedWindowStart >= std::chrono::seconds(2))) {
-            _floodedSeconds = 0;
-        }
+    const TimePoint window = _datagrams.windowStart();
 
-        _trackedWindowStart   = now;
-        _hasTrackedWindow     = true;
-        _currentWindowFlooded = false;
-    }
-
-    if (!allowed && !_currentWindowFlooded) {
+    if (_floodedSeconds > 0 && window == _lastFloodedWindow)
+        return false;
+    if (_floodedSeconds > 0 && window - _lastFloodedWindow < 2 * WINDOW)
         ++_floodedSeconds;
-        _currentWindowFlooded = true;
-    }
+    else
+        _floodedSeconds = 1;
+    _lastFloodedWindow = window;
+    return false;
+}
 
-    return allowed;
+bool FloodTracker::shouldKick(TimePoint now) const noexcept
+{
+    return _floodedSeconds >= KICK_AFTER
+        && now - _lastFloodedWindow < 2 * WINDOW;
 }
 
 } // namespace rtype::server

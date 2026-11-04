@@ -35,7 +35,7 @@ void Packet::readRaw(void *data, std::size_t size)
         throw PacketError("Packet::readRaw: cannot read from null");
 
     std::memcpy(data, _buffer.data() + _offset, size);
-    _offset += size;      
+    _offset += size;
 }
 
 [[nodiscard]] std::size_t Packet::size() const noexcept

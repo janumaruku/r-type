@@ -150,8 +150,9 @@ TEST_F(MotionSystems, InvulnerabilityCountsDownToZero)
     for (int i = 0; i < 130; ++i) {
         tick();
         EXPECT_GE(shipData->invulnerableFor, 0.0F) << "tick " << i + 1;
-        if (i + 1 == 120)
+        if ((i + 1) == 120) {
             EXPECT_NEAR(shipData->invulnerableFor, 0.0F, 1e-4F);
+        }
     }
     EXPECT_EQ(shipData->invulnerableFor, 0.0F);
 }

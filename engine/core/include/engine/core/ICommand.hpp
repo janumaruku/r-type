@@ -1,12 +1,14 @@
 /*
 ** EPITECH PROJECT, 2026
-** zappy
+** r-type
 ** File description:
 ** ICommand
 */
 
-#ifndef ZAPPY_ICOMMAND_HPP
-#define ZAPPY_ICOMMAND_HPP
+#ifndef ICOMMAND_HPP
+#define ICOMMAND_HPP
+
+namespace designPattern {
 
 template <typename... Args>
 class ICommand {
@@ -17,5 +19,5 @@ public:
 
     virtual bool operator()(Args... args) = 0;
 };
-
+}
 #endif
