@@ -34,11 +34,11 @@ The step-by-step plan for building Kollection, the declarative UI framework of t
   
   - Tests: fields set on the right side win; unset fields keep the left value.
 
-- [ ] **T3.** `BoxConstraints`: `tight`, `loose`, `expand`, `constrain`, `smallest`, `isTight`, `hasBoundedWidth/Height`, `deflate`, `loosen`, `enforce`.
+- [x] **T3.** `BoxConstraints`: `tight`, `loose`, `expand`, `constrain`, `smallest`, `isTight`, `hasBoundedWidth/Height`, `deflate`, `loosen`, `enforce`.
   
   - Test it heavily, since most layout bugs start here. For example: `deflate` never goes below 0, and `expand().enforce(loose(100×50))` is tight 100×50.
 
-- [ ] **T4.** `KeyCode`, `KeyEvent`, `PointerEvent`, `ResizeEvent`, `Event`. No tests needed.
+- [x] **T4.** `KeyCode`, `KeyEvent`, `PointerEvent`, `ResizeEvent`, `Event`. No tests needed.
 
 - ✅ All core tests pass.
 
