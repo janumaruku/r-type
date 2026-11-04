@@ -19,6 +19,7 @@ Read in this order if you are new to the project:
 | [architecture/requirements.md](architecture/requirements.md) | Subject requirements and where each one is covered |
 | [architecture/flows.md](architecture/flows.md) | Join, input round trip, enemy kill, client crash |
 | [architecture/accessibility.md](architecture/accessibility.md) | Motor, visual, audio and cognitive accessibility features |
+| [architecture/kollection.md](architecture/kollection.md) | Kollection, the declarative UI framework for the second game: widgets, elements, render tree, paint commands, backends |
 | [modules/engine.md](modules/engine.md) | `engine_core`, `engine_ecs`, `engine_runtime`, `engine_render`, `engine_input`, `engine_audio` |
 | [modules/network.md](modules/network.md) | `net::Packet` serialization and the `net::UdpSocket` helper |
 | [modules/game.md](modules/game.md) | Components, systems, builders, rules, `GameWorld` |
