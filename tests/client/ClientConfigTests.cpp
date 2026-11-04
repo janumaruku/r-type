@@ -33,36 +33,33 @@ std::string configErrorFor(std::vector<std::string_view> args)
     return "";
 }
 
-class ScopedUnsetEnv {
+class ScopedEnv {
 public:
-    explicit ScopedUnsetEnv(const char *name): _name(name)
+    ScopedEnv(const char *name, const char *value): _name(name)
     {
-        if (const char *value = std::getenv(name))
-            _saved = value;
-        unset();
+        if (const char *saved = std::getenv(name))
+            _saved = saved;
+        set(value);
     }
 
-    ~ScopedUnsetEnv()
+    ~ScopedEnv()
     {
-        if (!_saved)
-            return;
-#ifdef _WIN32
-        _putenv_s(_name, _saved->c_str());
-#else
-        setenv(_name, _saved->c_str(), 1);
-#endif
+        set(_saved ? _saved->c_str() : nullptr);
     }
 
-    ScopedUnsetEnv(const ScopedUnsetEnv &) = delete;
-    ScopedUnsetEnv &operator=(const ScopedUnsetEnv &) = delete;
+    ScopedEnv(const ScopedEnv &) = delete;
+    ScopedEnv &operator=(const ScopedEnv &) = delete;
 
 private:
-    void unset() const
+    void set(const char *value) const
     {
 #ifdef _WIN32
-        _putenv_s(_name, "");
+        _putenv_s(_name, value ? value : "");
 #else
-        unsetenv(_name);
+        if (value)
+            setenv(_name, value, 1);
+        else
+            unsetenv(_name);
 #endif
     }
 
@@ -169,9 +166,30 @@ TEST(ClientConfigTests, UnprintableBytesInTheNameBecomeQuestionMarks)
 
 TEST(ClientConfigTests, DefaultNameIsEmptyWithoutUserVariables)
 {
-    const ScopedUnsetEnv user("USER");
-    const ScopedUnsetEnv username("USERNAME");
+    const ScopedEnv user("USER", nullptr);
+    const ScopedEnv username("USERNAME", nullptr);
 
     EXPECT_EQ(ClientConfig::defaultName(), "");
+}
+
+TEST(ClientConfigTests, EmptyNameStaysEmptyForTheServerToPick)
+{
+    EXPECT_EQ(parseArgs({"-n", ""}).name, "");
+}
+
+TEST(ClientConfigTests, DefaultNameIsCutTo16Bytes)
+{
+    const ScopedEnv user("USER", "ABCDEFGHIJKLMNOPQRST");
+    const ScopedEnv username("USERNAME", "ABCDEFGHIJKLMNOPQRST");
+
+    EXPECT_EQ(ClientConfig::defaultName(), "ABCDEFGHIJKLMNOP");
+}
+
+TEST(ClientConfigTests, DefaultNameIsMadePrintable)
+{
+    const ScopedEnv user("USER", "Al\x01" "ce");
+    const ScopedEnv username("USERNAME", "Al\x01" "ce");
+
+    EXPECT_EQ(ClientConfig::defaultName(), "Al?ce");
 }
 }

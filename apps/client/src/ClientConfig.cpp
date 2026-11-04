@@ -35,6 +35,16 @@ const CLI::Validator WHOLE_NUMBER(
             : "'" + value + "' is not a whole number";
     },
     "", "WHOLE_NUMBER");
+
+/*
+** An empty name stays empty, so the server picks "Player N" (RFC § 6.1).
+** Any other name is cut to 16 bytes and its unprintable bytes become '?',
+** so what the client sends always passes the server's checks.
+*/
+std::string printableName(std::string_view name)
+{
+    return name.empty() ? std::string{} : protocol::sanitizeName(name, 0);
+}
 }
 
 std::unique_ptr<CLI::App> makeApp(ClientConfig &config,
@@ -59,7 +69,7 @@ std::unique_ptr<CLI::App> makeApp(ClientConfig &config,
 
     app->add_option_function<std::string>("-n,--name",
            [&config](const std::string &nameStr) {
-               config.name = protocol::sanitizeName(nameStr, 1);
+               config.name = printableName(nameStr);
            }, "Player name")
        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
@@ -106,10 +116,8 @@ std::string ClientConfig::defaultName()
         _dupenv_s(&user, &userSize, "USERNAME");
     if (user == nullptr)
         return "";
-    std::string username(user);
+    std::string username = printableName(user);
     std::free(user);
-    if (username.length() > 16)
-        username = username.substr(0, 16);
     return username;
     #else
     const char *user = std::getenv("USER");
@@ -118,10 +126,7 @@ std::string ClientConfig::defaultName()
         user = std::getenv("USERNAME");
     if (!user)
         return "";
-    std::string username(user);
-    if (username.length() > 16)
-        username = username.substr(0, 16);
-    return username;
+    return printableName(user);
     #endif
 }
 
