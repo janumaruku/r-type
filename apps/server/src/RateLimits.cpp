@@ -39,19 +39,28 @@ TimePoint WindowCounter::windowStart() const noexcept
     return _windowStart;
 }
 
+/*
+** Every entry left after the pruning is younger than WINDOW, and an entry
+** is only added when _global allows it. Its fixed windows let LIMIT through
+** at the end of one window and LIMIT more at the start of the next, so the
+** map holds at most 2 x LIMIT addresses, whatever the sender spoofs.
+*/
 bool RejectLimiter::allow(const asio::ip::udp::endpoint &to, TimePoint now)
 {
-    auto it = _lastByAddress.find(to);
+    std::erase_if(_lastByAddress, [now](const auto &entry) {
+        return now - entry.second >= WINDOW;
+    });
 
-    if (it != _lastByAddress.end() &&
-        now - it->second < std::chrono::seconds(1))
+    if (_lastByAddress.contains(to) || !_global.record(now))
         return false;
 
-    if (!_global.record(now))
-        return false;
-
-    _lastByAddress[to] = now;
+    _lastByAddress.emplace(to, now);
     return true;
+}
+
+std::size_t RejectLimiter::trackedAddresses() const noexcept
+{
+    return _lastByAddress.size();
 }
 
 /*

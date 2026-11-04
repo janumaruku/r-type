@@ -10,6 +10,8 @@
 
 #include <asio.hpp>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <map>
 
 namespace rtype::server {
@@ -70,14 +72,33 @@ private:
     TimePoint _lastFloodedWindow{};
 };
 
+/**
+ * @brief Keeps REJECT from being used to flood a third party: at most one
+ * per @ref WINDOW per address, and @ref LIMIT per @ref WINDOW in total.
+ */
 class RejectLimiter {
 public:
+    static constexpr std::chrono::seconds WINDOW{1};
+    static constexpr std::uint32_t LIMIT = 20;
+
     RejectLimiter() = default;
+
+    /**
+     * @brief Whether a REJECT may be sent to `to` now; if so, it is
+     * recorded. Addresses last answered @ref WINDOW ago or more are
+     * forgotten first.
+     */
     [[nodiscard]] bool allow(const asio::ip::udp::endpoint &to, TimePoint now);
+
+    /**
+     * @brief How many addresses are remembered. Never more than 2 x
+     * @ref LIMIT, however many addresses are seen.
+     */
+    [[nodiscard]] std::size_t trackedAddresses() const noexcept;
 
 private:
     std::map<asio::ip::udp::endpoint, TimePoint> _lastByAddress;
-    WindowCounter _global{20, std::chrono::seconds(1)};
+    WindowCounter _global{LIMIT, WINDOW};
 };
 
 } // namespace rtype::server

@@ -169,9 +169,43 @@ TEST(RejectLimiterTests, HandlesTenThousandUniqueEndpointsOverOneHundredSeconds)
         }
 
         EXPECT_EQ(allowedThisSecond, 20U) << "second " << second;
+        EXPECT_LE(limiter.trackedAddresses(), 20U) << "second " << second;
     }
+}
 
-    // The public API does not expose the private address map's size.
+/*
+** The worst case for the map: one REJECT opens a window, 19 fill it at its
+** very end, and 20 more open the next one. Only the first is a second old
+** by then, so 39 addresses are remembered at once.
+*/
+TEST(RejectLimiterTests, NeverTracksMoreThanTwiceTheLimit)
+{
+    RejectLimiter limiter;
+    std::uint32_t serial = 0;
+    const auto sendAt = [&](TimePoint now, std::uint32_t count) {
+        for (std::uint32_t i = 0; i < count; ++i, ++serial)
+            EXPECT_TRUE(limiter.allow(endpointFor(serial), now))
+                << "address " << serial;
+    };
+
+    sendAt(T0, 1);
+    sendAt(T0 + 990ms, RejectLimiter::LIMIT - 1);
+    sendAt(T0 + 1s, RejectLimiter::LIMIT);
+
+    EXPECT_EQ(limiter.trackedAddresses(), 2 * RejectLimiter::LIMIT - 1);
+    EXPECT_FALSE(limiter.allow(endpointFor(serial), T0 + 1s));
+    EXPECT_LE(limiter.trackedAddresses(), 2 * RejectLimiter::LIMIT);
+}
+
+TEST(RejectLimiterTests, ForgetsAnAddressAfterOneSecond)
+{
+    RejectLimiter limiter;
+
+    EXPECT_TRUE(limiter.allow(endpointFor(1), T0));
+    EXPECT_EQ(limiter.trackedAddresses(), 1U);
+
+    EXPECT_TRUE(limiter.allow(endpointFor(2), T0 + 1s));
+    EXPECT_EQ(limiter.trackedAddresses(), 1U);
 }
 
 } // namespace rtype::server::tests
