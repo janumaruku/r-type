@@ -11,3 +11,6 @@ rtype_add_test(client_tests
         ClientConfigTests.cpp
         ClientSettingsTests.cpp
 )
+
+target_compile_definitions(client_tests PRIVATE
+    RTYPE_CONFIG_DIR="${PROJECT_SOURCE_DIR}/config")
