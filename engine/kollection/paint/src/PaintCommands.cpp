@@ -12,19 +12,21 @@ PaintContext::PaintContext(PaintList &list): _list(list)
 {
 }
 
-void PaintContext::fillRect(const core::Rect &r, const core::Color &c) const
+void PaintContext::fillRect(const core::Rect &rect,
+    const core::Color &color)
 {
-    _list.emplace_back(FillRect{.rect = r, .color = c});
+    _list.emplace_back(FillRect{.rect = rect, .color = color});
 }
 
-void PaintContext::strokeRect(const core::Rect &r, const core::Color &c,
-    const double w) const
+void PaintContext::strokeRect(const core::Rect &rect,
+    const core::Color &color, const double width)
 {
-    _list.emplace_back(StrokeRect{.rect = r, .color = c, .width = w});
+    _list.emplace_back(
+        StrokeRect{.rect = rect, .color = color, .width = width});
 }
 
 void PaintContext::drawText(const core::Offset &at,
-    const core::TextRun &run) const
+    const core::TextRun &run)
 {
     _list.emplace_back(DrawText{.at = at, .run = run});
 }
