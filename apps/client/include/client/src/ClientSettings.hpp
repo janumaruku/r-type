@@ -23,7 +23,6 @@ struct ClientSettings {
     bool fullscreen = false;
 
     [[nodiscard]] static ClientSettings load(const std::filesystem::path &path);
-
     [[nodiscard]] static ClientSettings fromJson(const nlohmann::json &json);
 };
 }

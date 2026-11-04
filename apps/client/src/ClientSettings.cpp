@@ -32,7 +32,8 @@ ClientSettings ClientSettings::load(const std::filesystem::path &path)
     nlohmann::json json;
     auto parsed = nlohmann::json::parse(file, nullptr, false);
     if (parsed.is_discarded() || !parsed.is_object()) {
-        // call log (json invalide)
+        engine::core::log::Logger logger("ClientSettings");
+        logger.error("json is invalid: {}", std::strerror(errno));
         return ClientSettings{};
     }
     return fromJson(parsed);
@@ -50,7 +51,8 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
             if (!std::isnan(val))
                 settings.masterVolume = std::clamp(val, 0.0f, 1.0f);
         } else {
-            // call log (wrong type volume)
+            engine::core::log::Logger logger("ClientSettings");
+            logger.error("wrong type for masterVolume: {}", std::strerror(errno));
         }
     }
     if (json.contains("musicVolume")) {
@@ -59,7 +61,8 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
             if (!std::isnan(val))
                 settings.musicVolume = std::clamp(val, 0.0f, 1.0f);
         } else {
-            // call log wrong type
+            engine::core::log::Logger logger("ClientSettings");
+            logger.error("wrong type for musicVolume: {}", std::strerror(errno));
         }
     }
     if (json.contains("sfxVolume")) {
@@ -68,7 +71,8 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
             if (!std::isnan(val))
                 settings.sfxVolume = std::clamp(val, 0.0f, 1.0f);
         } else {
-            // call log wrong type
+            engine::core::log::Logger logger("ClientSettings");
+            logger.error("wrong type for sfxVolume: {}", std::strerror(errno));
         }
     }
 
@@ -76,7 +80,8 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
         if (json["muted"].is_boolean()) {
             settings.muted = json["muted"].get<bool>();
         } else {
-            // call log wrong type (bool)
+            engine::core::log::Logger logger("ClientSettings");
+            logger.error("wrong type for muted (must be bool): {}", std::strerror(errno));
         }
     }
 
@@ -87,7 +92,8 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
                 settings.hudFontSize = size;
             }
         } else {
-            // call log wrong type (or out of range)
+            engine::core::log::Logger logger("ClientSettings");
+            logger.error("hudFrontSize is or wrong type or is out of range: {}", std::strerror(errno));
         }
     }
 
@@ -95,7 +101,8 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
         if (json["highContrast"].is_boolean()) {
             settings.highContrast = json["highContrast"].get<bool>();
         } else {
-            // call log wrong type
+            engine::core::log::Logger logger("ClientSettings");
+            logger.error("wrong type for highContrast (must be bool): {}", std::strerror(errno));
         }
     }
 
@@ -103,7 +110,8 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
         if (json["reduceFlashes"].is_boolean()) {
             settings.reduceFlashes = json["reduceFlashes"].get<bool>();
         } else {
-            // call log wrong type
+            engine::core::log::Logger logger("ClientSettings");
+            logger.error("wrong type for reduceFlashes (must be bool): {}", std::strerror(errno));
         }
     }
 
@@ -111,7 +119,8 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
         if (json["fullscreen"].is_boolean()) {
             settings.fullscreen = json["fullscreen"].get<bool>();
         } else {
-            // call log wrong type
+            engine::core::log::Logger logger("ClientSettings");
+            logger.error("wrong type for fullscreen (must be bool): {}", std::strerror(errno));
         }
     }
 
@@ -121,7 +130,8 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
             &&
             key != "muted" && key != "hudFontSize" && key != "highContrast" &&
             key != "reduceFlashes" && key != "fullscreen") {
-            // call log (unknown key)
+            engine::core::log::Logger logger("ClientSettings");
+            logger.error("key is wrong: {}", std::strerror(errno));
         }
     }
 

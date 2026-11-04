@@ -9,6 +9,9 @@
 #include <algorithm>
 #include <charconv>
 #include <CLI/CLI.hpp>
+#include <cstdlib>
+
+
 
 namespace rtype::client
 {
@@ -72,16 +75,31 @@ namespace rtype::client
         // TODO make it compatible with windows too
         std::string ClientConfig::defaultName()
         {
-            const char *user = std::getenv("USER");
+            #ifdef _WIN32
+                char *user = nullptr;
+                std::size_t userSize = 0;
+                _dupenv_s(&user, &userSize, "USER");
+                if (user == nullptr)
+                    _dupenv_s(&user, &userSize, "USERNAME");
+                if (user == nullptr)
+                    return "";
+                std::string username(user);
+                std::free(user);
+                if (username.length() > 16)
+                    username = username.substr(0, 16);
+                return username;
+            #else
+                const char *user = std::getenv("USER");
 
-            if (!user)
-                user = std::getenv("USERNAME");
-            if (!user)
-                return "";
-            std::string username(user);
-            if (username.length() > 16)
-                username = username.substr(0, 16);
-            return username;
+                if (!user)
+                    user = std::getenv("USERNAME");
+                if (!user)
+                    return "";
+                std::string username(user);
+                if (username.length() > 16)
+                    username = username.substr(0, 16);
+                return username;
+            #endif
         }
 
 } // namespace rtype::client
