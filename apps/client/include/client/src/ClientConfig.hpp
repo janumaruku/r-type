@@ -21,7 +21,7 @@ namespace rtype::client {
         engine::core::log::Level logLevel = engine::core::log::Level::EG_INFO;
 
         [[nodiscard]] static ClientConfig parse(std::span<const std::string_view> args);
-        [[nodiscard]] static std::string usage(std::string_view program);
+        // [[nodiscard]] static std::string  usage(std::string_view program);
         [[nodiscard]] static std::string defaultName();
     };
 
