@@ -91,4 +91,25 @@ TEST(SessionManagerTests, ReportsSessionsTimedOutAfterFiveSeconds)
     EXPECT_EQ(expired.front(), endpoint);
 }
 
+#ifndef NDEBUG
+TEST(SessionManagerTests, AddingAFifthSessionAsserts)
+{
+    SessionManager manager;
+
+    for (std::uint32_t i = 0; i < SessionManager::MAX_SESSIONS; ++i)
+        manager.add(endpointFor(i), static_cast<std::uint8_t>(i), "P", T0);
+
+    EXPECT_DEATH(manager.add(endpointFor(4), 4, "P", T0), "no free slot");
+}
+
+TEST(SessionManagerTests, AddingAKnownEndpointAsserts)
+{
+    SessionManager manager;
+
+    manager.add(endpointFor(1), 0, "P", T0);
+
+    EXPECT_DEATH(manager.add(endpointFor(1), 1, "P", T0), "already has one");
+}
+#endif
+
 } // namespace rtype::server::tests
