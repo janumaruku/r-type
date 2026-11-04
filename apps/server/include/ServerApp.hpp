@@ -20,12 +20,19 @@ public:
      * SIGINT/SIGTERM handler, tests set it from their own thread.
      */
     ServerApp(ServerConfig config, const std::atomic<bool> &stopRequested);
-    ~ServerApp();
 
     ServerApp(const ServerApp &) = delete;
     ServerApp &operator=(const ServerApp &) = delete;
 
     [[nodiscard]] std::uint16_t port() const noexcept;
+    /**
+     * @brief Ticks until the stop flag is set, sends SHUTDOWN, then stops
+     * the socket so the port is free as soon as it returns.
+     *
+     * An app that never ran, or whose run() threw, is stopped by
+     * UdpSocket's own destructor: ServerApp needs none.
+     * @return 0 on a clean stop.
+     */
     [[nodiscard]] int run();
 
 private:
