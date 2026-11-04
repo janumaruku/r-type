@@ -8,6 +8,8 @@ add_library(client_logic STATIC
         src/ClientNetworkAdapter.cpp
         src/ClientWorld.cpp
         src/SpriteCatalog.cpp
+        src/ClientConfig.cpp
+        src/ClientSettings.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)
@@ -20,15 +22,15 @@ target_link_libraries(client_logic PUBLIC
         network
         rtype_protocol
         rtype_game
+        nlohmann_json
         project_options
 )
 
-add_executable(r-type_client src/main.cpp
-    src/ClientConfig.cpp
-    src/ClientSettings.cpp)
+target_link_libraries(client_logic PRIVATE CLI11::CLI11)
 
-target_link_libraries(r-type_client PRIVATE nlohmann_json engine_core rtype_protocol CLI11::CLI11 project_options)
-target_include_directories(r-type_client PUBLIC include)
+add_executable(r-type_client src/main.cpp)
+
+target_link_libraries(r-type_client PRIVATE client_logic project_options)
 
 set_target_properties(r-type_client PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${PROJECT_SOURCE_DIR}"
