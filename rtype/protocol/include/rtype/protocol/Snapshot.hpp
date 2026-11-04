@@ -25,7 +25,7 @@ enum class PlayerState : std::uint8_t {
     EMPTY = 0,
     ALIVE = 1,
     RESPAWNING = 2,
-    OUT = 3,
+    PLAYER_OUT = 3,
 };
 
 struct PlayerInfo {

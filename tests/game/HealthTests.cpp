@@ -98,7 +98,7 @@ TEST_F(Healths, ShipKilledOnItsLastLifeIsOut)
 
     EXPECT_FALSE(_registry.isAlive(ship));
     ASSERT_NE(slot, nullptr);
-    EXPECT_EQ(slot->state, SlotState::OUT);
+    EXPECT_EQ(slot->state, SlotState::SLOT_OUT);
     EXPECT_EQ(slot->lives, 0);
     ASSERT_EQ(killed.size(), 1U);
     EXPECT_EQ(killed[0].killer, NO_NET_ID);
