@@ -7,8 +7,9 @@
 
 #ifndef R_TYPE_CLIENTSETTINGS_HPP
 #define R_TYPE_CLIENTSETTINGS_HPP
-#include "engine/core/Logger.hpp"
+
 #include <filesystem>
+
 #include <nlohmann/json.hpp>
 
 namespace rtype::client {
@@ -27,4 +28,4 @@ struct ClientSettings {
 };
 }
 
-#endif // namespace rtype::client
+#endif //R_TYPE_CLIENTSETTINGS_HPP
