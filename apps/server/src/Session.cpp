@@ -7,24 +7,27 @@
 
 #include "Session.hpp"
 
+#include <cassert>
 #include <chrono>
+#include <utility>
 
 #include "RateLimits.hpp"
 
 namespace rtype::server {
 
 ClientSession &SessionManager::add(const asio::ip::udp::endpoint &endpoint,
-    std::uint8_t playerId, const std::string &name, TimePoint now)
+    std::uint8_t playerId, std::string name, TimePoint now)
 {
-    ClientSession session{
+    assert(_sessions.size() < MAX_SESSIONS && "no free slot was reserved");
+    assert(!_sessions.contains(endpoint) && "the endpoint already has one");
+
+    return _sessions.emplace(endpoint, ClientSession{
         .endpoint  = endpoint,
         .playerId  = playerId,
-        .name      = name,
+        .name      = std::move(name),
         .lastHeard = now,
         .datagrams = {},
-    };
-    _sessions.emplace(endpoint, session);
-    return _sessions.at(endpoint);
+    }).first->second;
 }
 
 ClientSession *SessionManager::find(const asio::ip::udp::endpoint &endpoint)

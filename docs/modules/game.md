@@ -221,6 +221,8 @@ stateDiagram-v2
     OUT --> [*] : release()
 ```
 
+In the code, OUT is `SlotState::SLOT_OUT`, and the protocol's matching value is `PlayerState::PLAYER_OUT`. `OUT` is a macro in the Windows headers that Asio includes, so neither enumerator can be called `OUT`. This document and the RFC keep the name OUT.
+
 | Transition | From | To, and effects |
 | --- | --- | --- |
 | `reserve()` | free | EMPTY, `playerId` set. Returns the lowest free id, or `nullopt` if the 4 are taken |

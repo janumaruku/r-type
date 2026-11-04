@@ -334,7 +334,7 @@ TEST_F(Scenario, LosingTheLastLifeEndsTheGameThenRestartsIt)
             return std::holds_alternative<GameOver>(entry.second);
         })->second).teamScore, _rules.killScore);
     EXPECT_EQ(_world.phase(), Phase::GAME_OVER);
-    EXPECT_EQ(slot(player).state, SlotState::OUT);
+    EXPECT_EQ(slot(player).state, SlotState::SLOT_OUT);
 
     ASSERT_TRUE(playUntil<GameRestarted>(400).has_value());
     EXPECT_EQ(tickOf<GameRestarted>() - tickOf<GameOver>(), 300U);
@@ -362,7 +362,7 @@ TEST_F(Scenario, PlayerJoiningDuringAGameOverPlaysAfterTheRestart)
     play();
     ASSERT_GT(_events.size(), seen);
     EXPECT_EQ(_events[seen].second, GameEvent{PlayerJoined{.playerId = late}});
-    EXPECT_EQ(slot(late).state, SlotState::OUT);
+    EXPECT_EQ(slot(late).state, SlotState::SLOT_OUT);
     EXPECT_EQ(slot(late).lives, 0);
     EXPECT_EQ(_world.phase(), Phase::GAME_OVER);
 
