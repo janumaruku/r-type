@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <atomic>
 #include <chrono>
 #include <thread>
 
@@ -15,12 +16,13 @@ TEST(ServerAppTests, StopsCleanly)
     rtype::server::ServerConfig config;
     config.port = 0;
     config.seed = 1;
-    rtype::server::ServerApp app(config);
+    std::atomic<bool> stopRequested{false};
+    rtype::server::ServerApp app(config, stopRequested);
     int result = -1;
     std::thread server([&] { result = app.run(); });
 
     std::this_thread::sleep_for(100ms);
-    app.requestStop();
+    stopRequested = true;
     server.join();
 
     EXPECT_EQ(result, 0);
@@ -30,12 +32,13 @@ TEST(ServerAppTests, RejectsBusyPort)
 {
     rtype::server::ServerConfig firstConfig;
     firstConfig.port = 0;
-    rtype::server::ServerApp first(firstConfig);
+    const std::atomic<bool> stopRequested{false};
+    rtype::server::ServerApp first(firstConfig, stopRequested);
 
     rtype::server::ServerConfig secondConfig;
     secondConfig.port = first.port();
     EXPECT_THROW({
-        rtype::server::ServerApp second(secondConfig);
+        rtype::server::ServerApp second(secondConfig, stopRequested);
     }, engine::core::NetworkError);
 }
 
