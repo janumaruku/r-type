@@ -1,0 +1,24 @@
+{
+  "keybindings": [
+    {
+      "name": "FIRE",
+      "keys": ["SPACE", "KEY_A"]
+    },
+    {
+      "name": "UP",
+      "keys": ["UP", "KEY_Z"]
+    },
+    {
+      "name": "LEFT",
+      "keys": ["LEFT", "KEY_Q"]
+    },
+    {
+      "name": "DOWN",
+      "keys": ["DOWN", "KEY_S"]
+    },
+    {
+      "name": "RIGHT",
+      "keys": ["RIGHT", "KEY_D"]
+    }
+  ]
+}
