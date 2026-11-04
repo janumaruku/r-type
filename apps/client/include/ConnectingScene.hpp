@@ -7,6 +7,7 @@
 
 #ifndef R_TYPE_CONNECTING_SCENE_HPP
 #define R_TYPE_CONNECTING_SCENE_HPP
+#include "ClientConfig.hpp"
 #include "ClientDispatch.hpp"
 #include "FontCache.hpp"
 #include "RenderQueue.hpp"
@@ -48,16 +49,6 @@ enum class Action : std::uint8_t {
 ** TODO(RTP-121): temporary, belongs to Actions.hpp.
 */
 void bindDefaults(engine::input::ActionMap<Action> & actions);
-
-/*
-** TODO(RTP-120): temporary stub with only the fields ConnectingScene reads.
-** Delete it once RTP-120 is merged into dev and include ClientConfig.hpp.
-*/
-struct ClientConfig {
-    std::string host = "127.0.0.1";
-    std::uint16_t port = 4242;
-    std::string name;
-};
 
 /*
 ** TODO(RTP-121): temporary, belongs to Scenes.hpp.

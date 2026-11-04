@@ -86,10 +86,10 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
     }
 
     if (json.contains("hudFontSize")) {
-        if (json["hudFontSize"].is_number_unsigned()) {
-            unsigned size = json["hudFontSize"].get<unsigned>();
+        if (json["hudFontSize"].is_number_integer()) {
+            const auto size = json["hudFontSize"].get<long long>();
             if (size >= 8 && size <= 96) {
-                settings.hudFontSize = size;
+                settings.hudFontSize = static_cast<unsigned>(size);
             }
         } else {
             engine::core::log::Logger logger("ClientSettings");
