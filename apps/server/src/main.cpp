@@ -1,8 +1,10 @@
+#include <algorithm>
 #include <atomic>
-#include <exception>
-#include <stdexcept>
-#include <utility>
 #include <csignal>
+#include <exception>
+#include <iostream>
+#include <string_view>
+#include <vector>
 
 #include "engine/core/Errors.hpp"
 #include "engine/core/Logger.hpp"
@@ -10,6 +12,8 @@
 #include "ServerConfig.hpp"
 
 namespace {
+
+constexpr std::string_view PROGRAM = "r-type_server";
 
 std::atomic<bool> g_stopRequested{false};
 
@@ -50,9 +54,20 @@ public:
 
 int main(int argc, char *argv[])
 {
-    rtype::server::ServerConfig config;
-    if (const auto result = parse(argc, argv, config))
-        return result.value();
+    using rtype::server::ServerConfig;
+    const std::vector<std::string_view> args(argv + std::min(argc, 1),
+        argv + argc);
+    ServerConfig config;
+
+    try {
+        config = ServerConfig::parse(args);
+    } catch (const rtype::server::HelpRequested &) {
+        std::cout << ServerConfig::usage(PROGRAM);
+        return 0;
+    } catch (const rtype::server::ConfigError &error) {
+        std::cerr << error.what() << "\n\n" << ServerConfig::usage(PROGRAM);
+        return rtype::server::EPITECH_EXIT_FAIL;
+    }
     try {
         const StopOnSignal stopOnSignal;
         rtype::server::ServerApp app(config, g_stopRequested);
