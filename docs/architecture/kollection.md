@@ -5,7 +5,7 @@
 **Status:** Consolidated draft, revision 2. Fixes the bugs and inconsistencies of revision 1 (see [Appendix C](#appendix-c--changes-from-revision-1)) and marks the MVP scope.
 
 > **Project name:** **Kollection**. Root namespace `kollection`, short alias `koll`.
->
+> 
 > **How to read this.** §1–§2 give the whole picture: the mental model, the four layers and the frame pipeline. §3–§6 describe the four layers in dependency order, each with one fully developed widget. §7 follows one running app through all four layers, frame by frame. §8–§10 cover cross-cutting concerns, decisions and the roadmap. Items marked **[MVP]** are the first deliverable. Items marked **[Later]** are designed but not built yet.
 
 ---
@@ -24,12 +24,12 @@ Everything below elaborates on that sentence.
 
 ## 1.3 The four layers
 
-| # | Layer | Namespace | Responsibility | Depends on | Key output |
-|---|---|---|---|---|---|
-| 1 | **Widget** | `kollection::widget` | Describe *what* the UI is (immutable tree) | `core` | Widget tree |
-| 2 | **Framework** | `kollection::framework` | Reconcile → layout → paint → hit-test → focus | 1, `core`, `paint` | Paint-command list |
-| 3 | **Platform** | `kollection::platform` | Own the window or terminal and the event loop, or adapt the host's | 2 (the `Surface` contract) | Size in, events in |
-| 4 | **Backend** | `kollection::backend` | Rasterize commands, then present | `paint`, `core` | Pixels or cells on screen |
+| #   | Layer         | Namespace               | Responsibility                                                     | Depends on                 | Key output                |
+| --- | ------------- | ----------------------- | ------------------------------------------------------------------ | -------------------------- | ------------------------- |
+| 1   | **Widget**    | `kollection::widget`    | Describe *what* the UI is (immutable tree)                         | `core`                     | Widget tree               |
+| 2   | **Framework** | `kollection::framework` | Reconcile → layout → paint → hit-test → focus                      | 1, `core`, `paint`         | Paint-command list        |
+| 3   | **Platform**  | `kollection::platform`  | Own the window or terminal and the event loop, or adapt the host's | 2 (the `Surface` contract) | Size in, events in        |
+| 4   | **Backend**   | `kollection::backend`   | Rasterize commands, then present                                   | `paint`, `core`            | Pixels or cells on screen |
 
 In the game, layers 3 and 4 collapse into a single adapter, `backend::raylib::RaylibSurface`. The game owns the window and the loop already (§5.2).
 
@@ -98,18 +98,18 @@ flowchart LR
 
 The root namespace is `kollection`, with one sub-namespace per layer plus two shared vocabularies that no single layer owns.
 
-| Namespace | Layer | Contents |
-|---|---|---|
-| `kollection::core` | shared | Value types every layer uses: `Size`, `Offset`, `Rect`, `EdgeInsets`, `Color`, `TextStyle`, `TextRun`, `WidgetKey`, `BoxConstraints`, `Alignment`, `KeyCode`, `KeyEvent`, `PointerEvent`, `ResizeEvent`, `Event` |
-| `kollection::widget` | L1 | `Widget`, `StatelessWidget`, `StatefulWidget`, `RenderWidget` (+ leaf/single/multi), `ProxyWidget`, `InheritedWidget`, `StateBase`, `State<W>`, and every concrete widget |
-| `kollection::framework` | L2 | `Element` (+ families), `BuildContext`, `RenderObject` (+ subclasses), `ParentData`, `Pipeline`, `HitTestResult`, `FocusNode`, `FocusManager`, `Surface`, `TextMeasurer` |
-| `kollection::paint` | L2↔L4 contract | The paint commands, `PaintCommand`, `PaintList`, `PaintContext` |
-| `kollection::platform` | L3 | `Platform` (standalone loop + `waitEvent`), `run()` |
-| `kollection::platform::term` | L3 [Later] | `TerminalPlatform`, the raw-input parser |
-| `kollection::platform::sdl` | L3 [Later] | `SdlPlatform` |
-| `kollection::backend::raylib` | L3+L4 [MVP] | `RaylibSurface` (adapter over `engine::render` and `engine::input`) |
-| `kollection::backend::term` | L4 [Later] | `TerminalBackend`, `Cell`, the ANSI differ |
-| `kollection::backend::sdl` | L4 [Later] | `SdlBackend`, `FontCache` |
+| Namespace                     | Layer          | Contents                                                                                                                                                                                                         |
+| ----------------------------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `kollection::core`            | shared         | Value types every layer uses: `Size`, `Offset`, `Rect`, `EdgeInsets`, `Color`, `TextStyle`, `TextRun`, `WidgetKey`, `BoxConstraints`, `Alignment`, `KeyCode`, `KeyEvent`, `PointerEvent`, `ResizeEvent`, `Event` |
+| `kollection::widget`          | L1             | `Widget`, `StatelessWidget`, `StatefulWidget`, `RenderWidget` (+ leaf/single/multi), `ProxyWidget`, `InheritedWidget`, `StateBase`, `State<W>`, and every concrete widget                                        |
+| `kollection::framework`       | L2             | `Element` (+ families), `BuildContext`, `RenderObject` (+ subclasses), `ParentData`, `Pipeline`, `HitTestResult`, `FocusNode`, `FocusManager`, `Surface`, `TextMeasurer`                                         |
+| `kollection::paint`           | L2↔L4 contract | The paint commands, `PaintCommand`, `PaintList`, `PaintContext`                                                                                                                                                  |
+| `kollection::platform`        | L3             | `Platform` (standalone loop + `waitEvent`), `run()`                                                                                                                                                              |
+| `kollection::platform::term`  | L3 [Later]     | `TerminalPlatform`, the raw-input parser                                                                                                                                                                         |
+| `kollection::platform::sdl`   | L3 [Later]     | `SdlPlatform`                                                                                                                                                                                                    |
+| `kollection::backend::raylib` | L3+L4 [MVP]    | `RaylibSurface` (adapter over `engine::render` and `engine::input`)                                                                                                                                              |
+| `kollection::backend::term`   | L4 [Later]     | `TerminalBackend`, `Cell`, the ANSI differ                                                                                                                                                                       |
+| `kollection::backend::sdl`    | L4 [Later]     | `SdlBackend`, `FontCache`                                                                                                                                                                                        |
 
 Conventions:
 
@@ -213,14 +213,14 @@ classDiagram
     MultiChildRenderWidget <|.. Flex
 ```
 
-| Kind | Render node? | `build`? | Example developed here |
-|---|---|---|---|
-| `StatelessWidget` | no | yes → subtree | **Container** (§3.5) |
-| `StatefulWidget` | no | yes (via `State`) | **Counter** (§3.6), `Button` (§4.8) |
-| `InheritedWidget` | no (proxy) | no | `DefaultTextStyle` (§3.7) |
-| `SingleChildRenderWidget` | yes | no | **ColoredBox** (§4.6) |
-| `LeafRenderWidget` | yes | no | `Paragraph` (§3.8) |
-| `MultiChildRenderWidget` | yes | no | `Row` / `Column` (§4.6.4) |
+| Kind                      | Render node? | `build`?          | Example developed here              |
+| ------------------------- | ------------ | ----------------- | ----------------------------------- |
+| `StatelessWidget`         | no           | yes → subtree     | **Container** (§3.5)                |
+| `StatefulWidget`          | no           | yes (via `State`) | **Counter** (§3.6), `Button` (§4.8) |
+| `InheritedWidget`         | no (proxy)   | no                | `DefaultTextStyle` (§3.7)           |
+| `SingleChildRenderWidget` | yes          | no                | **ColoredBox** (§4.6)               |
+| `LeafRenderWidget`        | yes          | no                | `Paragraph` (§3.8)                  |
+| `MultiChildRenderWidget`  | yes          | no                | `Row` / `Column` (§4.6.4)           |
 
 ## 3.2 Base classes
 
@@ -1106,14 +1106,14 @@ private:
 
 The variant matches the game engine's `DrawCommand`, and it lets each command carry only its own fields. Full affine transforms are replaced by translation only. No planned widget needs rotation or scale, and the terminal can't do them anyway.
 
-| Command | Raylib adapter [MVP] | Terminal [Later] | SDL [Later] |
-|---|---|---|---|
-| `FillRect` | `RectCmd` with fill | cell background over region | filled rect |
-| `StrokeRect` | `RectCmd` with outline only | box-drawing border | 4 lines |
-| `DrawText` | `TextCmd` | glyphs into cells + attributes | SDL_ttf texture |
-| `DrawLine` | — | box-drawing chars (H/V only) | `SDL_RenderLine` |
-| `PushClip/PopClip` | needs scissor support in `engine_render` | rectangular cell clip | `SDL_SetRenderClipRect` |
-| `PushTranslate/PopTranslate` | offset stack in the adapter | integer offset stack | offset stack |
+| Command                      | Raylib adapter [MVP]                     | Terminal [Later]               | SDL [Later]             |
+| ---------------------------- | ---------------------------------------- | ------------------------------ | ----------------------- |
+| `FillRect`                   | `RectCmd` with fill                      | cell background over region    | filled rect             |
+| `StrokeRect`                 | `RectCmd` with outline only              | box-drawing border             | 4 lines                 |
+| `DrawText`                   | `TextCmd`                                | glyphs into cells + attributes | SDL_ttf texture         |
+| `DrawLine`                   | —                                        | box-drawing chars (H/V only)   | `SDL_RenderLine`        |
+| `PushClip/PopClip`           | needs scissor support in `engine_render` | rectangular cell clip          | `SDL_SetRenderClipRect` |
+| `PushTranslate/PopTranslate` | offset stack in the adapter              | integer offset stack           | offset stack            |
 
 ## 4.10 The frame pipeline
 
@@ -1452,12 +1452,12 @@ The terminal backend's diff finds that only the `0` cell changed, and writes one
 
 ## 8.1 Backend independence (summary)
 
-| Mechanism | Raylib adapter [MVP] | Terminal [Later] | SDL [Later] |
-|---|---|---|---|
-| Layout unit | 1 logical px (game's logical size) | 1 cell (rounded at rasterization) | 1 logical px |
-| Text measure | `engine` font metrics | `wcwidth`, height 1 | SDL_ttf |
-| Present | the game's frame | ANSI diff | `SDL_RenderPresent` |
-| Redraw policy | resubmit the cached `PaintList` every frame | only on dirty frames | only on dirty frames |
+| Mechanism     | Raylib adapter [MVP]                        | Terminal [Later]                  | SDL [Later]          |
+| ------------- | ------------------------------------------- | --------------------------------- | -------------------- |
+| Layout unit   | 1 logical px (game's logical size)          | 1 cell (rounded at rasterization) | 1 logical px         |
+| Text measure  | `engine` font metrics                       | `wcwidth`, height 1               | SDL_ttf              |
+| Present       | the game's frame                            | ANSI diff                         | `SDL_RenderPresent`  |
+| Redraw policy | resubmit the cached `PaintList` every frame | only on dirty frames              | only on dirty frames |
 
 One framework, one `Surface` per backend. Nothing above layer 4 branches on the backend.
 
@@ -1476,19 +1476,19 @@ The framework is **single-threaded**: event dispatch and `drawFrame` run on the 
 
 # 9. Decisions and open questions
 
-| # | Question | Decision / current lean |
-|---|---|---|
-| OQ-1 | Widget ownership | **Resolved:** `shared_ptr<const Widget>`; elements and render objects are `unique_ptr`-owned by their parent element; pool allocation only if profiled |
-| OQ-2 | `Color` internal model | Truecolor internally, `std::optional<Color>` where "unset" matters; the terminal backend converts to 256/16 colours |
-| OQ-3 | Coordinate type | `double` everywhere; the terminal rounds at rasterization, the Raylib adapter converts to `float` |
-| OQ-4 | Loop ownership | **Resolved:** the host owns the loop (the game's frame loop, or a standalone `Platform`) and calls `dispatchEvent` / `drawFrame` |
-| OQ-5 | Frame scheduling | Embedded: checked every game frame. Standalone: event-driven, clock-driven once animation lands |
-| OQ-6 | Relayout / repaint boundaries | None yet: `markNeedsLayout` bubbles to the root, any paint repaints everything. Add when profiled |
-| OQ-7 | `parentData` extension | **Resolved:** `ParentData` base with `offset`, subclassed per parent (`FlexParentData`); installed by `setupParentData` |
-| OQ-8 | Equality for `updateShouldNotify` and render updates | `= default` `operator==` on value types and config fields |
-| OQ-9 | Text measurement | **Resolved:** `TextMeasurer` provided by the `Surface`, reached through the pipeline during layout |
-| OQ-10 | Focus traversal | Tree order (next/previous) now; spatial navigation later |
-| OQ-11 | Element destruction | **Resolved:** deactivated subtrees are parked and destroyed at the end of the build phase, bottom-up |
+| #     | Question                                             | Decision / current lean                                                                                                                                |
+| ----- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| OQ-1  | Widget ownership                                     | **Resolved:** `shared_ptr<const Widget>`; elements and render objects are `unique_ptr`-owned by their parent element; pool allocation only if profiled |
+| OQ-2  | `Color` internal model                               | Truecolor internally, `std::optional<Color>` where "unset" matters; the terminal backend converts to 256/16 colours                                    |
+| OQ-3  | Coordinate type                                      | `double` everywhere; the terminal rounds at rasterization, the Raylib adapter converts to `float`                                                      |
+| OQ-4  | Loop ownership                                       | **Resolved:** the host owns the loop (the game's frame loop, or a standalone `Platform`) and calls `dispatchEvent` / `drawFrame`                       |
+| OQ-5  | Frame scheduling                                     | Embedded: checked every game frame. Standalone: event-driven, clock-driven once animation lands                                                        |
+| OQ-6  | Relayout / repaint boundaries                        | None yet: `markNeedsLayout` bubbles to the root, any paint repaints everything. Add when profiled                                                      |
+| OQ-7  | `parentData` extension                               | **Resolved:** `ParentData` base with `offset`, subclassed per parent (`FlexParentData`); installed by `setupParentData`                                |
+| OQ-8  | Equality for `updateShouldNotify` and render updates | `= default` `operator==` on value types and config fields                                                                                              |
+| OQ-9  | Text measurement                                     | **Resolved:** `TextMeasurer` provided by the `Surface`, reached through the pipeline during layout                                                     |
+| OQ-10 | Focus traversal                                      | Tree order (next/previous) now; spatial navigation later                                                                                               |
+| OQ-11 | Element destruction                                  | **Resolved:** deactivated subtrees are parked and destroyed at the end of the build phase, bottom-up                                                   |
 
 ---
 
@@ -1551,26 +1551,26 @@ The directory structure mirrors the namespace map 1:1, so a file's path tells yo
 
 **Bugs fixed**
 
-| § | Problem in rev. 1 | Fix |
-|---|---|---|
-| 3.2, 8.2 | A per-frame arena freed widgets that elements which weren't rebuilt still pointed to | `WidgetPtr = shared_ptr<const Widget>`; the element owns its current widget |
-| 3.2 | `namespace engine { … }` written *inside* `kollection::widget` declared `kollection::widget::engine::Element` | Forward declarations at namespace scope, in `kollection::framework` |
-| 3.2 | `using namespace kollection::core;` in a header, against the §2.1 convention | Qualified names / single `using` declarations |
-| 4.4 | `flushBuild` used a range-for over `dirty_` while rebuilds `push_back` into it (undefined behaviour) | Index loop + re-sort of the remaining range |
-| 4.4 | Elements removed during the build pass could be destroyed while still in the dirty list | Deactivated subtrees parked in the pipeline, destroyed in `finalizeTree()` |
-| 4.4 | Duplicate dirty-list entries | `inDirtyList_` guard |
-| 4.4 | `updateChild` set `widget_` after construction and called an undefined `adopt` | Element constructed with its widget; ownership through `unique_ptr` return values |
-| 4.4 | `State` had no `didUpdateWidget` / `dispose`, and `setState` could run on an unmounted element | Added both hooks; `setState` is a no-op once unmounted |
-| 4.6 | `markNeedsLayout` didn't bubble, so the memo in `layout()` hid dirty children forever | Bubbles to the root while there are no relayout boundaries |
-| 4.6 | `parentUsesSize` was a parameter nobody read | Removed until relayout boundaries exist |
-| 4.6 | `BoxConstraints::expand()` had min = ∞, and an empty `ColoredBox` sized itself to "as big as allowed", giving ∞ in unbounded axes | `enforce()` against the parent, minimum used in unbounded axes; an empty proxy box takes `smallest()` |
-| 4.6 | `RenderColoredBox::child` was "set during attach" with no API | `insertChild` / `removeChild` / `setupParentData`; ownership defined |
-| 4.7 | The hit path was described as root → target but built target → root | Documented as deepest first, and dispatch goes deepest first |
-| 4.7 | `RenderListener` kept the first build's callbacks | `updateRenderObject` copies the new closures |
-| 4.10 | `drawFrame` called `surface_->rootConstraints()`, which `Surface` doesn't declare | `BoxConstraints::loose(surface.sizeInUnits())` |
-| 3.8 | `RenderParagraph` had to measure text but the core can't name a font backend | `TextMeasurer` interface provided by the `Surface` |
-| 5.4 | `write(…, /*len*/)` had no length; SGR mouse coordinates are 1-based | `string_view` length; parser subtracts 1 |
-| 6.1 | Terminal buffers had no resize path | `resize()` reallocates and forces a full redraw |
+| §        | Problem in rev. 1                                                                                                                 | Fix                                                                                                   |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| 3.2, 8.2 | A per-frame arena freed widgets that elements which weren't rebuilt still pointed to                                              | `WidgetPtr = shared_ptr<const Widget>`; the element owns its current widget                           |
+| 3.2      | `namespace engine { … }` written *inside* `kollection::widget` declared `kollection::widget::engine::Element`                     | Forward declarations at namespace scope, in `kollection::framework`                                   |
+| 3.2      | `using namespace kollection::core;` in a header, against the §2.1 convention                                                      | Qualified names / single `using` declarations                                                         |
+| 4.4      | `flushBuild` used a range-for over `dirty_` while rebuilds `push_back` into it (undefined behaviour)                              | Index loop + re-sort of the remaining range                                                           |
+| 4.4      | Elements removed during the build pass could be destroyed while still in the dirty list                                           | Deactivated subtrees parked in the pipeline, destroyed in `finalizeTree()`                            |
+| 4.4      | Duplicate dirty-list entries                                                                                                      | `inDirtyList_` guard                                                                                  |
+| 4.4      | `updateChild` set `widget_` after construction and called an undefined `adopt`                                                    | Element constructed with its widget; ownership through `unique_ptr` return values                     |
+| 4.4      | `State` had no `didUpdateWidget` / `dispose`, and `setState` could run on an unmounted element                                    | Added both hooks; `setState` is a no-op once unmounted                                                |
+| 4.6      | `markNeedsLayout` didn't bubble, so the memo in `layout()` hid dirty children forever                                             | Bubbles to the root while there are no relayout boundaries                                            |
+| 4.6      | `parentUsesSize` was a parameter nobody read                                                                                      | Removed until relayout boundaries exist                                                               |
+| 4.6      | `BoxConstraints::expand()` had min = ∞, and an empty `ColoredBox` sized itself to "as big as allowed", giving ∞ in unbounded axes | `enforce()` against the parent, minimum used in unbounded axes; an empty proxy box takes `smallest()` |
+| 4.6      | `RenderColoredBox::child` was "set during attach" with no API                                                                     | `insertChild` / `removeChild` / `setupParentData`; ownership defined                                  |
+| 4.7      | The hit path was described as root → target but built target → root                                                               | Documented as deepest first, and dispatch goes deepest first                                          |
+| 4.7      | `RenderListener` kept the first build's callbacks                                                                                 | `updateRenderObject` copies the new closures                                                          |
+| 4.10     | `drawFrame` called `surface_->rootConstraints()`, which `Surface` doesn't declare                                                 | `BoxConstraints::loose(surface.sizeInUnits())`                                                        |
+| 3.8      | `RenderParagraph` had to measure text but the core can't name a font backend                                                      | `TextMeasurer` interface provided by the `Surface`                                                    |
+| 5.4      | `write(…, /*len*/)` had no length; SGR mouse coordinates are 1-based                                                              | `string_view` length; parser subtracts 1                                                              |
+| 6.1      | Terminal buffers had no resize path                                                                                               | `resize()` reallocates and forces a full redraw                                                       |
 
 **Consistency**
 
