@@ -2,6 +2,7 @@
 #define SERVER_APP_HPP
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 
 #include "ServerConfig.hpp"
@@ -10,8 +11,17 @@
 
 namespace rtype::server {
 
+struct ServerAppTestAccess;
+
 class ServerApp {
 public:
+    /**
+     * @brief One tick every 1/60 s. Converted to nanoseconds before the
+     * division, which would give 0 in seconds and 16 ms in milliseconds.
+     */
+    static constexpr std::chrono::nanoseconds TICK_PERIOD =
+        std::chrono::nanoseconds(std::chrono::seconds(1)) / 60;
+
     /**
      * @brief Binds the port and starts the socket. run() returns once
      * `stopRequested` becomes true.
@@ -36,6 +46,8 @@ public:
     [[nodiscard]] int run();
 
 private:
+    friend struct ServerAppTestAccess;
+
     void tick();
     void logStats();
 

@@ -11,8 +11,6 @@ namespace rtype::server {
 
 namespace {
 constexpr std::chrono::milliseconds SEND_TIMEOUT{200};
-constexpr std::chrono::nanoseconds TICK_PERIOD =
-    std::chrono::nanoseconds(std::chrono::seconds(1)) / 60;
 
 ServerConfig withSeed(ServerConfig config)
 {

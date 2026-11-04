@@ -39,6 +39,7 @@ classDiagram
         +parse(int argc, char** argv)$ ServerConfig
     }
     class ServerApp {
+        +nanoseconds TICK_PERIOD$
         -ServerConfig _config
         -net::UdpSocket _socket
         -game::GameWorld _world
