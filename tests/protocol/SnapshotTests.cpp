@@ -40,7 +40,7 @@ std::vector<proto::PlayerInfo> fullRoster()
         proto::PlayerInfo{.playerId = 1,
             .state = proto::PlayerState::RESPAWNING, .lives = 2,
             .score = 1500, .name = SIXTEEN_BYTES},
-        proto::PlayerInfo{.playerId = 2, .state = proto::PlayerState::OUT,
+        proto::PlayerInfo{.playerId = 2, .state = proto::PlayerState::PLAYER_OUT,
             .lives = 0, .score = 42, .name = SIXTEEN_BYTES},
         proto::PlayerInfo{.playerId = 3, .state = proto::PlayerState::ALIVE,
             .lives = 1, .score = 7, .shipNetId = 104, .name = SIXTEEN_BYTES},
@@ -156,7 +156,7 @@ TEST(SnapshotTests, AnUnknownPlayerStateIsRejected)
 
 TEST(SnapshotTests, MoreThanThreeLivesIsRejected)
 {
-    expectOutOfRange(proto::PlayerInfo{.state = proto::PlayerState::OUT,
+    expectOutOfRange(proto::PlayerInfo{.state = proto::PlayerState::PLAYER_OUT,
         .lives = 4});
 }
 
@@ -175,7 +175,7 @@ TEST(SnapshotTests, AnEmptySlotWithANameIsRejected)
 TEST(SnapshotTests, AShipNetIdOnAPlayerThatIsNotAliveIsRejected)
 {
     for (const proto::PlayerState state: {proto::PlayerState::EMPTY,
-             proto::PlayerState::RESPAWNING, proto::PlayerState::OUT}) {
+             proto::PlayerState::RESPAWNING, proto::PlayerState::PLAYER_OUT}) {
         SCOPED_TRACE("state " + std::to_string(static_cast<int>(state)));
         expectOutOfRange(proto::PlayerInfo{.state = state, .shipNetId = 101});
     }

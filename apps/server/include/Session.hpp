@@ -8,6 +8,13 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
+#include <asio.hpp>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <string>
+#include <vector>
 
 #include "RateLimits.hpp"
 
@@ -28,8 +35,15 @@ public:
     static constexpr std::size_t MAX_SESSIONS = 4;
     static constexpr std::chrono::seconds TIMEOUT{5};
 
+    /**
+     * @brief Opens the session of a client whose slot was just reserved.
+     *
+     * The caller guarantees both preconditions, so they are asserted:
+     * fewer than @ref MAX_SESSIONS sessions exist, and `endpoint` has none.
+     * @return The new session, valid until it is removed.
+     */
     ClientSession &add(const asio::ip::udp::endpoint &endpoint, std::uint8_t playerId,
-        const std::string &name, TimePoint now);
+        std::string name, TimePoint now);
     [[nodiscard]] ClientSession *find(const asio::ip::udp::endpoint &endpoint);
     void remove(const asio::ip::udp::endpoint &endpoint);
     [[nodiscard]] std::vector<asio::ip::udp::endpoint> timedOut(TimePoint now) const;

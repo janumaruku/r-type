@@ -124,7 +124,8 @@ Code review enforces these, backed by `target_link_libraries` scopes. Breaking o
 | `network` | `engine_core` (for `NetworkError` and the logger, used by `UdpSocket`), `asio` (INTERFACE target, see [development handbook](../handbook/development.md#build-dependencies-and-platforms)) | `ws2_32`, `mswsock` (Windows only) |
 | `rtype_protocol` | `network`, `engine_core` | — |
 | `rtype_game` | `engine_ecs`, `engine_runtime`, `engine_core` | — |
-| `r-type_server` | — | `rtype_game`, `rtype_protocol`, `network`, `engine_runtime` |
+| `r-type_server` | `server_logic` (only `main.cpp` is compiled here) | — |
+| `server_logic` | `rtype_game`, `rtype_protocol`, `network`, `engine_runtime` | `CLI11::CLI11` |
 | `r-type_client` | — | `client_logic` (only `main.cpp` is compiled here) |
 | `client_logic` | `rtype_game`, `rtype_protocol`, `network`, `engine_render`, `engine_input`, `engine_audio`, `engine_runtime` | — |
 | `<module>_tests` | — | the library under test, `GTest::gtest_main` |

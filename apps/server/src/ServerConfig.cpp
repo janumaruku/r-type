@@ -7,66 +7,101 @@
 
 #include "ServerConfig.hpp"
 
-#include <algorithm>
-#include <charconv>
 #include <CLI/CLI.hpp>
-#include <cstddef>
-#include <cstdint>
-#include <format>
+#include <algorithm>
+#include <cctype>
+#include <memory>
 #include <string>
-#include <system_error>
-#include <type_traits>
-#include <limits>
+#include <vector>
 
 #include "engine/core/Logger.hpp"
 
 namespace rtype::server {
-int parse(int argc, char *const argv[], ServerConfig &serverConfig)
-{
-    CLI::App app{"R-type game server", "rtype-server"};
 
-    app.add_option("-p,--port", serverConfig.port,
-           "Server listening on port (default 4242)")
-        ->check(CLI::Range(0, 65535))
-        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
-    ;
+namespace {
 
-    app.add_option_function<std::string>(
-    "--seed",
-    [&serverConfig](const std::string& value) {
-        std::uint32_t seed{};
-        const auto [ptr, ec] = std::from_chars(
-            value.data(), value.data() + value.size(), seed);
+constexpr std::string_view PROGRAM = "r-type_server";
 
-        if (value.empty() || ec != std::errc{} ||
-            ptr != value.data() + value.size())
-            throw CLI::ValidationError("--seed", "Invalid seed");
+/*
+** CLI11 converts "+5", "0x10", "0b101", "1_000" or " 5" to a number before
+** CLI::Range sees it. This validator runs on the raw text first, so only
+** plain decimal digits reach the conversion.
+*/
+const CLI::Validator WHOLE_NUMBER(
+    [](const std::string &value) {
+        const bool digitsOnly = !value.empty()
+            && std::ranges::all_of(value, [](unsigned char character) {
+                return std::isdigit(character) != 0;
+            });
 
-        serverConfig.seed = seed;
+        return digitsOnly
+            ? std::string{}
+            : "'" + value + "' is not a whole number";
     },
-    "Seed for random number generator")
-    ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+    "", "WHOLE_NUMBER");
 
-    app.add_option_function<std::string>(
-           "--log-level",
-           [&serverConfig](const std::string &name) {
-               serverConfig.logLevel = *engine::core::log::parseLevel(name);
-           },
-           "Logging level")
-        ->check(CLI::IsMember({"debug", "trace", "warn", "info", "error"}))
-        ->default_str("info")
-        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+std::unique_ptr<CLI::App> makeApp(ServerConfig &config,
+    std::string_view program)
+{
+    auto app = std::make_unique<CLI::App>("R-Type game server",
+        std::string(program));
+
+    app->set_help_flag("-h,--help", "Prints usage and exits with 0");
+
+    app->add_option("-p,--port", config.port,
+           "UDP port to bind on every interface")
+       ->type_name("PORT")
+       ->check(WHOLE_NUMBER)
+       ->check(CLI::Range(1, 65535))
+       ->capture_default_str()
+       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+
+    app->add_option("--seed", config.seed,
+           "Seeds Rng, for reproducible runs and tests")
+       ->type_name("N")
+       ->required()
+       ->check(WHOLE_NUMBER)
+       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+
+    app->add_option_function<std::string>("--log-level",
+           [&config](const std::string &name) {
+               config.logLevel = engine::core::log::parseLevel(name).value();
+           }, "Minimum level printed")
+       ->check(CLI::IsMember({"trace", "debug", "info", "warn", "error"}))
+       ->default_str("info")
+       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+
+    return app;
+}
+
+}
+
+/*
+** CLI11 reads a vector in reverse order. Its CallForHelp becomes
+** HelpRequested and any other ParseError a ConfigError, so main() alone
+** decides what is printed and with which exit code.
+*/
+ServerConfig ServerConfig::parse(std::span<const std::string_view> args)
+{
+    ServerConfig config;
+    const auto app = makeApp(config, PROGRAM);
+    std::vector<std::string> reversed(args.rbegin(), args.rend());
 
     try {
-        app.parse(argc, argv);
-    } catch (const CLI::Error &e) {
-        if (e.get_exit_code() == 0) {
-            std::cout << app.help() << std::endl;
-            return 0;
-        }
-        std::cout << e.what() << "\n\n" << app.help() << std::endl;
-        return 84;
+        app->parse(reversed);
+    } catch (const CLI::CallForHelp &) {
+        throw HelpRequested{};
+    } catch (const CLI::ParseError &error) {
+        throw ConfigError(error.what());
     }
-    return 0;
+    return config;
 }
-} // namespace rtype::server
+
+std::string ServerConfig::usage(std::string_view program)
+{
+    ServerConfig unused;
+
+    return makeApp(unused, program)->help();
+}
+
+}

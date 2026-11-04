@@ -29,7 +29,7 @@ static bool isKnownPlayerState(const PlayerState state)
     case PlayerState::EMPTY:
     case PlayerState::ALIVE:
     case PlayerState::RESPAWNING:
-    case PlayerState::OUT:
+    case PlayerState::PLAYER_OUT:
         return true;
     }
 
