@@ -218,7 +218,7 @@ Adding a message type means one new command class and one `registerCreator` line
 
 `handle(datagram, now)` is the single decode boundary around the commands. It follows the dispatch order of the [RFC's error handling](../protocol/RFC-rtype.md#10-error-handling):
 
-1. **The session and the flood rule.** `session = sessions.find(datagram.from)`. A session may send 240 datagrams per second; the excess is dropped. After 3 seconds in which it went over, the session is kicked with RATE_LIMITED. An address with no session has no counter here: its datagrams are dropped by step 5.
+1. **The session and the flood rule.** `session = sessions.find(datagram.from)`. A session may send 240 datagrams per second; the excess is dropped. After 3 consecutive seconds in which it went over, the session is kicked with RATE_LIMITED; a second under the limit, or with no datagram at all, starts the count over. An address with no session has no counter here: its datagrams are dropped by step 5.
 2. **In a `try` block:** `protocol::checkDatagramSize`, then the `net::Packet` is built and the `Header` read with `packet >> header` (a bad magic throws).
 3. **Version.** If `header.version` isn't 1, the datagram is dropped. A HELLO from an address with no session also gets `reject(from, VERSION_MISMATCH, now)`.
 4. **No session.** A datagram from an address with no session is dropped, with no reply and no offence, unless it's a HELLO.

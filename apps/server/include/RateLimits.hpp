@@ -26,6 +26,12 @@ public:
     [[nodiscard]] bool record(TimePoint now);
     [[nodiscard]] std::uint32_t countInWindow() const noexcept;
 
+    /**
+     * @brief When the current window started: the first @ref record after
+     * the previous one ended.
+     */
+    [[nodiscard]] TimePoint windowStart() const noexcept;
+
 private:
     std::uint32_t _limit;
     std::chrono::milliseconds _window;
@@ -33,18 +39,35 @@ private:
     std::uint32_t _count = 0;
 };
 
+/**
+ * @brief Drops a session's datagrams above 240 per second, and tells when
+ * 3 seconds in a row went over: the KICK(RATE_LIMITED) threshold.
+ */
 class FloodTracker {
 public:
+    static constexpr std::chrono::seconds WINDOW{1};
+    static constexpr std::uint32_t LIMIT = 240;
+    static constexpr std::uint32_t KICK_AFTER = 3;
+
     FloodTracker() = default;
+
+    /**
+     * @brief Records one datagram.
+     * @return `false` for the excess above @ref LIMIT in the current
+     * window, which the caller drops.
+     */
     [[nodiscard]] bool allow(TimePoint now);
+
+    /**
+     * @brief `true` once @ref KICK_AFTER consecutive windows went over,
+     * the last one being the current or the previous window.
+     */
     [[nodiscard]] bool shouldKick(TimePoint now) const noexcept;
 
 private:
-    WindowCounter _datagrams{240, std::chrono::seconds(1)};
+    WindowCounter _datagrams{LIMIT, WINDOW};
     std::uint32_t _floodedSeconds = 0;
-    TimePoint _trackedWindowStart;
-    bool _hasTrackedWindow = false;
-    bool _currentWindowFlooded = false;
+    TimePoint _lastFloodedWindow{};
 };
 
 class RejectLimiter {

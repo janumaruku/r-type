@@ -34,6 +34,11 @@ std::uint32_t WindowCounter::countInWindow() const noexcept
     return _count;
 }
 
+TimePoint WindowCounter::windowStart() const noexcept
+{
+    return _windowStart;
+}
+
 bool RejectLimiter::allow(const asio::ip::udp::endpoint &to, TimePoint now)
 {
     auto it = _lastByAddress.find(to);
@@ -49,32 +54,34 @@ bool RejectLimiter::allow(const asio::ip::udp::endpoint &to, TimePoint now)
     return true;
 }
 
-bool FloodTracker::shouldKick(TimePoint /*now*/) const noexcept
-{
-    return _floodedSeconds >= 3;
-}
-
+/*
+** Windows start at the first datagram after the previous one ended, so
+** they last at least WINDOW each. A flooded window that starts less than 2
+** windows after the previous flooded one directly follows it; a quiet or a
+** calm second in between pushes it 2 windows or more away, and the streak
+** starts over at 1.
+*/
 bool FloodTracker::allow(TimePoint now)
 {
-    if (!_hasTrackedWindow ||
-        now - _trackedWindowStart >= std::chrono::seconds(1)) {
-        if (_hasTrackedWindow) {
-            if (!_currentWindowFlooded)
-                _floodedSeconds = 0;
-        }
-        _trackedWindowStart = now;
-        _hasTrackedWindow = true;
-        _currentWindowFlooded = false;
-    }
+    if (_datagrams.record(now))
+        return true;
 
-    const bool allowed = _datagrams.record(now);
+    const TimePoint window = _datagrams.windowStart();
 
-    if (!allowed && !_currentWindowFlooded) {
+    if (_floodedSeconds > 0 && window == _lastFloodedWindow)
+        return false;
+    if (_floodedSeconds > 0 && window - _lastFloodedWindow < 2 * WINDOW)
         ++_floodedSeconds;
-        _currentWindowFlooded = true;
-    }
+    else
+        _floodedSeconds = 1;
+    _lastFloodedWindow = window;
+    return false;
+}
 
-    return allowed;
+bool FloodTracker::shouldKick(TimePoint now) const noexcept
+{
+    return _floodedSeconds >= KICK_AFTER
+        && now - _lastFloodedWindow < 2 * WINDOW;
 }
 
 } // namespace rtype::server
