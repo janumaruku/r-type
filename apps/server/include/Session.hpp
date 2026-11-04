@@ -8,6 +8,13 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
+#include <asio.hpp>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <map>
+#include <string>
+#include <vector>
 
 #include "RateLimits.hpp"
 
