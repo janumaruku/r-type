@@ -15,118 +15,117 @@
 
 #include "engine/core/Logger.hpp"
 
-namespace rtype::client
+namespace rtype::client {
+ClientSettings ClientSettings::load(const std::filesystem::path &path)
 {
-    ClientSettings ClientSettings::load(const std::filesystem::path &path)
-    {
-        if (!std::filesystem::exists(path)) {
-            // call log (file not found)
-            engine::core::log::Logger logger("ClientSettings");
-            logger.warn("failed to find file: {}", std::strerror(errno));
-            return ClientSettings{};
-        }
-        std::ifstream file(path);
-        if (!file.is_open()) {
-            throw ConfigError("Failed to open file: " + path.string());
-        }
-        nlohmann::json json;
-        auto parsed = nlohmann::json::parse(file, nullptr, false);
-        if (parsed.is_discarded() || !parsed.is_object()) {
-            // call log (json invalide)
-            return ClientSettings{};
-        }
-        return fromJson(parsed);
+    if (!std::filesystem::exists(path)) {
+        // call log (file not found)
+        // TODO log errors on exceptions or failed branches
+        engine::core::log::Logger logger("ClientSettings");
+        logger.error("failed to find file: {}", std::strerror(errno));
+        return ClientSettings{};
     }
-
-    ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
-    {
-        ClientSettings settings;
-
-        if (!json.is_object())
-            return settings;
-        if (json.contains("masterVolume")) {
-            if (json["masterVolume"].is_number()) {
-                float val = json["masterVolume"].get<float>();
-                if (!std::isnan(val))
-                    settings.masterVolume = std::clamp(val, 0.0f, 1.0f);
-            } else {
-                // call log (wrong type volume)
-            }
-        }
-        if (json.contains("musicVolume")) {
-            if (json["musicVolume"].is_number()) {
-                float val = json["musicVolume"].get<float>();
-                if (!std::isnan(val))
-                    settings.musicVolume = std::clamp(val, 0.0f, 1.0f);
-            } else {
-                // call log wrong type
-            }
-        }
-        if (json.contains("sfxVolume")) {
-            if (json["sfxVolume"].is_number()) {
-                float val = json["sfxVolume"].get<float>();
-                if (!std::isnan(val))
-                    settings.sfxVolume = std::clamp(val, 0.0f, 1.0f);
-            } else {
-                // call log wrong type
-            }
-        }
-
-        if (json.contains("muted")) {
-            if (json["muted"].is_boolean()) {
-                settings.muted = json["muted"].get<bool>();
-            } else {
-                // call log wrong type (bool)
-            }
-        }
-
-        if (json.contains("hudFontSize")) {
-            if (json["hudFontSize"].is_number_unsigned()) {
-                unsigned size = json["hudFontSize"].get<unsigned>();
-                if (size >= 8 && size <= 96) {
-                    settings.hudFontSize = size;
-                }
-            } else {
-                // call log wrong type (or out of range)
-            }
-        }
-
-        if (json.contains("highContrast")) {
-            if (json["highContrast"].is_boolean()) {
-                settings.highContrast = json["highContrast"].get<bool>();
-            } else {
-                // call log wrong type
-            }
-        }
-
-        if (json.contains("reduceFlashes")) {
-            if (json["reduceFlashes"].is_boolean()) {
-                settings.reduceFlashes = json["reduceFlashes"].get<bool>();
-            } else {
-                // call log wrong type
-            }
-        }
-
-        if (json.contains("fullscreen")) {
-            if (json["fullscreen"].is_boolean()) {
-                settings.fullscreen = json["fullscreen"].get<bool>();
-            } else {
-                // call log wrong type
-            }
-        }
-
-        for (auto it = json.begin(); it != json.end(); ++it) {
-            const auto& key = it.key();
-            if (key != "masterVolume" && key != "musicVolume" && key != "sfxVolume" &&
-                key != "muted" && key != "hudFontSize" && key != "highContrast" &&
-                key != "reduceFlashes" && key != "fullscreen") {
-                // call log (unknown key)
-            }
-        }
-
-        return settings;
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        throw ConfigError("Failed to open file: " + path.string());
     }
-
+    nlohmann::json json;
+    auto parsed = nlohmann::json::parse(file, nullptr, false);
+    if (parsed.is_discarded() || !parsed.is_object()) {
+        // call log (json invalide)
+        return ClientSettings{};
+    }
+    return fromJson(parsed);
 }
 
+ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
+{
+    ClientSettings settings;
 
+    if (!json.is_object())
+        return settings;
+    if (json.contains("masterVolume")) {
+        if (json["masterVolume"].is_number()) {
+            float val = json["masterVolume"].get<float>();
+            if (!std::isnan(val))
+                settings.masterVolume = std::clamp(val, 0.0f, 1.0f);
+        } else {
+            // call log (wrong type volume)
+        }
+    }
+    if (json.contains("musicVolume")) {
+        if (json["musicVolume"].is_number()) {
+            float val = json["musicVolume"].get<float>();
+            if (!std::isnan(val))
+                settings.musicVolume = std::clamp(val, 0.0f, 1.0f);
+        } else {
+            // call log wrong type
+        }
+    }
+    if (json.contains("sfxVolume")) {
+        if (json["sfxVolume"].is_number()) {
+            float val = json["sfxVolume"].get<float>();
+            if (!std::isnan(val))
+                settings.sfxVolume = std::clamp(val, 0.0f, 1.0f);
+        } else {
+            // call log wrong type
+        }
+    }
+
+    if (json.contains("muted")) {
+        if (json["muted"].is_boolean()) {
+            settings.muted = json["muted"].get<bool>();
+        } else {
+            // call log wrong type (bool)
+        }
+    }
+
+    if (json.contains("hudFontSize")) {
+        if (json["hudFontSize"].is_number_unsigned()) {
+            unsigned size = json["hudFontSize"].get<unsigned>();
+            if (size >= 8 && size <= 96) {
+                settings.hudFontSize = size;
+            }
+        } else {
+            // call log wrong type (or out of range)
+        }
+    }
+
+    if (json.contains("highContrast")) {
+        if (json["highContrast"].is_boolean()) {
+            settings.highContrast = json["highContrast"].get<bool>();
+        } else {
+            // call log wrong type
+        }
+    }
+
+    if (json.contains("reduceFlashes")) {
+        if (json["reduceFlashes"].is_boolean()) {
+            settings.reduceFlashes = json["reduceFlashes"].get<bool>();
+        } else {
+            // call log wrong type
+        }
+    }
+
+    if (json.contains("fullscreen")) {
+        if (json["fullscreen"].is_boolean()) {
+            settings.fullscreen = json["fullscreen"].get<bool>();
+        } else {
+            // call log wrong type
+        }
+    }
+
+    for (auto it = json.begin(); it != json.end(); ++it) {
+        const auto &key = it.key();
+        if (key != "masterVolume" && key != "musicVolume" && key != "sfxVolume"
+            &&
+            key != "muted" && key != "hudFontSize" && key != "highContrast" &&
+            key != "reduceFlashes" && key != "fullscreen") {
+            // call log (unknown key)
+        }
+    }
+
+    return settings;
+}
+
+}
