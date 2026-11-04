@@ -36,11 +36,6 @@ ServerApp::ServerApp(ServerConfig config,
     _socket.start();
 }
 
-ServerApp::~ServerApp()
-{
-    _socket.stop();
-}
-
 std::uint16_t ServerApp::port() const noexcept
 {
     return _socket.localEndpoint().port();
