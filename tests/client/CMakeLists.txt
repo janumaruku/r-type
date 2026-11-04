@@ -8,4 +8,6 @@ rtype_add_test(client_tests
         ClientNetworkAdapterTests.cpp
         SnapshotAssemblerTests.cpp
         ClientWorldTests.cpp
+        ClientConfigTests.cpp
+        ClientSettingsTests.cpp
 )
