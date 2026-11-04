@@ -31,6 +31,14 @@ struct Offset {
     Offset operator-(Offset o) const;
 };
 
+struct Rect {
+    double x = 0;
+    double y = 0;
+    double w = 0;
+    double h = 0;
+
+    bool contains(Offset p) const;
+};
 }
 
 #endif //R_TYPE_DIMENSIONS_HPP
