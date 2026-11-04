@@ -33,6 +33,7 @@ The step-by-step plan for building Kollection, the declarative UI framework of t
 - [ ] **T3.** `BoxConstraints`: `tight`, `loose`, `expand`, `constrain`, `smallest`, `isTight`, `hasBoundedWidth/Height`, `deflate`, `loosen`, `enforce`.
   - Test it heavily, since most layout bugs start here. For example: `deflate` never goes below 0, and `expand().enforce(loose(100×50))` is tight 100×50.
 - [ ] **T4.** `KeyCode`, `KeyEvent`, `PointerEvent`, `ResizeEvent`, `Event`. No tests needed.
+
 - ✅ All core tests pass.
 
 ## Phase 2 — Paint, then first pixels (§2.2, §4.9, §5.2)
@@ -46,6 +47,7 @@ The step-by-step plan for building Kollection, the declarative UI framework of t
   - `measure()` goes through `FontCache`;
   - `submit()` turns `FillRect` / `StrokeRect` / `DrawText` into `RectCmd` / `TextCmd` on a UI layer, and stores them;
   - `appendTo(RenderQueue&)` adds the stored commands to a frame's queue.
+
 - ✅ **Demo:** a hand-written `PaintList` (a blue rect, an outline, some text) on screen, drawn every frame.
 
 ## Phase 3 — Render tree without widgets (§4.6, §4.10)
@@ -56,6 +58,7 @@ The step-by-step plan for building Kollection, the declarative UI framework of t
   - Tests: the §7 numbers (a 10×3 box, child at (1,1)); `expand()` in an unbounded axis stays finite; `Align` centres its child.
 - [ ] **T10.** `RenderFlex` (MVP: no flex factors).
   - Tests: a column of 3 children with spacing; each `mainAxisAlignment`; `crossAxisAlignment::stretch`.
+
 - ✅ **Demo:** a column of padded, coloured boxes with text, built by hand from render objects.
 
 ## Phase 4 — Widgets and elements, stateless (§3.1–§3.5, §4.1–§4.4)
@@ -65,12 +68,14 @@ The step-by-step plan for building Kollection, the declarative UI framework of t
   - Tests: the same widget type keeps the same render object (compare the pointer); a different type replaces it; a removed child is unmounted only at the end of the pass.
 - [ ] **T13.** The concrete widgets: `ColoredBox`, `Padding`, `ConstrainedBox` / `SizedBox`, `Align`, `Paragraph`, `Text` (explicit style for now), `row` / `column`, `Container`.
   - Test: what each `Container` config expands into.
+
 - ✅ **Demo:** the Phase 3 screen, now written as widgets.
 
 ## Phase 5 — State (§3.6, §4.4.3)
 
 - [ ] **T14.** `StateBase`, `State<W>`, `StatefulElement`, `setState`, `initState`, `didUpdateWidget`, `dispose`.
   - Tests: state survives a parent rebuild; `dispose` runs exactly once; `setState` after `dispose` does nothing; an element dirtied during `flushBuild` is rebuilt in the same pass.
+
 - ✅ All state tests pass. There's nothing new to see until input is wired in Phase 6.
 
 ## Phase 6 — Pointer input (§4.7, §5.1, §5.2)
@@ -81,12 +86,14 @@ The step-by-step plan for building Kollection, the declarative UI framework of t
   - Test: the conversion, with letterbox bars on each side.
 - [ ] **T16.** `HitTestResult`, `Listener` with `RenderListener`, `Pipeline::dispatchEvent` (pointer events and resize), `RaylibSurface::toEvent`.
   - Tests: the hit path is ordered deepest first; a click outside the tree hits nothing.
+
 - ✅ **Demo:** the spec's `Counter` from §7. Clicking it increments the number.
 
 ## Phase 7 — Inherited widgets (§3.7, §4.5)
 
 - [ ] **T17.** `InheritedWidget`, `InheritedElement`, `dependOnInheritedOfType` (ancestor walk), notifying dependents, and unsubscribing on deactivate. Then `DefaultTextStyle`, with `Text` using it.
   - Test: changing the style rebuilds only the elements that depend on it.
+
 - ✅ **Demo:** a key that switches the default text colour.
 
 ## Phase 8 — Keyboard, focus and Button (§4.8)
@@ -97,6 +104,7 @@ The step-by-step plan for building Kollection, the declarative UI framework of t
 - [ ] **T19.** `FocusNode`, `FocusManager`, the `Focus` widget, key dispatch going up through enclosing `Focus` widgets, and next/previous traversal.
   - Tests: traversal order and wrap-around; a handled key stops going up; focus moves on when the focused node is unmounted.
 - [ ] **T20.** `Button`.
+
 - ✅ **Demo:** a real menu (Play / Options / Quit). Arrows or the gamepad move focus, Enter activates, a mouse click works too, and Quit closes the window. **This completes the MVP.**
 
 ## Phase 9 — Wrap-up
