@@ -9,6 +9,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <string>
 
 #include "ClientSettings.hpp"
@@ -154,5 +155,26 @@ TEST_F(ClientSettingsFileTests, InvalidJsonGivesTheDefaults)
 TEST_F(ClientSettingsFileTests, TopLevelThatIsNotAnObjectGivesTheDefaults)
 {
     expectDefaults(ClientSettings::load(write("[1, 2]")));
+}
+
+TEST(ClientSettingsTests, DefaultConfigFileHoldsTheDefaults)
+{
+    const std::filesystem::path path = std::filesystem::path(RTYPE_CONFIG_DIR) / "client.json";
+
+    ASSERT_TRUE(std::filesystem::exists(path));
+    expectDefaults(ClientSettings::load(path));
+}
+
+TEST(ClientSettingsTests, DefaultConfigFileHoldsExactlyTheSettingKeys)
+{
+    std::ifstream file(std::filesystem::path(RTYPE_CONFIG_DIR) / "client.json");
+    const nlohmann::json json = nlohmann::json::parse(file, nullptr, false);
+    std::set<std::string> keys;
+
+    ASSERT_TRUE(json.is_object());
+    for (const auto &[key, value] : json.items())
+        keys.insert(key);
+    EXPECT_EQ(keys, (std::set<std::string>{"masterVolume", "musicVolume", "sfxVolume", "muted",
+        "hudFontSize", "highContrast", "reduceFlashes", "fullscreen"}));
 }
 }
