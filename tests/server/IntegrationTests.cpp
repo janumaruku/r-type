@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <optional>
@@ -33,7 +34,8 @@ public:
         rtype::server::ServerConfig config;
         config.port = 0;
         config.seed = 7;
-        _app = std::make_unique<rtype::server::ServerApp>(config);
+        _app = std::make_unique<rtype::server::ServerApp>(config,
+            _stopRequested);
         _thread = std::thread([this] { _result = _app->run(); });
     }
 
@@ -55,12 +57,13 @@ public:
 
     void stop()
     {
-        _app->requestStop();
+        _stopRequested = true;
         _thread.join();
         _stopped = true;
     }
 
 private:
+    std::atomic<bool> _stopRequested{false};
     std::unique_ptr<rtype::server::ServerApp> _app;
     std::thread _thread;
     int _result = -1;

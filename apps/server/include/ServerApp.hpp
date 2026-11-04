@@ -12,7 +12,14 @@ namespace rtype::server {
 
 class ServerApp {
 public:
-    explicit ServerApp(ServerConfig config);
+    /**
+     * @brief Binds the port and starts the socket. run() returns once
+     * `stopRequested` becomes true.
+     *
+     * `stopRequested` must outlive the app. main() sets it from its
+     * SIGINT/SIGTERM handler, tests set it from their own thread.
+     */
+    ServerApp(ServerConfig config, const std::atomic<bool> &stopRequested);
     ~ServerApp();
 
     ServerApp(const ServerApp &) = delete;
@@ -20,7 +27,6 @@ public:
 
     [[nodiscard]] std::uint16_t port() const noexcept;
     [[nodiscard]] int run();
-    void requestStop() noexcept;
 
 private:
     void tick();
@@ -39,7 +45,7 @@ private:
     SessionManager _sessions;
     ServerNetworkAdapter _adapter;
     engine::runtime::FixedRateTicker _ticker;
-    std::atomic<bool> _running{true};
+    const std::atomic<bool> &_stopRequested;
     std::uint32_t _ticks = 0;
     engine::core::log::Logger _logger{"ServerApp"};
 };

@@ -22,12 +22,14 @@ ServerConfig withSeed(ServerConfig config)
 }
 }
 
-ServerApp::ServerApp(ServerConfig config):
+ServerApp::ServerApp(ServerConfig config,
+    const std::atomic<bool> &stopRequested):
     _config(withSeed(std::move(config))),
     _socket(_config.port),
     _world(game::Rules{}, *_config.seed),
     _adapter(_socket, _world, _sessions),
-    _ticker(TICK_PERIOD)
+    _ticker(TICK_PERIOD),
+    _stopRequested(stopRequested)
 {
     engine::core::log::setLevel(_config.logLevel);
     _logger.info("server seed {}", *_config.seed);
@@ -46,7 +48,7 @@ std::uint16_t ServerApp::port() const noexcept
 
 int ServerApp::run()
 {
-    while (_running) {
+    while (!_stopRequested) {
         tick();
         _ticker.waitNext();
     }
@@ -71,11 +73,6 @@ void ServerApp::waitForSends(std::uint64_t target)
     }
     _logger.warn("Shutdown: not every SHUTDOWN left within {} ms",
         SEND_TIMEOUT.count());
-}
-
-void ServerApp::requestStop() noexcept
-{
-    _running = false;
 }
 
 void ServerApp::tick()

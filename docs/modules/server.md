@@ -23,10 +23,10 @@ This is how the server meets requirement F-05 (multithreaded, never blocks on cl
 
 | Thread | Runs | Owns | Shares |
 | --- | --- | --- | --- |
-| Main (simulation) | `ServerApp::run()`: the tick loop | `GameWorld`, `SessionManager`, the adapter | `UdpSocket`'s incoming queue and posted sends, `std::atomic<bool> running` |
+| Main (simulation) | `ServerApp::run()`: the tick loop | `GameWorld`, `SessionManager`, the adapter | `UdpSocket`'s incoming queue and posted sends, the `std::atomic<bool>` stop flag |
 | Network IO | `asio::io_context::run()` inside `UdpSocket` | The socket and its receive buffer | The same queue |
 
-The signal handler only stores `false` into `running`. No lock is held across a tick. The main thread collects datagrams with `receiveAll()`, which never waits, so a silent or flooding client can't stall the simulation.
+`main()` owns a global `std::atomic<bool>` stop flag and passes it to `ServerApp` by reference. The signal handler only stores `true` into it, so it never touches an object that can be destroyed; tests pass their own flag and set it from their thread. No lock is held across a tick. The main thread collects datagrams with `receiveAll()`, which never waits, so a silent or flooding client can't stall the simulation.
 
 ## Class diagram
 
@@ -45,10 +45,9 @@ classDiagram
         -SessionManager _sessions
         -ServerNetworkAdapter _adapter
         -runtime::FixedRateTicker _ticker
-        -std::atomic~bool~ _running
-        +ServerApp(ServerConfig)
+        -const std::atomic~bool~ &_stopRequested
+        +ServerApp(ServerConfig, const std::atomic~bool~ &stopRequested)
         +run() int
-        +requestStop() void
         -tick() void
         -logStats() void
         -waitForSends(uint64_t target) void
@@ -229,7 +228,7 @@ Adding a message type means one new command class and one `registerCreator` line
 
 ## The tick
 
-`ServerApp::run()` loops on `while (_running) { tick(); _ticker.waitNext(); }`. One tick does, in this order:
+`ServerApp::run()` loops on `while (!_stopRequested) { tick(); _ticker.waitNext(); }`. One tick does, in this order:
 
 1. `now = Clock::now()`.
 2. `for (auto& d : socket.receiveAll()) adapter.handle(d, now)`. Commands reach the world through `world.apply(...)`.
