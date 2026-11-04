@@ -69,6 +69,7 @@ namespace rtype::client
             return config;
         }
 
+        // TODO make it compatible with windows too
         std::string ClientConfig::defaultName()
         {
             const char *user = std::getenv("USER");
