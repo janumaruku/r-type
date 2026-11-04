@@ -17,6 +17,8 @@ r-type_server --seed N [-p PORT] [--log-level trace|debug|info|warn|error] [-h]
 
 `ServerConfig::parse` reads the options with CLI11 and throws `HelpRequested` on `-h`, or `ConfigError` naming the option at fault; `main` prints and picks the exit code. The help is the one CLI11 generates (`ServerConfig::usage`). `--seed` is required: without it, parsing fails like any other invalid argument. Ports and seeds must be whole decimal numbers: `+5`, `42x` or an empty value are refused, and so is port 0. An invalid argument or a port that can't be bound prints the reason plus the usage to `stderr` and exits with **84** (the Epitech convention). On `SIGINT` or `SIGTERM`, the server sends SHUTDOWN to every client and exits with 0.
 
+Everything except `main.cpp` is built as the static library `server_logic`, which links `rtype_game`, `rtype_protocol`, `network` and `engine_runtime` publicly, and CLI11 privately. The `r-type_server` executable is `main.cpp` alone linked to `server_logic`, and it lands at the repository root. The server tests link `server_logic` too, so they exercise `ServerConfig::parse`, `ServerApp` and the sessions without going through `main`.
+
 ## Threads
 
 This is how the server meets requirement F-05 (multithreaded, never blocks on clients).
