@@ -19,12 +19,23 @@ namespace rtype::server {
 using Clock     = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
 
+/**
+ * @brief Counts events in a fixed window, which starts at the first
+ * @ref record after the previous window ended.
+ *
+ * Used for datagrams (240 per second), offences (10 per second) and
+ * REJECTs (20 per second in total).
+ */
 class WindowCounter {
 public:
-    WindowCounter() = default;
-    explicit WindowCounter(std::uint32_t limit,
+    WindowCounter(std::uint32_t limit,
         std::chrono::milliseconds window) noexcept;
 
+    /**
+     * @brief Counts one event, in a new window if the current one is over.
+     * @return `false` once the window already holds `limit` events: the
+     * event is refused and not counted.
+     */
     [[nodiscard]] bool record(TimePoint now);
     [[nodiscard]] std::uint32_t countInWindow() const noexcept;
 
@@ -37,7 +48,7 @@ public:
 private:
     std::uint32_t _limit;
     std::chrono::milliseconds _window;
-    TimePoint _windowStart;
+    TimePoint _windowStart{};
     std::uint32_t _count = 0;
 };
 
