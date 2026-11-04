@@ -10,9 +10,13 @@
 #include <filesystem>
 #include <fstream>
 #include <set>
+#include <sstream>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include "ClientSettings.hpp"
+#include "engine/core/Logger.hpp"
 
 namespace rtype::client {
 namespace {
@@ -31,8 +35,50 @@ void expectDefaults(const ClientSettings &settings)
     EXPECT_EQ(settings.fullscreen, defaults.fullscreen);
 }
 
+/*
+** Sends the process-wide log to a string, without colours, from INFO up, and
+** puts stderr back when it goes out of scope.
+*/
+class LogCapture {
+public:
+    LogCapture()
+    {
+        engine::core::log::setLevel(engine::core::log::Level::EG_INFO);
+        engine::core::log::setOutput(_output);
+        engine::core::log::setColors(false);
+    }
+
+    ~LogCapture()
+    {
+        engine::core::log::setOutput(std::cerr);
+    }
+
+    LogCapture(const LogCapture &) = delete;
+    LogCapture &operator=(const LogCapture &) = delete;
+
+    [[nodiscard]] int count(const std::string &level) const
+    {
+        std::istringstream lines(_output.str());
+        int found = 0;
+
+        for (std::string line; std::getline(lines, line);)
+            found += line.find("[" + level + "]") != std::string::npos ? 1 : 0;
+        return found;
+    }
+
+    [[nodiscard]] std::string text() const
+    {
+        return _output.str();
+    }
+
+private:
+    std::ostringstream _output;
+};
+
 class ClientSettingsFileTests : public ::testing::Test {
 protected:
+    LogCapture _log;
+
     void TearDown() override
     {
         std::filesystem::remove(_path);
@@ -176,5 +222,50 @@ TEST(ClientSettingsTests, DefaultConfigFileHoldsExactlyTheSettingKeys)
         keys.insert(key);
     EXPECT_EQ(keys, (std::set<std::string>{"masterVolume", "musicVolume", "sfxVolume", "muted",
         "hudFontSize", "highContrast", "reduceFlashes", "fullscreen"}));
+}
+
+TEST(ClientSettingsTests, ValidSettingsLogNothing)
+{
+    const LogCapture log;
+
+    (void)ClientSettings::fromJson({{"masterVolume", 0.5}, {"muted", true}, {"hudFontSize", 32}});
+    EXPECT_EQ(log.text(), "");
+}
+
+TEST(ClientSettingsTests, EachBadKeyLogsOneWarningNamingIt)
+{
+    const std::vector<std::pair<nlohmann::json, std::string>> cases{
+        {{{"sfxVolume", 2}}, "sfxVolume"},
+        {{{"muted", "yes"}}, "muted"},
+        {{{"hudFontSize", 500}}, "hudFontSize"},
+        {{{"colour", "blue"}}, "colour"},
+    };
+
+    for (const auto &[json, key] : cases) {
+        const LogCapture log;
+
+        (void)ClientSettings::fromJson(json);
+        EXPECT_EQ(log.count("WARN"), 1) << json;
+        EXPECT_NE(log.text().find(key), std::string::npos) << json;
+    }
+}
+
+TEST_F(ClientSettingsFileTests, MissingFileLogsInfoAndNoWarning)
+{
+    (void)ClientSettings::load(_path);
+    EXPECT_EQ(_log.count("WARN"), 0);
+    EXPECT_EQ(_log.count("INFO"), 1);
+}
+
+TEST_F(ClientSettingsFileTests, InvalidJsonLogsOneWarning)
+{
+    (void)ClientSettings::load(write(R"({ "muted": tru)"));
+    EXPECT_EQ(_log.count("WARN"), 1);
+}
+
+TEST_F(ClientSettingsFileTests, TopLevelThatIsNotAnObjectLogsOneWarning)
+{
+    (void)ClientSettings::load(write("[1, 2]"));
+    EXPECT_EQ(_log.count("WARN"), 1);
 }
 }

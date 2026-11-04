@@ -2,140 +2,137 @@
 ** EPITECH PROJECT, 2026
 ** r-type
 ** File description:
-** ClientSettings.hpp
+** ClientSettings.cpp
 */
 
 #include "ClientSettings.hpp"
 
-#include <cstring>
+#include <algorithm>
+#include <array>
+#include <cmath>
+#include <fstream>
+#include <string_view>
 
 #include "ClientConfig.hpp"
-#include <fstream>
-#include <iostream>
-
 #include "engine/core/Logger.hpp"
 
 namespace rtype::client {
+namespace {
+constexpr std::array<std::string_view, 8> KEYS{
+    "masterVolume", "musicVolume", "sfxVolume", "muted",
+    "hudFontSize", "highContrast", "reduceFlashes", "fullscreen",
+};
+
+constexpr long long MIN_HUD_FONT_SIZE = 8;
+constexpr long long MAX_HUD_FONT_SIZE = 96;
+
+engine::core::log::Logger &logger()
+{
+    static engine::core::log::Logger instance("settings");
+
+    return instance;
+}
+
+/*
+** A number is clamped to [0, 1], with a warning when it had to be. Anything
+** else, NaN included, keeps the default.
+*/
+void readVolume(const nlohmann::json &json, std::string_view key,
+    float &field)
+{
+    const auto it = json.find(key);
+
+    if (it == json.end())
+        return;
+    if (!it->is_number() || std::isnan(it->get<double>())) {
+        logger().warn("{}: must be a number, keeping {}", key, field);
+        return;
+    }
+    const auto value = it->get<double>();
+    const auto clamped = std::clamp(value, 0.0, 1.0);
+    if (clamped != value)
+        logger().warn("{}: {} is out of [0, 1], using {}", key, value,
+            clamped);
+    field = static_cast<float>(clamped);
+}
+
+void readBool(const nlohmann::json &json, std::string_view key, bool &field)
+{
+    const auto it = json.find(key);
+
+    if (it == json.end())
+        return;
+    if (!it->is_boolean()) {
+        logger().warn("{}: must be true or false, keeping {}", key, field);
+        return;
+    }
+    field = it->get<bool>();
+}
+
+void readFontSize(const nlohmann::json &json, std::string_view key,
+    unsigned &field)
+{
+    const auto it = json.find(key);
+
+    if (it == json.end())
+        return;
+    if (!it->is_number_integer()) {
+        logger().warn("{}: must be a whole number, keeping {}", key, field);
+        return;
+    }
+    const auto value = it->get<long long>();
+    if (value < MIN_HUD_FONT_SIZE || value > MAX_HUD_FONT_SIZE) {
+        logger().warn("{}: {} is out of [{}, {}], keeping {}", key, value,
+            MIN_HUD_FONT_SIZE, MAX_HUD_FONT_SIZE, field);
+        return;
+    }
+    field = static_cast<unsigned>(value);
+}
+}
+
 ClientSettings ClientSettings::load(const std::filesystem::path &path)
 {
     if (!std::filesystem::exists(path)) {
-        // call log (file not found)
-        // TODO log errors on exceptions or failed branches
-        engine::core::log::Logger logger("ClientSettings");
-        logger.error("failed to find file: {}", std::strerror(errno));
-        return ClientSettings{};
+        logger().info("{}: not found, using the default settings",
+            path.string());
+        return {};
     }
     std::ifstream file(path);
-    if (!file.is_open()) {
-        throw ConfigError("Failed to open file: " + path.string());
+    if (!file.is_open())
+        throw ConfigError("cannot open " + path.string());
+    const auto json = nlohmann::json::parse(file, nullptr, false);
+    if (json.is_discarded()) {
+        logger().warn("{}: not valid JSON, using the default settings",
+            path.string());
+        return {};
     }
-    nlohmann::json json;
-    auto parsed = nlohmann::json::parse(file, nullptr, false);
-    if (parsed.is_discarded() || !parsed.is_object()) {
-        engine::core::log::Logger logger("ClientSettings");
-        logger.error("json is invalid: {}", std::strerror(errno));
-        return ClientSettings{};
+    if (!json.is_object()) {
+        logger().warn("{}: the top level is not an object, using the "
+            "default settings", path.string());
+        return {};
     }
-    return fromJson(parsed);
+    return fromJson(json);
 }
 
 ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
 {
     ClientSettings settings;
 
-    if (!json.is_object())
+    if (!json.is_object()) {
+        logger().warn("settings must be a JSON object, using the defaults");
         return settings;
-    if (json.contains("masterVolume")) {
-        if (json["masterVolume"].is_number()) {
-            float val = json["masterVolume"].get<float>();
-            if (!std::isnan(val))
-                settings.masterVolume = std::clamp(val, 0.0f, 1.0f);
-        } else {
-            engine::core::log::Logger logger("ClientSettings");
-            logger.error("wrong type for masterVolume: {}", std::strerror(errno));
-        }
     }
-    if (json.contains("musicVolume")) {
-        if (json["musicVolume"].is_number()) {
-            float val = json["musicVolume"].get<float>();
-            if (!std::isnan(val))
-                settings.musicVolume = std::clamp(val, 0.0f, 1.0f);
-        } else {
-            engine::core::log::Logger logger("ClientSettings");
-            logger.error("wrong type for musicVolume: {}", std::strerror(errno));
-        }
-    }
-    if (json.contains("sfxVolume")) {
-        if (json["sfxVolume"].is_number()) {
-            float val = json["sfxVolume"].get<float>();
-            if (!std::isnan(val))
-                settings.sfxVolume = std::clamp(val, 0.0f, 1.0f);
-        } else {
-            engine::core::log::Logger logger("ClientSettings");
-            logger.error("wrong type for sfxVolume: {}", std::strerror(errno));
-        }
-    }
-
-    if (json.contains("muted")) {
-        if (json["muted"].is_boolean()) {
-            settings.muted = json["muted"].get<bool>();
-        } else {
-            engine::core::log::Logger logger("ClientSettings");
-            logger.error("wrong type for muted (must be bool): {}", std::strerror(errno));
-        }
-    }
-
-    if (json.contains("hudFontSize")) {
-        if (json["hudFontSize"].is_number_integer()) {
-            const auto size = json["hudFontSize"].get<long long>();
-            if (size >= 8 && size <= 96) {
-                settings.hudFontSize = static_cast<unsigned>(size);
-            }
-        } else {
-            engine::core::log::Logger logger("ClientSettings");
-            logger.error("hudFrontSize is or wrong type or is out of range: {}", std::strerror(errno));
-        }
-    }
-
-    if (json.contains("highContrast")) {
-        if (json["highContrast"].is_boolean()) {
-            settings.highContrast = json["highContrast"].get<bool>();
-        } else {
-            engine::core::log::Logger logger("ClientSettings");
-            logger.error("wrong type for highContrast (must be bool): {}", std::strerror(errno));
-        }
-    }
-
-    if (json.contains("reduceFlashes")) {
-        if (json["reduceFlashes"].is_boolean()) {
-            settings.reduceFlashes = json["reduceFlashes"].get<bool>();
-        } else {
-            engine::core::log::Logger logger("ClientSettings");
-            logger.error("wrong type for reduceFlashes (must be bool): {}", std::strerror(errno));
-        }
-    }
-
-    if (json.contains("fullscreen")) {
-        if (json["fullscreen"].is_boolean()) {
-            settings.fullscreen = json["fullscreen"].get<bool>();
-        } else {
-            engine::core::log::Logger logger("ClientSettings");
-            logger.error("wrong type for fullscreen (must be bool): {}", std::strerror(errno));
-        }
-    }
-
-    for (auto it = json.begin(); it != json.end(); ++it) {
-        const auto &key = it.key();
-        if (key != "masterVolume" && key != "musicVolume" && key != "sfxVolume"
-            &&
-            key != "muted" && key != "hudFontSize" && key != "highContrast" &&
-            key != "reduceFlashes" && key != "fullscreen") {
-            engine::core::log::Logger logger("ClientSettings");
-            logger.error("key is wrong: {}", std::strerror(errno));
-        }
-    }
-
+    readVolume(json, "masterVolume", settings.masterVolume);
+    readVolume(json, "musicVolume", settings.musicVolume);
+    readVolume(json, "sfxVolume", settings.sfxVolume);
+    readBool(json, "muted", settings.muted);
+    readFontSize(json, "hudFontSize", settings.hudFontSize);
+    readBool(json, "highContrast", settings.highContrast);
+    readBool(json, "reduceFlashes", settings.reduceFlashes);
+    readBool(json, "fullscreen", settings.fullscreen);
+    for (const auto &[key, value] : json.items())
+        if (std::ranges::find(KEYS, key) == KEYS.end())
+            logger().warn("{}: unknown setting, ignored", key);
     return settings;
 }
-
 }
