@@ -4,33 +4,25 @@
 #include <thread>
 #include <utility>
 
-#include "engine/core/Rng.hpp"
 #include "engine/core/Logger.hpp"
 
 namespace rtype::server {
 
 namespace {
 constexpr std::chrono::milliseconds SEND_TIMEOUT{200};
-
-ServerConfig withSeed(ServerConfig config)
-{
-    if (!config.seed)
-        config.seed = engine::core::Rng::randomSeed();
-    return config;
-}
 }
 
 ServerApp::ServerApp(ServerConfig config,
     const std::atomic<bool> &stopRequested):
-    _config(withSeed(std::move(config))),
+    _config(std::move(config)),
     _socket(_config.port),
-    _world(game::Rules{}, *_config.seed),
+    _world(game::Rules{}, _config.seed),
     _adapter(_socket, _world, _sessions),
     _ticker(TICK_PERIOD),
     _stopRequested(stopRequested)
 {
     engine::core::log::setLevel(_config.logLevel);
-    _logger.info("server seed {}", *_config.seed);
+    _logger.info("server seed {}", _config.seed);
     _socket.start();
 }
 
