@@ -76,6 +76,10 @@ public:
         std::uint8_t variant) const noexcept;
 
 private:
+    void add(const nlohmann::json &entry,
+        const std::filesystem::path &sheetsDir,
+        engine::render::TextureCache &textures);
+
     std::vector<SpriteDef> _defs;
     std::map<std::pair<SpriteKey, std::uint8_t>, SpriteDefId> _exact;
     std::map<SpriteKey, SpriteDefId> _anyVariant;
