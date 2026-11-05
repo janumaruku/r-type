@@ -7,7 +7,9 @@
 
 #include "ClientApp.hpp"
 
+#include <algorithm>
 #include <memory>
+#include <vector>
 #include <utility>
 
 #include "engine/audio/MakeAudio.hpp"
@@ -21,6 +23,7 @@ const engine::core::Vec2u WINDOW_SIZE{1280, 720};
 const engine::core::Vec2f LOGICAL_SIZE{1280.0F, 720.0F};
 constexpr const char *CATALOG_FILE = "sprites/catalog.json";
 constexpr const char *KEYBINDINGS_FILE = "config/keybindings.json";
+constexpr double MAX_FRAME_TIME = 0.25;
 
 engine::core::log::Logger &logger()
 {
@@ -66,6 +69,25 @@ engine::core::log::Logger &logger()
     return audio;
 }
 
+/*
+** Applies every event to the input state. Returns false on WINDOW_CLOSED.
+** Losing the focus releases every key, so none stays held while the window
+** can't see it come back up.
+*/
+[[nodiscard]] bool applyEvents(
+    const std::vector<engine::input::InputEvent> &events,
+    engine::input::InputState &input)
+{
+    for (const auto &event: events) {
+        input.apply(event);
+        if (event.type == engine::input::InputEvent::Type::WINDOW_CLOSED)
+            return false;
+        if (event.type == engine::input::InputEvent::Type::FOCUS_LOST)
+            input.releaseAll();
+    }
+    return true;
+}
+
 [[nodiscard]] engine::input::ActionMap<Action> loadBindings()
 {
     engine::input::ActionMap<Action> actions;
@@ -93,6 +115,31 @@ ClientApp::ClientApp(ClientConfig config, ClientSettings settings):
 
     _scenes.change(std::make_unique<MessageScene>("R-Type",
         "Not connected yet", false), context);
+}
+
+int ClientApp::run()
+{
+    for (;;) {
+        const auto dt = static_cast<float>(
+            std::min(_frameClock.restart(), MAX_FRAME_TIME));
+
+        _input.beginFrame();
+        if (!applyEvents(_window.pollEvents(), _input))
+            break;
+        FrameContext context = frameContext();
+        if (!_scenes.update(context, dt))
+            break;
+        _queue.clear();
+        _scenes.draw(_queue, context);
+        _queue.sortByLayer();
+        _renderer.beginFrame(engine::core::Color::BLACK);
+        _renderer.submit(_queue);
+        _renderer.endFrame();
+        _audio->update();
+    }
+    FrameContext context = frameContext();
+    _scenes.change(nullptr, context);
+    return 0;
 }
 
 FrameContext ClientApp::frameContext()
