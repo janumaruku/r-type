@@ -8,7 +8,7 @@ The client displays the server's world and sends the player's buttons back. It k
 r-type_client [-h HOST] [-p PORT] [-n NAME] [--fullscreen] [--log-level LEVEL] [--help]
 ```
 
-The defaults are `-h 127.0.0.1`, `-p 4242`, and `-n` set to the OS user name, cut to 16 characters. Bad arguments exit with 84. Key bindings are read from `config/keybindings.json`, and volumes and the other settings from `config/client.json`, if those files exist. `--fullscreen` overrides `fullscreen` from `client.json`.
+The defaults are `-h 127.0.0.1`, `-p 4242`, and `-n` set to the OS user name, cut to 16 characters. Bad arguments exit with 84. Key bindings start from the defaults in `bindDefaults` (arrows and WASD to move, SPACE and LCTRL to fire, F1 for the controls overlay, ESCAPE to quit, ENTER to confirm), then `config/keybindings.json` overrides the actions it lists. Volumes and the other settings are read from `config/client.json`, if it exists. `--fullscreen` overrides `fullscreen` from `client.json`.
 
 ## Threads
 
@@ -39,16 +39,35 @@ classDiagram
     }
     class IScene {
         <<interface>>
-        +onEnter()* void
-        +onExit()* void
+        +onEnter(FrameContext&)* void
+        +onExit(FrameContext&)* void
         +update(FrameContext&, float dt)* SceneRequest
-        +draw(render::RenderQueue&)* void
+        +draw(render::RenderQueue&, FrameContext const&)* void
     }
     class SceneManager {
         -std::unique_ptr~IScene~ _current
-        +change(std::unique_ptr~IScene~) void
-        +update(FrameContext&, float dt) void
-        +draw(render::RenderQueue&) void
+        +change(std::unique_ptr~IScene~, FrameContext&) void
+        +update(FrameContext&, float dt) bool
+        +draw(render::RenderQueue&, FrameContext const&) void
+        +current() IScene*
+    }
+    class SceneRequest {
+        +Kind kind
+        +std::unique_ptr~IScene~ next
+        +stay()$ SceneRequest
+        +change(std::unique_ptr~IScene~)$ SceneRequest
+        +quit()$ SceneRequest
+    }
+    class FrameContext {
+        +input::InputState& input
+        +input::ActionMap~Action~& actions
+        +audio::IAudio& audio
+        +render::TextureCache& textures
+        +render::FontCache& fonts
+        +SpriteCatalog const& sprites
+        +ClientConfig const& config
+        +ClientSettings const& settings
+        +runtime::TimePoint now
     }
     class ServerLink {
         +net::UdpSocket socket
@@ -134,6 +153,8 @@ classDiagram
     IScene <|.. MessageScene
     ClientApp *-- SceneManager
     SceneManager o-- IScene
+    IScene ..> SceneRequest : returns from update
+    IScene ..> FrameContext : uses
     ConnectingScene *-- ServerLink
     GameScene *-- ServerLink
     GameScene *-- ClientWorld
@@ -158,6 +179,9 @@ classDiagram
 
 ### Scenes
 
+- **`SceneManager`** holds the current scene. `change` calls `onExit` on the old scene, if there is one, then `onEnter` on the new one, and ignores a null scene. `update` runs the current scene's `update` and applies the `SceneRequest` it returns: `STAY` keeps the scene, `CHANGE` switches to `next` once the scene's `update` has returned, and `QUIT` makes `update` return `false` so the client loop stops. It also returns `false` when there is no scene. `draw` draws the current scene, if there is one.
+- **`SceneRequest`** is built with `stay()`, `change(next)` or `quit()`. `change(nullptr)` gives `stay()`, so a scene can't switch to nothing.
+- **`FrameContext`** is what a scene gets each frame: the input state and action map, audio, the texture and font caches, the sprite catalog, the command-line config, the settings, and the frame's time.
 - **`ConnectingScene`** opens its link in `onEnter`, not in its constructor, so building the scene never throws: `resolveServer` resolves `-h`/`-p` to an IPv4 endpoint with `asio::ip::udp::resolver`, then it starts a `ServerLink` on a free local port and sends HELLO, again every 0.5 s. An unknown host or an unavailable port (`NetworkError`) is kept and shown by the first `update` as "Can't reach the server". Its `WelcomeCommand` and `RejectCommand` call back into it; only the first WELCOME counts, since every HELLO gets one. On WELCOME it moves the `ServerLink` into a new `GameScene`, so the socket is never recreated. On REJECT, or after 5 s with no answer, it switches to a `MessageScene` with the reason. Meanwhile it draws "Connecting to host:port..." with the seconds waited.
 - **`GameScene`** is the game itself (next sections). It switches to a `MessageScene` when the server sends SHUTDOWN or stays silent for 5 s.
 - **`MessageScene`** shows a title and a detail line ("Server full", "Connection lost", "Server closed"). ENTER reconnects through a new `ConnectingScene`, ESCAPE quits.

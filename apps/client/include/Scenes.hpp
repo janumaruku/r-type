@@ -64,7 +64,8 @@ struct SceneRequest {
 
     [[nodiscard]] static SceneRequest stay() noexcept;
 
-    [[nodiscard]] static SceneRequest change(std::unique_ptr<IScene> next) noexcept;
+    [[nodiscard]] static SceneRequest change(
+        std::unique_ptr<IScene> next) noexcept;
 
     [[nodiscard]] static SceneRequest quit() noexcept;
 };
@@ -102,7 +103,14 @@ class MessageScene: public IScene {
 public:
     MessageScene(std::string title, std::string detail, bool canReconnect);
 
-    // the 4 IScene functions
+    void onEnter(FrameContext &context) override;
+
+    void onExit(FrameContext &context) override;
+
+    SceneRequest update(FrameContext &context, float dt) override;
+
+    void draw(engine::render::RenderQueue &queue,
+        const FrameContext &context) override;
 };
 }
 
