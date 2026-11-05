@@ -55,7 +55,7 @@ public:
         _creators.erase(key);
     }
 
-    std::unique_ptr<BaseClass> create(const KeyType &key, Args... args)
+    std::unique_ptr<BaseClass> create(const KeyType &key, Args &&... args)
     {
         const auto itt = _creators.find(key);
 

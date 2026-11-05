@@ -4,14 +4,14 @@ The subject requires the game and its documentation to be accessible for motor, 
 
 | Category | Features in Part 1 |
 | --- | --- |
-| Motor | Every action can be rebound (`config/keybindings.cfg`). Fire is hold-to-fire, so there's no button mashing. Arrows and WASD both work by default. Nothing depends on precise timing beyond normal play. |
+| Motor | Every action can be rebound (`config/keybindings.json`). Fire is hold-to-fire, so there's no button mashing. Arrows and WASD both work by default. Nothing depends on precise timing beyond normal play. |
 | Visual | Players are told apart by colour **and** a `P1`–`P4` label. A high-contrast mode adds outlines to enemies and enemy missiles. HUD font size is configurable. A reduced-flash option dims explosions. |
 | Audio | Nothing important is conveyed by sound alone: joins, departures and deaths also show as HUD banners. Master, music and SFX volumes are separate, with a mute toggle. |
 | Cognitive | One screen, one goal. A controls overlay is toggled with F1. The HUD uses plain words ("P3 disconnected") rather than codes. A game over restarts automatically, with nothing to navigate. |
 
 ## Settings
 
-All settings live in `config/client.cfg` ([handbook](../handbook/development.md#configuration-files-client-only)):
+All settings live in `config/client.json`, one key each ([handbook](../handbook/development.md#configuration-files-client-only)):
 
 | Key | Default | Effect |
 | --- | --- | --- |
