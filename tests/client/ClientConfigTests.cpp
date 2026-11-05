@@ -37,8 +37,18 @@ class ScopedEnv {
 public:
     ScopedEnv(const char *name, const char *value): _name(name)
     {
+#ifdef _WIN32
+        char *saved = nullptr;
+        std::size_t size = 0;
+
+        if (_dupenv_s(&saved, &size, name) == 0 && saved != nullptr) {
+            _saved = saved;
+            std::free(saved);
+        }
+#else
         if (const char *saved = std::getenv(name))
             _saved = saved;
+#endif
         set(value);
     }
 
