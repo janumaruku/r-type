@@ -42,31 +42,6 @@ constexpr float TEXT_Y = 340.0F;
 }
 }
 
-/*
-** TODO(RTP-121): temporary, belongs to Scenes.cpp.
-*/
-SceneRequest SceneRequest::stay()
-{
-    return {};
-}
-
-/*
-** TODO(RTP-121): temporary, belongs to Scenes.cpp.
-*/
-SceneRequest SceneRequest::change(std::unique_ptr<IScene> next)
-{
-    assert(next != nullptr);
-    return {.kind = Kind::CHANGE, .next = std::move(next)};
-}
-
-/*
-** TODO(RTP-121): temporary, belongs to Scenes.cpp.
-*/
-SceneRequest SceneRequest::quit()
-{
-    return {.kind = Kind::QUIT, .next = nullptr};
-}
-
 ConnectingScene::ConnectingScene()
 {
     registerCommands();

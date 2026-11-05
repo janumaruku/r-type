@@ -26,6 +26,7 @@ struct ClientConfig {
 
     [[nodiscard]] static ClientConfig parse(std::span<const std::string_view> args);
     [[nodiscard]] static std::string defaultName();
+    [[nodiscard]] static std::string usage(std::string_view program);
 };
 
 
