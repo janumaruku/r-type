@@ -13,12 +13,13 @@
 #include <memory>
 #include <string>
 
+#include "Actions.hpp"
 #include "ClientConfig.hpp"
 #include "ClientSettings.hpp"
-#include "../../../engine/render/include/engine/render/FontCache.hpp"
-#include "../../../engine/render/include/engine/render/RenderQueue.hpp"
+#include "engine/render/FontCache.hpp"
+#include "engine/render/RenderQueue.hpp"
 #include "SpriteCatalog.hpp"
-#include "TextureCache.hpp"
+#include "engine/render/TextureCache.hpp"
 #include "engine/audio/IAudio.hpp"
 #include "engine/input/ActionMap.hpp"
 #include "engine/runtime/Clock.hpp"
