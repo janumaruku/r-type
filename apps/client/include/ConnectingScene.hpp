@@ -92,60 +92,6 @@ public:
 };
 
 /*
-** TODO(RTP-121): temporary stub of MessageScene, so ConnectingScene::update
-** can switch to it. Delete it once RTP-121 is merged into dev and include
-** Scenes.hpp. The accessors are only here so the stub compiles under
-** -Wunused-private-field and the tests can check which message was chosen.
-*/
-class MessageScene: public IScene {
-public:
-    MessageScene(std::string title, std::string detail, bool canReconnect):
-        _title(std::move(title)), _detail(std::move(detail)),
-        _canReconnect(canReconnect)
-    {
-    }
-
-    void onEnter([[maybe_unused]] FrameContext &context) override
-    {
-    }
-
-    void onExit([[maybe_unused]] FrameContext &context) override
-    {
-    }
-
-    [[nodiscard]] SceneRequest update([[maybe_unused]] FrameContext &context,
-        [[maybe_unused]] float dt) override
-    {
-        return {};
-    }
-
-    void draw([[maybe_unused]] engine::render::RenderQueue &queue,
-        [[maybe_unused]] const FrameContext &context) override
-    {
-    }
-
-    [[nodiscard]] const std::string &title() const noexcept
-    {
-        return _title;
-    }
-
-    [[nodiscard]] const std::string &detail() const noexcept
-    {
-        return _detail;
-    }
-
-    [[nodiscard]] bool canReconnect() const noexcept
-    {
-        return _canReconnect;
-    }
-
-private:
-    std::string _title;
-    std::string _detail;
-    bool _canReconnect;
-};
-
-/*
 ** TODO(RTP-126): temporary stub of GameScene, so ConnectingScene::update can
 ** hand it the link on WELCOME. Delete it once RTP-126 is merged into dev;
 ** the real constructor also takes `const SpriteCatalog &` (RTP-122).
