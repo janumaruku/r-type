@@ -10,7 +10,7 @@
 
 #include "ClientConfig.hpp"
 #include "ClientDispatch.hpp"
-#include "RenderQueue.hpp"
+#include "../../../engine/render/include/engine/render/RenderQueue.hpp"
 #include "Scenes.hpp"
 #include "ServerLink.hpp"
 #include "rtype/protocol/Messages.hpp"
