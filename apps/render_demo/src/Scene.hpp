@@ -11,8 +11,8 @@
 #include <cstdint>
 #include <vector>
 
-#include "DrawCommand.hpp"
-#include "RenderQueue.hpp"
+#include "../../../engine/render/include/engine/render/DrawCommand.hpp"
+#include "../../../engine/render/include/engine/render/RenderQueue.hpp"
 #include "engine/audio/Volume.hpp"
 #include "engine/core/Vec2.hpp"
 

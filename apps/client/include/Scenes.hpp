@@ -15,8 +15,8 @@
 
 #include "ClientConfig.hpp"
 #include "ClientSettings.hpp"
-#include "FontCache.hpp"
-#include "RenderQueue.hpp"
+#include "../../../engine/render/include/engine/render/FontCache.hpp"
+#include "../../../engine/render/include/engine/render/RenderQueue.hpp"
 #include "SpriteCatalog.hpp"
 #include "TextureCache.hpp"
 #include "engine/audio/IAudio.hpp"

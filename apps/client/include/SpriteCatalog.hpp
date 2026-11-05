@@ -13,8 +13,8 @@
     #include <nlohmann/json_fwd.hpp>
     #include <optional>
 
-    #include "DrawCommand.hpp"
-    #include "TextureCache.hpp"
+    #include "../../../engine/render/include/engine/render/DrawCommand.hpp"
+#include "../../../engine/render/include/engine/render/TextureCache.hpp"
 namespace rtype::client {
 enum class SpriteKey : std::uint8_t {
     PLAYER_SHIP    = 1,
