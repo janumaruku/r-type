@@ -20,15 +20,17 @@ public:
     GameScene(std::unique_ptr<ServerLink> link, protocol::Welcome welcome,
         const SpriteCatalog &sprites);
 
-    void onEnter(FrameContext &) override{}
+    void onEnter(FrameContext &context) override;
 
     void onExit(FrameContext &) override{}
 
-    SceneRequest update(FrameContext &, float ) override {return {};}
+    SceneRequest update(FrameContext &context, float dt) override;
 
     void draw(engine::render::RenderQueue &, const FrameContext &) override{}
 private:
     [[nodiscard]] SceneRequest leaveFor(LeaveCause cause) const;
+    void receive(TimePoint now);
+    void advanceRenderClock(float dt);
 
     std::unique_ptr<ServerLink> _link;
     std::uint8_t _playerId;
@@ -36,7 +38,7 @@ private:
     ClientWorld _world;
     ClientNetworkAdapter _adapter;
     // PredictionState _prediction;
-    // engine::runtime::FixedTimestep _inputStep{1.0 / 60.0};
+    engine::runtime::FixedTimestep _inputStep{1.0 / 60.0, 15};
     std::uint32_t _inputSequence = 0;
     game::Rules _rules;
     bool _leftByChoice = false;
