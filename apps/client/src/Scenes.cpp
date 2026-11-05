@@ -94,4 +94,14 @@ SceneRequest SceneRequest::quit() noexcept
 {
     return {.kind = Kind::QUIT, .next = nullptr};
 }
+
+void SceneManager::change(std::unique_ptr<IScene> next, FrameContext &context)
+{
+    if (next == nullptr)
+        return;
+    if (_current != nullptr)
+        _current->onExit(context);
+    _current = std::move(next);
+    _current->onEnter(context);
+}
 }
