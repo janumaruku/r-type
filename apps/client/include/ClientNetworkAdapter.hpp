@@ -59,7 +59,7 @@ private:
     EventFilter _seenEvents;
     GameCommandFactory _commands;
     ClientLogLimiter _logs;
-    LeaveCause _leave = LeaveCause::NO_CAUSE;
+    LeaveCause _leaveCause = LeaveCause::NO_CAUSE;
 };
 
 } // namespace rtype::client
