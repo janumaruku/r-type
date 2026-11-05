@@ -93,13 +93,13 @@ EventFilter &ClientNetworkAdapter::seenEvents() noexcept
 
 void ClientNetworkAdapter::leave(LeaveCause cause) noexcept
 {
-    if (_leave == LeaveCause::NO_CAUSE)
-        _leave = cause;
+    if (_leaveCause == LeaveCause::NO_CAUSE)
+        _leaveCause = cause;
 }
 
 LeaveCause &ClientNetworkAdapter::leaveCause() noexcept
 {
-    return _leave;
+    return _leaveCause;
 }
 
 } // namespace rtype::client
