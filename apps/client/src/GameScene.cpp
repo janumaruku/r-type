@@ -2,7 +2,7 @@
 // Created by janumaruku on 11/5/26.
 //
 
-#include "../include/GameScene.hpp"
+#include "GameScene.hpp"
 
 namespace rtype
 {
