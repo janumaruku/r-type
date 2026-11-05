@@ -7,7 +7,24 @@
 
 #include "Actions.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cctype>
+
 namespace rtype::client {
+namespace {
+constexpr std::array ACTIONS{
+    Action::MOVE_UP, Action::MOVE_DOWN, Action::MOVE_LEFT, Action::MOVE_RIGHT,
+    Action::FIRE, Action::TOGGLE_HUD_HELP, Action::QUIT, Action::CONFIRM,
+};
+
+[[nodiscard]] bool sameLetter(char left, char right) noexcept
+{
+    return std::toupper(static_cast<unsigned char>(left))
+        == std::toupper(static_cast<unsigned char>(right));
+}
+}
+
 std::ostream &operator<<(std::ostream &stream, const Action &action)
 {
     return stream << toString(action);
@@ -39,22 +56,13 @@ std::string_view toString(Action action) noexcept
 
 bool fromString(std::string_view name, Action &action) noexcept
 {
-    static const std::unordered_map<std::string_view, Action> conversions = {
-        {"MOVE_UP", Action::MOVE_UP},
-        {"MOVE_DOWN", Action::MOVE_DOWN},
-        {"MOVE_LEFT", Action::MOVE_LEFT},
-        {"MOVE_RIGHT", Action::MOVE_RIGHT},
-        {"FIRE", Action::FIRE},
-        {"TOGGLE_HUD_HELP", Action::TOGGLE_HUD_HELP},
-        {"QUIT", Action::QUIT},
-        {"CONFIRM", Action::CONFIRM},
-    };
-    const auto it = conversions.find(name);
-
-    if (it == conversions.end())
-        return false;
-    action = it->second;
-    return true;
+    for (const Action candidate : ACTIONS) {
+        if (std::ranges::equal(toString(candidate), name, sameLetter)) {
+            action = candidate;
+            return true;
+        }
+    }
+    return false;
 }
 
 void bindDefaults(engine::input::ActionMap<Action> &actions)
