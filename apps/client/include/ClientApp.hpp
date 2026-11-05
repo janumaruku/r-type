@@ -10,8 +10,19 @@
 
 #include <memory>
 
+#include "Actions.hpp"
 #include "ClientConfig.hpp"
 #include "ClientSettings.hpp"
+#include "Scenes.hpp"
+#include "SpriteCatalog.hpp"
+#include "engine/audio/IAudio.hpp"
+#include "engine/input/ActionMap.hpp"
+#include "engine/input/InputState.hpp"
+#include "engine/render/FontCache.hpp"
+#include "engine/render/RaylibRenderer.hpp"
+#include "engine/render/TextureCache.hpp"
+#include "engine/render/Window.hpp"
+#include "engine/runtime/StopWatch.hpp"
 
 namespace rtype::client {
 
@@ -22,6 +33,8 @@ public:
     [[nodiscard]] int run();
 
 private:
+    [[nodiscard]] FrameContext frameContext();
+
     ClientConfig _config;
     ClientSettings _settings;
     engine::render::Window _window;

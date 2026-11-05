@@ -11,6 +11,8 @@ add_library(client_logic STATIC
         src/ClientConfig.cpp
         src/ClientSettings.cpp
         src/Scenes.cpp
+        src/ClientApp.cpp
+        src/Actions.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)

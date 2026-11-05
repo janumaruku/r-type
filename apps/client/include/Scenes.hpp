@@ -26,25 +26,6 @@
 namespace rtype::client {
 class IScene;
 
-enum class Action : std::uint8_t {
-    MOVE_UP,
-    MOVE_DOWN,
-    MOVE_LEFT,
-    MOVE_RIGHT,
-    FIRE,
-    TOGGLE_HUD_HELP,
-    QUIT,
-    CONFIRM,
-};
-
-std::ostream &operator<<(std::ostream &stream, const Action &action);
-
-[[nodiscard]] std::string_view toString(Action action) noexcept;
-
-[[nodiscard]] bool fromString(std::string_view name, Action &action) noexcept;
-
-void bindDefaults(engine::input::ActionMap<Action> &actions);
-
 struct FrameContext {
     engine::input::InputState &input;
     engine::input::ActionMap<Action> &actions;
