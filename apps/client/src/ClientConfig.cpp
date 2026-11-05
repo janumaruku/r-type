@@ -127,6 +127,13 @@ ClientConfig ClientConfig::parse(std::span<const std::string_view> args)
     return config;
 }
 
+std::string ClientConfig::usage(std::string_view program)
+{
+    ClientConfig config;
+
+    return makeApp(config, program)->help();
+}
+
 std::string ClientConfig::defaultName()
 {
 #ifdef _WIN32

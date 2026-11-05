@@ -18,8 +18,8 @@
 namespace rtype::client {
 namespace {
 constexpr std::int16_t HUD_LAYER = 1000;
-constexpr float TEXT_X = 40.0F;
-constexpr float TITLE_Y = 280.0F;
+constexpr float CENTER_X = 640.0F;
+constexpr float TITLE_Y = 300.0F;
 constexpr float LINE_GAP = 1.5F;
 constexpr unsigned MAX_TEXT_SIZE = 255;
 
@@ -34,9 +34,10 @@ constexpr unsigned MAX_TEXT_SIZE = 255;
     return {.font = {},
         .text = std::move(text),
         .characterSize = size,
-        .position = {TEXT_X, y},
+        .position = {CENTER_X, y},
         .color = engine::core::Color::WHITE,
-        .layer = HUD_LAYER};
+        .layer = HUD_LAYER,
+        .align = engine::render::TextAlign::CENTER};
 }
 }
 
@@ -132,8 +133,8 @@ void MessageScene::draw(engine::render::RenderQueue &queue,
 
     queue.push(hudText(_title, titleSize, TITLE_Y));
     queue.push(hudText(_detail, size, detailY));
-    queue.push(hudText(_canReconnect ? "ENTER to reconnect, ESCAPE to quit"
-        : "ESCAPE to quit", size, hintY));
+    queue.push(hudText(_canReconnect ? "ENTER: reconnect \u00B7 ESC: quit"
+        : "ESC: quit", size, hintY));
 }
 
 const std::string &MessageScene::title() const noexcept
