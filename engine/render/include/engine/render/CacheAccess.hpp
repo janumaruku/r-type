@@ -8,9 +8,9 @@
 #ifndef CACHE_ACCESS_HPP
 #define CACHE_ACCESS_HPP
 
-#include "../include/engine/render/DrawCommand.hpp"
-#include "FontCache.hpp"
-#include "../include/engine/render/TextureCache.hpp"
+#include "engine/render/DrawCommand.hpp"
+#include "engine/render/FontCache.hpp"
+#include "engine/render/TextureCache.hpp"
 
 #include <raylib.h>
 

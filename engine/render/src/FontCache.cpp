@@ -15,7 +15,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "CacheAccess.hpp"
+#include "engine/render/CacheAccess.hpp"
 #include "engine/core/Errors.hpp"
 #include "engine/core/ResourcePath.hpp"
 

@@ -10,7 +10,7 @@
 #include <cstddef>
 #include <unordered_set>
 
-#include "KeyTable.hpp"
+#include "../../../engine/render/include/engine/render/KeyTable.hpp"
 
 using engine::input::Key;
 using engine::input::KEY_COUNT;
