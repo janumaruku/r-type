@@ -122,4 +122,16 @@ bool SceneManager::update(FrameContext &context, float dt)
     }
     return true;
 }
+
+void SceneManager::draw(engine::render::RenderQueue &queue,
+    const FrameContext &context)
+{
+    if (_current != nullptr)
+        _current->draw(queue, context);
+}
+
+IScene *SceneManager::current() noexcept
+{
+    return _current.get();
+}
 }
