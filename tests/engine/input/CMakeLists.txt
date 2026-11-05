@@ -3,4 +3,5 @@ rtype_add_test(engine_input_tests
     SOURCES
     ActionMapTests.cpp
     InputStateTests.cpp
+    KeyTests.cpp
 )
