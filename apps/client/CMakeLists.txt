@@ -10,6 +10,7 @@ add_library(client_logic STATIC
         src/SpriteCatalog.cpp
         src/ClientConfig.cpp
         src/ClientSettings.cpp
+        src/Scenes.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)
