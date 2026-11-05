@@ -31,10 +31,10 @@ Nothing below `warn` is logged in the per-datagram path unless `--log-level debu
 
 | File | Format | Contents |
 | --- | --- | --- |
-| `config/client.cfg` | `key=value` lines, `#` comments | Volumes, `muted`, `fullscreen`, `hudFontSize`, `highContrast`, `reduceFlashes` ([accessibility](../architecture/accessibility.md#settings)) |
-| `config/keybindings.cfg` | JSON: a `config` array of `{ "name", "keys" }` entries | Overrides for the default bindings ([engine: input](../modules/engine.md#input-engine_input)) |
+| `config/client.json` | JSON: one object, one key per setting | Volumes, `muted`, `fullscreen`, `hudFontSize`, `highContrast`, `reduceFlashes` ([accessibility](../architecture/accessibility.md#settings)) |
+| `config/keybindings.json` | JSON: a `config` array of `{ "name", "keys" }` entries | Overrides for the default bindings ([engine: input](../modules/engine.md#input-engine_input)) |
 
-An unknown key or a value that won't parse logs a warning and falls back to the default for that line. A config file never prevents the game from starting.
+A file that isn't valid JSON, or whose top level has the wrong shape, is ignored as a whole with a warning, and the defaults are used. Inside a valid file, a bad entry logs a warning naming it and only that entry falls back to its default: in `client.json`, an unknown key or a value of the wrong type or out of range; in `keybindings.json`, an unknown action or key name. A missing file is not an error. A config file never prevents the game from starting.
 
 ## Testing
 
@@ -101,6 +101,7 @@ A change that claims a speed-up comes with a before/after comparison (`compare.p
 | --- | --- | --- | --- |
 | Raylib | 5.5 | `engine_render`, `engine_audio` | Built static from source by CPM (`BUILD_EXAMPLES=OFF`), with its bundled GLFW and miniaudio. Never found with `find_package`, so a copy preinstalled on a machine or CI image is ignored |
 | Asio (standalone) | 1.30.2 | `network` | Header-only and ships no CMake file, so we declare an `INTERFACE` target `asio` with its include directory and `ASIO_STANDALONE`, `ASIO_NO_DEPRECATED`, plus `_WIN32_WINNT=0x0A00` on Windows |
+| nlohmann/json | 3.12.0 | `engine_input`, `client_logic` | Header-only. CPM downloads the release archive (`DOWNLOAD_ONLY`), and we declare an `INTERFACE` target `nlohmann_json` with its include directory as `SYSTEM`. Client only: the server targets don't use it |
 | GoogleTest | 1.15.x | test executables | Only when `RTYPE_BUILD_TESTS=ON`. `INSTALL_GTEST=OFF`, and `gtest_force_shared_crt=ON` on Windows so it uses the same C runtime as our code |
 | Google Benchmark | 1.9.x | benchmark executables | Only when `RTYPE_BUILD_BENCHMARKS=ON`, with `BENCHMARK_ENABLE_TESTING`, `BENCHMARK_ENABLE_INSTALL` and `BENCHMARK_ENABLE_WERROR` set to `OFF` |
 
