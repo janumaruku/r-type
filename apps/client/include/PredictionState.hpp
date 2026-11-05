@@ -5,10 +5,17 @@
 ** PredictionState.hpp
 */
 
-#ifndef R_TYPE_CLIENTCONFIG_HPP
-#define R_TYPE_CLIENTCONFIG_HPP
+#ifndef R_TYPE_PREDICTIONSTATE_HPP
+#define R_TYPE_PREDICTIONSTATE_HPP
 
 #include <cstdint>
+#include <vector>
+#include <chrono>
+#include <deque>
+#include <optional>
+#include "engine/core/Vec2.hpp"
+#include "engine/core/Logger.hpp"
+// #include "ServerLink.hpp"
 
 namespace rtype::client {
     struct PendingInput {
@@ -24,10 +31,9 @@ namespace rtype::client {
             static constexpr float CORRECTION_RATE = 0.2F;
 
             void record(std::uint32_t sequence, std::uint8_t buttons, TimePoint sentAt);
-            [[nodiscard]] Vec2f step(Vec2f drawn, std::uint8_t buttons, const game::Rules &rules) const;
-            [[nodiscard]] Vec2f reconcile(Vec2f authoritative, std::uint32_t lastProcessed,
-                const game::Rules &rules);
-            [[nodiscard]] Vec2f smooth(Vec2f drawn, Vec2f corrected) const;
+            [[nodiscard]] engine::core::Vec2f step(engine::core::Vec2f drawn, std::uint8_t buttons, const game::Rules &rules) const;
+            [[nodiscard]] engine::core::Vec2f reconcile(engine::core::Vec2f authoritative, std::uint32_t lastProcessed, const game::Rules &rules);
+            [[nodiscard]] engine::core::Vec2f smooth(engine::core::Vec2f drawn, engine::core::Vec2f corrected) const;
             [[nodiscard]] std::optional<TimePoint> sentAt(std::uint32_t sequence) const;
             void notePing(std::uint32_t lastProcessed, TimePoint now);
             [[nodiscard]] std::optional<std::chrono::milliseconds> averagePing(TimePoint now) const;
@@ -40,7 +46,7 @@ namespace rtype::client {
     };
 
         struct Correction {
-            std::optional<Vec2f> target;
+            std::optional<engine::core::Vec2f> target;
         };
 
         void predictionSystem(engine::ecs::Registry &registry);
@@ -58,4 +64,4 @@ namespace rtype::client {
 
 }
 
-#endif //R_TYPE_CLIENTCONFIG_HPP
+#endif //R_TYPE_PREDICTIONSTATE_HPP
