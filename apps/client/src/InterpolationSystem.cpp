@@ -33,9 +33,28 @@ namespace rtype::client
     std::uint8_t RenderClock::sampleButtons(const engine::input::ActionMap<Action> &actions,
         const engine::input::InputState &input) noexcept
     {
+        std::uint8_t buttons = 0;
 
+        if (actions.isActive(Action::MOVE_UP, input))
+            buttons |= (1 << 0);
+
+        if (actions.isActive(Action::MOVE_DOWN, input))
+            buttons |= (1 << 1);
+        if (actions.isActive(Action::MOVE_LEFT, input))
+            buttons |= (1 << 2);
+        if (actions.isActive(Action::MOVE_RIGHT, input))
+            buttons |= (1 << 3);
+        if (actions.isActive(Action::FIRE, input))
+            buttons |= (1 << 4);
+        return buttons;
     }
 
-
+// "MOVE_UP"
+// "MOVE_DOWN"
+// "MOVE_LEFT"
+// "MOVE_RIGHT"
+// "FIRE"
+// "CONFIRM"
+// "QUIT"
 
 } // namespace rtype::client
