@@ -274,7 +274,30 @@ These live in `apps/client/` because they refer to `render::TextureId`, which th
 | `PlayerLabel` | `uint8_t playerId`, drawn as `P1`–`P4` above the ship |
 | `TransientEffect` | `float remaining`: explosions, which are never replicated |
 
-These systems are registered in `ClientWorld`'s registry, in two stages: `UPDATE` (`interpolationSystem` → `predictionSystem` → `shipTiltSystem` → `animationSystem` → `effectSystem` → `starfieldSystem`) and `RENDER` (`renderSystem` → `hudSystem`). The `RenderQueue` and the `SpriteCatalog` are registry resources: the render stage fills the queue, and `animationSystem` and `shipTiltSystem` read the catalog. `renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
+The `GameScene` constructor registers these systems in `ClientWorld`'s registry, in the two `ClientStage`s (`ClientStages.hpp`), and they run in this order:
+
+| Stage | System | Components | Status |
+| --- | --- | --- | --- |
+| `UPDATE` | `interpolationSystem` | `Transform`, `const NetSamples` | Registered (RTP-126) |
+| `UPDATE` | `predictionSystem` | | RTP-127 |
+| `UPDATE` | `shipTiltSystem` | | RTP-128 |
+| `UPDATE` | `animationSystem` | | RTP-128 |
+| `UPDATE` | `effectSystem` | | RTP-128 |
+| `UPDATE` | `starfieldSystem` | | RTP-128 |
+| `RENDER` | `renderSystem` | | RTP-128 |
+| `RENDER` | `hudSystem` | | RTP-128 |
+
+The registry also holds these resources:
+
+| Resource | Set by | Used for |
+| --- | --- | --- |
+| `SpriteCatalog` | `ClientWorld`'s constructor, a copy of `ClientApp`'s catalog | `animationSystem` and `shipTiltSystem` read it |
+| `RenderQueue` | `GameScene`'s constructor | The `RENDER` stage fills it |
+| `RenderClock` | `GameScene`'s constructor | `latestServerTick` and the time since it give `renderTick()`, the tick `interpolationSystem` draws |
+| `engine::ecs::DeltaTime` | `GameScene`'s constructor, then every frame | The frame's `dt` |
+| `engine::core::Rng` | `GameScene`'s constructor, seeded with `Rng::randomSeed()` | Client-side randomness, such as effects |
+
+`renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
 
 ## Frame loop, interpolation and prediction
 
