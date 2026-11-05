@@ -9,8 +9,11 @@
 #define R_TYPE_INTERPOLATIONSYSTEM_HPP
 
 #include <cstdint>
+
+#include "Actions.hpp"
+#include "ClientComponents.hpp"
 #include "engine/ecs/SparseSet.hpp"
-#include "game/Components.hpp"
+#include "rtype/game/Components.hpp"
 #include "engine/input/ActionMap.hpp"
 
 namespace rtype::client

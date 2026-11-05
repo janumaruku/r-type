@@ -20,7 +20,13 @@ public:
     GameScene(std::unique_ptr<ServerLink> link, protocol::Welcome welcome,
         const SpriteCatalog &sprites);
 
-    // the 4 IScene functions
+    void onEnter(FrameContext &) override{}
+
+    void onExit(FrameContext &) override{}
+
+    SceneRequest update(FrameContext &, float ) override {return {};}
+
+    void draw(engine::render::RenderQueue &, const FrameContext &) override{}
 private:
     [[nodiscard]] SceneRequest leaveFor(LeaveCause cause) const;
 
