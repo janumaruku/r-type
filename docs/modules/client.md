@@ -284,7 +284,9 @@ On a LAN the correction is invisible. With high latency, the player still sees t
 
 **Starfield (F-02, F-08).** There are 3 parallax layers of procedurally placed stars: 70 far stars at 20 u/s, 40 mid stars at 55 u/s and 20 near stars at 120 u/s. A star that leaves the left edge wraps to the right at a new random y. The starfield runs entirely on the client and is driven by `dt`, so its speed doesn't depend on frame rate, and it needs no network traffic.
 
-**Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.json`, which maps each `(EntityKind, variant)` to a sheet, frame rectangles and a frame time. The rectangles are measured from the sprite sheets provided with the subject. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`.
+**Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.json`, which maps each `(EntityKind, variant)` to a sheet, named states of frame rectangles, and a frame time. The sheets and the starting rectangles come from [ManuelR-T/R-Type](https://github.com/ManuelR-T/R-Type) (MIT licence), and each entry's `source` field names the original sheet and frames. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`, and its 5 columns are the states `top`, `up`, `idle`, `down` and `bottom`.
+
+**Sprites and hitboxes stay in step.** Sprites are drawn at scale 1 and one game unit is one pixel, so each entity's largest visible frame is its hitbox in `Rules` ([game.md](game.md)): the ship 32 × 14, the Bydos slave 21 × 24, the player missile 12 × 4 and the enemy missile 7 × 6. The ship uses full 33 × 17 grid cells and the explosion full 32 × 32 frames, so their centre stays still while they tilt or grow. Re-measuring a frame means changing `Rules` too.
 
 **Sound (F-13).**
 
