@@ -16,5 +16,5 @@ A gate that fails moves its leftovers to the next week ahead of new work. Week 1
 - [x] **Reliability.** State-based snapshots, no acks ([ADR 0002](decisions/0002-state-based-replication.md)).
 - [x] **Graphics library.** Raylib 5.5 ([ADR 0004](decisions/0004-raylib.md)). CI runs on `epitechcontent/epitest-docker` and installs the X11 and OpenGL packages Raylib needs (`RAYLIB_PACKAGES` in `ci.yml`).
 - [ ] **Comparative study (D-04).** Still to write: Raylib vs SFML vs SDL, Asio vs raw sockets, state-based vs event-based replication, sparse-set ECS vs archetype ECS, CPM vs vcpkg vs Conan, plus a storage and security section.
-- [ ] **Sprite rectangles.** Measure the frame rectangles in the provided sheets and fill `assets/sprites/catalog.cfg`.
+- [x] **Sprite rectangles.** Measured on the sheets from ManuelR-T/R-Type and stored in `assets/sprites/catalog.json` ([client.md](modules/client.md#presentation), credits in `assets/sprites/ASSETS.md`).
 - [ ] **Snapshot rate.** 30 Hz is the default. Revisit after the week 2 gate if bandwidth or smoothness disappoints.

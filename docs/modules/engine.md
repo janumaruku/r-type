@@ -634,6 +634,7 @@ classDiagram
         ESCAPE
         LSHIFT
         LCTRL
+        F1_TO_F12
         COUNT
     }
     class InputEvent {
@@ -672,7 +673,7 @@ classDiagram
 - **Where the events come from.** Raylib has no event queue: it answers questions like `IsKeyPressed(KEY_UP)` about the current frame. `Window::pollEvents()` turns those answers into events. For each engine `Key`, it asks Raylib `IsKeyPressed` and `IsKeyReleased` for the matching `KEY_*` code, through one fixed translation table. It reports `WindowShouldClose()` as `WINDOW_CLOSED`, a change of `IsWindowFocused()` as `FOCUS_LOST` or `FOCUS_GAINED`, and `IsWindowResized()` as `RESIZED`.
 - **Escape is a normal key.** By default Raylib closes the window when Escape is pressed. `Window` calls `SetExitKey(KEY_NULL)` to turn that off, so Escape goes through the `QUIT` action like any other binding.
 - `beginFrame()` clears the pressed and released sets. `apply()` updates all three sets. OS key-repeat events are ignored, and a key counts as pressed only on its first down event.
-- The client defines `enum class Action { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE, TOGGLE_HUD_HELP, QUIT }`. Default bindings are the arrow keys (required by F-09) plus WASD, with `SPACE` and `LCTRL` to fire. Bindings are saved to `config/keybindings.cfg` ([accessibility](../architecture/accessibility.md)).
+- The client defines `enum class Action { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE, TOGGLE_HUD_HELP, QUIT, CONFIRM }`. Default bindings are the arrow keys (required by F-09) plus WASD, with `SPACE` and `LCTRL` to fire, `F1` for the controls overlay, `ESCAPE` to quit and `ENTER` to confirm. Bindings are saved to `config/keybindings.json` ([accessibility](../architecture/accessibility.md)).
 - **An action has a set of keys.** Binding the same pair twice stores it once, and `unbind` removes one key. A key can belong to several actions.
 - **The bindings file is JSON.** One entry per action, with its name and its keys:
   ```json
@@ -683,7 +684,7 @@ classDiagram
     ]
   }
   ```
-- **Names in the bindings file.** Key names are the enum's: `KEY_A` to `KEY_Z`, `NUM0` to `NUM9`, `UP`, `SPACE`, `LCTRL`, and so on, in any case. `engine_input` provides `toString(Key)` and `keyFromString`. Actions belong to the client, so `ActionMap` finds `toString(Action)` and `fromString(std::string_view, Action&)` by ADL, the same pattern as the `Packet` serializers. `ActionMap` is constrained on a concept that checks both functions exist.
+- **Names in the bindings file.** Key names are the enum's: `KEY_A` to `KEY_Z`, `NUM0` to `NUM9`, `F1` to `F12`, `UP`, `SPACE`, `LCTRL`, and so on, in any case. `engine_input` provides `toString(Key)` and `keyFromString`. Actions belong to the client, so `ActionMap` finds `toString(Action)` and `fromString(std::string_view, Action&)` by ADL, the same pattern as the `Packet` serializers. `ActionMap` is constrained on a concept that checks both functions exist.
 - **Loading.** A missing file returns `false` and keeps the default bindings. Each action in the file replaces its keys, and actions missing from the file keep theirs. An unknown action or key is skipped with a warning naming the entry, and an action left with no valid key keeps its old keys. A file that isn't valid JSON, or whose fields have the wrong type, is rejected as a whole with a warning, and nothing changes.
 - **Saving** writes every binding, creating the parent folder if needed. The order isn't fixed, because the bindings are stored in hash containers. An I/O error returns `false` with a warning.
 
