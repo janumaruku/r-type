@@ -13,7 +13,7 @@
 #include <cstdio>
 #include <string>
 
-#include "Window.hpp"
+#include "../include/engine/render/Window.hpp"
 #include "engine/core/Errors.hpp"
 #include "KeyTable.hpp"
 #include "engine/core/Logger.hpp"

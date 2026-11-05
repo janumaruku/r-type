@@ -9,8 +9,8 @@
 #include <utility>
 #include <variant>
 
-#include "RenderQueue.hpp"
-#include "DrawCommand.hpp"
+#include "../include/engine/render/RenderQueue.hpp"
+#include "../include/engine/render/DrawCommand.hpp"
 
 namespace engine::render {
 

@@ -5,7 +5,7 @@
 ** RaylibRenderer.cpp
 */
 
-#include "RaylibRenderer.hpp"
+#include "../include/engine/render/RaylibRenderer.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -14,7 +14,7 @@
 
 #include "CacheAccess.hpp"
 #include "engine/core/Errors.hpp"
-#include "Letterbox.hpp"
+#include "../include/engine/render/Letterbox.hpp"
 #include "RaylibConvert.hpp"
 
 #include <raylib.h>
