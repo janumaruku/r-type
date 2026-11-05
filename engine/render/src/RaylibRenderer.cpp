@@ -5,17 +5,17 @@
 ** RaylibRenderer.cpp
 */
 
-#include "RaylibRenderer.hpp"
+#include "../include/engine/render/RaylibRenderer.hpp"
 
 #include <algorithm>
 #include <cassert>
 #include <cmath>
 #include <variant>
 
-#include "CacheAccess.hpp"
+#include "../include/engine/render/CacheAccess.hpp"
 #include "engine/core/Errors.hpp"
-#include "Letterbox.hpp"
-#include "RaylibConvert.hpp"
+#include "../include/engine/render/Letterbox.hpp"
+#include "../include/engine/render/RaylibConvert.hpp"
 
 #include <raylib.h>
 
@@ -84,9 +84,13 @@ struct CommandDrawer {
     {
         const auto size = static_cast<float>(cmd.characterSize);
         const float spacing = cmd.font.isDefault() ? size / 10.0F : 0.0F;
+        const Font &font = detail::CacheAccess::font(fonts, cmd.font);
+        Vector2 position = detail::toRaylib(cmd.position);
 
-        DrawTextEx(detail::CacheAccess::font(fonts, cmd.font),
-            cmd.text.c_str(), detail::toRaylib(cmd.position), size, spacing,
+        if (cmd.align == TextAlign::CENTER)
+            position.x -= MeasureTextEx(font, cmd.text.c_str(), size,
+                spacing).x / 2.0F;
+        DrawTextEx(font, cmd.text.c_str(), position, size, spacing,
             detail::toRaylib(cmd.color));
     }
 };

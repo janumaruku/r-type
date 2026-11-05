@@ -9,7 +9,6 @@
 #define ICOMMAND_HPP
 
 namespace designPattern {
-
 template <typename... Args>
 class ICommand {
 public:

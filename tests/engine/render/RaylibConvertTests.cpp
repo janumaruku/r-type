@@ -7,7 +7,7 @@
 
 #include <gtest/gtest.h>
 
-#include "RaylibConvert.hpp"
+#include "../../../engine/render/include/engine/render/RaylibConvert.hpp"
 
 using engine::core::FloatRect;
 using engine::core::IntRect;

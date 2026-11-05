@@ -73,6 +73,11 @@ struct RectCmd {
     std::int16_t layer;
 };
 
+enum class TextAlign : std::uint8_t {
+    LEFT,
+    CENTER,
+};
+
 struct TextCmd {
     FontId font;
     std::string text;
@@ -80,6 +85,7 @@ struct TextCmd {
     core::Vec2f position;
     core::Color color;
     std::int16_t layer;
+    TextAlign align = TextAlign::LEFT;
 };
 
 using DrawCommand = std::variant<SpriteCmd, RectCmd, TextCmd>;

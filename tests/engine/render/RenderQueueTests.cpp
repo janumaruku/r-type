@@ -5,14 +5,14 @@
 ** RenderQueueTests.cpp
 */
 
-#include "RenderQueue.hpp"
+#include "../../../engine/render/include/engine/render/RenderQueue.hpp"
 
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <type_traits>
 #include <variant>
 
-#include "DrawCommand.hpp"
+#include "../../../engine/render/include/engine/render/DrawCommand.hpp"
 
 TEST(RenderQueueTests, sortByLayerOrdersTheLayers)
 {

@@ -77,6 +77,18 @@ constexpr std::array<int, input::KEY_COUNT> makeKeyTable() noexcept
     table[keyIndex(Key::ESCAPE)] = KEY_ESCAPE;
     table[keyIndex(Key::LSHIFT)] = KEY_LEFT_SHIFT;
     table[keyIndex(Key::LCTRL)] = KEY_LEFT_CONTROL;
+    table[keyIndex(Key::F1)] = KEY_F1;
+    table[keyIndex(Key::F2)] = KEY_F2;
+    table[keyIndex(Key::F3)] = KEY_F3;
+    table[keyIndex(Key::F4)] = KEY_F4;
+    table[keyIndex(Key::F5)] = KEY_F5;
+    table[keyIndex(Key::F6)] = KEY_F6;
+    table[keyIndex(Key::F7)] = KEY_F7;
+    table[keyIndex(Key::F8)] = KEY_F8;
+    table[keyIndex(Key::F9)] = KEY_F9;
+    table[keyIndex(Key::F10)] = KEY_F10;
+    table[keyIndex(Key::F11)] = KEY_F11;
+    table[keyIndex(Key::F12)] = KEY_F12;
     return table;
 }
 
