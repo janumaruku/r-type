@@ -9,6 +9,7 @@
 
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 
 namespace rtype::client {
 std::ostream &operator<<(std::ostream &stream, const Action &action)
@@ -75,5 +76,22 @@ void bindDefaults(engine::input::ActionMap<Action> &actions)
     actions.bind(Action::TOGGLE_HUD_HELP, engine::input::Key::F1);
     actions.bind(Action::QUIT, engine::input::Key::ESCAPE);
     actions.bind(Action::CONFIRM, engine::input::Key::ENTER);
+}
+
+SceneRequest SceneRequest::stay() noexcept
+{
+    return {.kind = Kind::STAY, .next = nullptr};
+}
+
+SceneRequest SceneRequest::change(std::unique_ptr<IScene> next) noexcept
+{
+    if (next == nullptr)
+        return stay();
+    return {.kind = Kind::CHANGE, .next = std::move(next)};
+}
+
+SceneRequest SceneRequest::quit() noexcept
+{
+    return {.kind = Kind::QUIT, .next = nullptr};
 }
 }
