@@ -94,7 +94,7 @@ bool KickCommand::execute(ClientNetworkAdapter &adapter, net::Packet &packet)
 {
     auto kick = protocol::decode<protocol::Kick>(packet);
 
-    auto cause = LeaveCause::NONE;
+    auto cause = LeaveCause::NO_CAUSE;
 
     switch (kick.reason) {
     case protocol::KickReason::PROTOCOL_ERROR:
@@ -104,7 +104,7 @@ bool KickCommand::execute(ClientNetworkAdapter &adapter, net::Packet &packet)
         cause = LeaveCause::KICKED_RATE;
         break;
     default:
-        cause = LeaveCause::NONE;
+        cause = LeaveCause::NO_CAUSE;
         break;
     }
     adapter.leave(cause);

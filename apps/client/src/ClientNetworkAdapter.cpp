@@ -93,7 +93,7 @@ EventFilter &ClientNetworkAdapter::seenEvents() noexcept
 
 void ClientNetworkAdapter::leave(LeaveCause cause) noexcept
 {
-    if (_leave == LeaveCause::NONE)
+    if (_leave == LeaveCause::NO_CAUSE)
         _leave = cause;
 }
 

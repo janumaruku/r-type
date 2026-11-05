@@ -18,7 +18,7 @@
 namespace rtype::client {
 
 enum class LeaveCause : std::uint8_t {
-    NONE,
+    NO_CAUSE,
     SHUTDOWN,
     KICKED_PROTOCOL,
     KICKED_RATE,
@@ -57,7 +57,7 @@ private:
     EventFilter _seenEvents;
     GameCommandFactory _commands;
     ClientLogLimiter _logs;
-    LeaveCause _leave = LeaveCause::NONE;
+    LeaveCause _leave = LeaveCause::NO_CAUSE;
 };
 
 } // namespace rtype::client
