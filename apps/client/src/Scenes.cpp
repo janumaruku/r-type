@@ -11,7 +11,7 @@
 #include <unordered_map>
 
 namespace rtype::client {
-std::ostream & operator<<(std::ostream &stream, const Action &action)
+std::ostream &operator<<(std::ostream &stream, const Action &action)
 {
     return stream << toString(action);
 }
@@ -58,5 +58,22 @@ bool fromString(std::string_view name, Action &action) noexcept
         return false;
     action = it->second;
     return true;
+}
+
+void bindDefaults(engine::input::ActionMap<Action> &actions)
+{
+    actions.bind(Action::MOVE_UP, engine::input::Key::UP);
+    actions.bind(Action::MOVE_UP, engine::input::Key::KEY_W);
+    actions.bind(Action::MOVE_DOWN, engine::input::Key::DOWN);
+    actions.bind(Action::MOVE_DOWN, engine::input::Key::KEY_S);
+    actions.bind(Action::MOVE_LEFT, engine::input::Key::LEFT);
+    actions.bind(Action::MOVE_LEFT, engine::input::Key::KEY_A);
+    actions.bind(Action::MOVE_RIGHT, engine::input::Key::RIGHT);
+    actions.bind(Action::MOVE_RIGHT, engine::input::Key::KEY_D);
+    actions.bind(Action::FIRE, engine::input::Key::SPACE);
+    actions.bind(Action::FIRE, engine::input::Key::LCTRL);
+    actions.bind(Action::TOGGLE_HUD_HELP, engine::input::Key::F1);
+    actions.bind(Action::QUIT, engine::input::Key::ESCAPE);
+    actions.bind(Action::CONFIRM, engine::input::Key::ENTER);
 }
 }

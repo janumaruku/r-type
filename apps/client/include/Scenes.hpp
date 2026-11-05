@@ -36,11 +36,13 @@ enum class Action : std::uint8_t {
     CONFIRM,
 };
 
+std::ostream &operator<<(std::ostream &stream, const Action &action);
+
 [[nodiscard]] std::string_view toString(Action action) noexcept;
 
 [[nodiscard]] bool fromString(std::string_view name, Action &action) noexcept;
 
-void bindDefaults(engine::input::ActionMap<Action> & actions);
+void bindDefaults(engine::input::ActionMap<Action> &actions);
 
 struct FrameContext {
     engine::input::InputState &input;
