@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <memory>
+#include <string>
 #include <utility>
 
 #include "ClientStages.hpp"
@@ -20,6 +21,12 @@
 namespace rtype::client {
 namespace {
 constexpr auto SERVER_TIMEOUT = std::chrono::seconds(5);
+
+[[nodiscard]] SceneRequest showMessage(std::string title, std::string detail)
+{
+    return SceneRequest::change(std::make_unique<MessageScene>(
+        std::move(title), std::move(detail), true));
+}
 
 /*
 ** Adds the systems in client.md's order.
@@ -85,8 +92,7 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
     if (_adapter.leaveCause() != LeaveCause::NO_CAUSE)
         return leaveFor(_adapter.leaveCause());
     if (context.now - _link->lastHeard > SERVER_TIMEOUT)
-        return SceneRequest::change(std::make_unique<MessageScene>(
-            "Connection lost", "The server stopped answering", true));
+        return showMessage("Connection lost", "The server stopped answering");
     _world.registry().getResource<engine::ecs::DeltaTime>().seconds = dt;
     _world.registry().runStage(ClientStage::UPDATE);
     return SceneRequest::stay();
@@ -101,6 +107,21 @@ void GameScene::draw(engine::render::RenderQueue &queue,
     std::swap(stageQueue, queue);
     _world.registry().runStage(ClientStage::RENDER);
     std::swap(stageQueue, queue);
+}
+
+SceneRequest GameScene::leaveFor(LeaveCause cause) const
+{
+    switch (cause) {
+    case LeaveCause::SHUTDOWN:
+        return showMessage("Server closed", "The server shut down");
+    case LeaveCause::KICKED_PROTOCOL:
+        return showMessage("Kicked", "The server got a malformed message");
+    case LeaveCause::KICKED_RATE:
+        return showMessage("Kicked", "Too many messages sent to the server");
+    case LeaveCause::NO_CAUSE:
+        break;
+    }
+    return SceneRequest::stay();
 }
 
 void GameScene::receive(TimePoint now)
