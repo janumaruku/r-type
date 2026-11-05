@@ -8,6 +8,8 @@
 #ifndef CLIENT_NETWORK_ADAPTER_HPP
 #define CLIENT_NETWORK_ADAPTER_HPP
 
+#include <cstdint>
+
 #include "ClientDispatch.hpp"
 #include "ClientWorld.hpp"
 #include "engine/core/FactoryTemplate.hpp"
