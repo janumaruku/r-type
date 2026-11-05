@@ -101,6 +101,11 @@ classDiagram
     class MessageScene {
         -std::string _title
         -std::string _detail
+        -bool _canReconnect
+        +MessageScene(std::string title, std::string detail, bool canReconnect)
+        +title() std::string const&
+        +detail() std::string const&
+        +canReconnect() bool
     }
     class ClientNetworkAdapter {
         -ServerLink& _link
@@ -184,7 +189,7 @@ classDiagram
 - **`FrameContext`** is what a scene gets each frame: the input state and action map, audio, the texture and font caches, the sprite catalog, the command-line config, the settings, and the frame's time.
 - **`ConnectingScene`** opens its link in `onEnter`, not in its constructor, so building the scene never throws: `resolveServer` resolves `-h`/`-p` to an IPv4 endpoint with `asio::ip::udp::resolver`, then it starts a `ServerLink` on a free local port and sends HELLO, again every 0.5 s. An unknown host or an unavailable port (`NetworkError`) is kept and shown by the first `update` as "Can't reach the server". Its `WelcomeCommand` and `RejectCommand` call back into it; only the first WELCOME counts, since every HELLO gets one. On WELCOME it moves the `ServerLink` into a new `GameScene`, so the socket is never recreated. On REJECT, or after 5 s with no answer, it switches to a `MessageScene` with the reason. Meanwhile it draws "Connecting to host:port..." with the seconds waited.
 - **`GameScene`** is the game itself (next sections). It switches to a `MessageScene` when the server sends SHUTDOWN or stays silent for 5 s.
-- **`MessageScene`** shows a title and a detail line ("Server full", "Connection lost", "Server closed"). ENTER reconnects through a new `ConnectingScene`, ESCAPE quits.
+- **`MessageScene`** shows a title and a detail line ("Server full", "Connection lost", "Server closed"), sized from the `hudFontSize` setting (the title at twice the size), with a hint for the keys. CONFIRM (ENTER) reconnects through a new `ConnectingScene` when the message allows it, which a version mismatch does not. QUIT (ESCAPE) quits.
 
 ## Message commands
 

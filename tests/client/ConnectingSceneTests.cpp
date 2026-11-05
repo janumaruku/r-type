@@ -143,13 +143,17 @@ protected:
     engine::audio::NullAudio _audio;
     engine::render::TextureCache _textures;
     engine::render::FontCache _fonts;
+    rtype::client::SpriteCatalog _sprites;
     rtype::client::ClientConfig _config;
+    rtype::client::ClientSettings _settings;
     rtype::client::FrameContext _context{.input = _input,
         .actions = _actions,
         .audio = _audio,
         .textures = _textures,
         .fonts = _fonts,
+        .sprites = _sprites,
         .config = _config,
+        .settings = _settings,
         .now = Clock::now()};
 };
 
