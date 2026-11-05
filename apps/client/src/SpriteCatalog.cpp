@@ -8,8 +8,11 @@
 #include "SpriteCatalog.hpp"
 
 #include <format>
+#include <fstream>
 #include <ostream>
 #include <stdexcept>
+
+#include <nlohmann/json.hpp>
 
 namespace rtype::client {
 
@@ -44,6 +47,27 @@ std::optional<std::uint8_t> SpriteDef::stateIndex(
             return static_cast<std::uint8_t>(index);
 
     return std::nullopt;
+}
+
+void SpriteCatalog::load(const std::filesystem::path &file,
+    engine::render::TextureCache &textures)
+{
+    std::ifstream stream(file, std::ios::binary);
+    nlohmann::json json;
+
+    if (!stream.is_open())
+        throw CatalogError(std::format("{}: cannot open the sprite catalog",
+            file.string()));
+    try {
+        json = nlohmann::json::parse(stream);
+    } catch (const nlohmann::json::parse_error &error) {
+        throw CatalogError(std::format("{}: {}", file.string(), error.what()));
+    }
+    if (!json.is_object() || !json.contains("sprites")
+        || !json.at("sprites").is_array())
+        throw CatalogError(std::format(
+            "{}: expected an object with a \"sprites\" array", file.string()));
+    loadJson(json, file.parent_path(), textures);
 }
 
 SpriteDefId SpriteCatalog::find(SpriteKey key, std::uint8_t variant) const
