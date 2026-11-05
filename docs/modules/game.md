@@ -413,10 +413,10 @@ One game unit is one pixel of the 1280 × 720 logical screen, and sprites are dr
 
 | Entity | Sheet and frames | Visible pixels | Full size | `halfSize` |
 | --- | --- | --- | --- | --- |
-| Player ship | `r-typesheet42.gif`, 33 × 17 cells | 32 × 12 idle, up to 32 × 14 tilted | 32 × 14 | 16 × 7 |
-| Bydos slave | `r-typesheet5.gif`, 21 × 24 frames | 21 × 7 to 21 × 24 while it turns | 21 × 24 | 10.5 × 12 |
-| Player missile | `r-typesheet1.gif`, frame `[337, 255, 12, 4]` | 12 × 4 | 12 × 4 | 6 × 2 |
-| Enemy missile | `r-typesheet43.png`, the ball's 4 frames | 7 × 6 in every frame | 7 × 6 | 3.5 × 3 |
+| Player ship | `player_ships.gif`, 33 × 17 cells | 32 × 12 idle, up to 32 × 14 tilted | 32 × 14 | 16 × 7 |
+| Bydos slave | `bydos_slave.gif`, 21 × 24 frames | 21 × 7 to 21 × 24 while it turns | 21 × 24 | 10.5 × 12 |
+| Player missile | `player_shots.gif`, frame `[337, 255, 12, 4]` | 12 × 4 | 12 × 4 | 6 × 2 |
+| Enemy missile | `enemy_shots_and_explosions.png`, the ball's 4 frames | 7 × 6 in every frame | 7 × 6 | 3.5 × 3 |
 
 `confineToPlayfield` uses `playerHalfSize`, so the ship's visible pixels never leave the playfield. The 33 × 17 cell drawn around them overhangs by at most 1.5 pixels, which are transparent.
 

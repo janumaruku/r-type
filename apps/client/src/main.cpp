@@ -46,7 +46,7 @@ int main(int argc, char *argv[])
         rtype::client::ClientApp app(config, settings);
         return app.run();
     } catch (const std::exception &error) {
-        engine::core::log::Logger("client").error(error.what());
+        engine::core::log::Logger("client").error("{}", error.what());
         return EPITECH_EXIT_FAIL;
     }
 }

@@ -25,16 +25,19 @@ Raylib requires window, input, rendering and texture calls to stay on the thread
 classDiagram
     class ClientApp {
         -ClientConfig _config
+        -ClientSettings _settings
         -render::Window _window
         -render::TextureCache _textures
         -render::FontCache _fonts
+        -SpriteCatalog _sprites
         -render::RaylibRenderer _renderer
         -std::unique_ptr~audio::IAudio~ _audio
         -input::InputState _input
         -input::ActionMap~Action~ _actions
+        -render::RenderQueue _queue
         -SceneManager _scenes
         -runtime::Stopwatch _frameClock
-        +ClientApp(ClientConfig)
+        +ClientApp(ClientConfig, ClientSettings)
         +run() int
     }
     class IScene {
@@ -150,13 +153,28 @@ classDiagram
         +sentAt(uint32_t sequence) std::optional~TimePoint~
     }
     class SpriteCatalog {
+        -std::vector~SpriteDef~ _defs
+        -std::map~std::pair, SpriteDefId~ _exact
+        -std::map~SpriteKey, SpriteDefId~ _anyVariant
         +load(path, TextureCache&) void
-        +lookup(EntityKind, uint8_t variant) SpriteDef const&
+        +loadJson(json const&, path sheetsDir, TextureCache&) void
+        +find(SpriteKey, uint8_t variant) SpriteDefId
+        +get(SpriteDefId) SpriteDef const&
+        +contains(SpriteKey, uint8_t variant) bool
+    }
+    class SpriteDef {
+        +render::TextureId texture
+        +std::vector~AnimationState~ states
+        +float frameTime
+        +bool loop
+        +stateIndex(std::string_view name) std::optional~uint8_t~
     }
     IScene <|.. ConnectingScene
     IScene <|.. GameScene
     IScene <|.. MessageScene
     ClientApp *-- SceneManager
+    ClientApp *-- SpriteCatalog
+    SpriteCatalog *-- SpriteDef
     SceneManager o-- IScene
     IScene ..> SceneRequest : returns from update
     IScene ..> FrameContext : uses
@@ -249,13 +267,14 @@ These live in `apps/client/` because they refer to `render::TextureId`, which th
 | Component | Fields |
 | --- | --- |
 | `Sprite` | `TextureId texture`, `IntRect frame`, `int16_t layer`, `Color tint`, `Vec2f scale` |
-| `Animation` | `std::vector<IntRect> frames`, `float frameTime`, `float timer`, `size_t index`, `bool loop` |
+| `Animation` | `SpriteDefId def`, `uint8_t state`, `size_t index`, `float timer`. The frames, the frame time and `loop` stay in the catalog's `SpriteDef`: the component holds the entry's id and a state index, so it's plain data with no pointers, and spawning an entity copies no vectors |
+| `ShipTilt` | `float lastY`, `int8_t direction`, `float heldTime`. On player ships only: `shipTiltSystem` picks `idle`, `up` then `top`, or `down` then `bottom` from the drawn vertical speed (over 20 u/s, the full tilt after 0.15 s) |
 | `NetSamples` | Ring of the last 3 `{uint32_t tick, Vec2f position, Vec2f velocity}`, plus `uint32_t lastSeenTick` |
 | `LocalPlayer` | Tag on the ship whose NetId equals the roster's `shipNetId` for our `playerId` |
 | `PlayerLabel` | `uint8_t playerId`, drawn as `P1`–`P4` above the ship |
 | `TransientEffect` | `float remaining`: explosions, which are never replicated |
 
-These systems are registered in `ClientWorld`'s registry, in two stages: `UPDATE` (`interpolationSystem` → `predictionSystem` → `animationSystem` → `effectSystem` → `starfieldSystem`) and `RENDER` (`renderSystem` → `hudSystem`). The `RenderQueue` is a registry resource that the render stage fills. `renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
+These systems are registered in `ClientWorld`'s registry, in two stages: `UPDATE` (`interpolationSystem` → `predictionSystem` → `shipTiltSystem` → `animationSystem` → `effectSystem` → `starfieldSystem`) and `RENDER` (`renderSystem` → `hudSystem`). The `RenderQueue` and the `SpriteCatalog` are registry resources: the render stage fills the queue, and `animationSystem` and `shipTiltSystem` read the catalog. `renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
 
 ## Frame loop, interpolation and prediction
 
@@ -284,7 +303,45 @@ On a LAN the correction is invisible. With high latency, the player still sees t
 
 **Starfield (F-02, F-08).** There are 3 parallax layers of procedurally placed stars: 70 far stars at 20 u/s, 40 mid stars at 55 u/s and 20 near stars at 120 u/s. A star that leaves the left edge wraps to the right at a new random y. The starfield runs entirely on the client and is driven by `dt`, so its speed doesn't depend on frame rate, and it needs no network traffic.
 
-**Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.json`, which maps each `(EntityKind, variant)` to a sheet, frame rectangles and a frame time. The rectangles are measured from the sprite sheets provided with the subject. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`.
+**Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.json`, which maps each `(EntityKind, variant)` to a sheet, named states of frame rectangles, and a frame time. The sheets and the starting rectangles come from [ManuelR-T/R-Type](https://github.com/ManuelR-T/R-Type) (MIT licence), and each entry's `source` field names the original sheet and frames. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`, and its 5 columns are the states `top`, `up`, `idle`, `down` and `bottom`.
+
+**`catalog.json`.** `ClientApp` loads it once at start-up, with the path found by `engine::core::AssetLocator`. Every problem in it is fatal and stops the client with exit code 84 before the first frame, since the game can't be drawn without its sprites: a missing file, invalid JSON (with nlohmann's position), any field that breaks the table below, a rectangle outside its sheet, a missing sheet, the same `(kind, variant)` twice, or a missing server key. The message names the entry, the field and the state, such as `sprites[2].states.up[1]: expected [x, y, w, h], whole numbers with w and h > 0`. An entry that still has the old `frames` field is rejected with `sprites[i].frames: replaced by states, see client.md`.
+
+```json
+{
+  "sprites": [
+    {
+      "kind": "PLAYER_SHIP",
+      "variant": 0,
+      "sheet": "player_ships.gif",
+      "frameTime": 0.0,
+      "loop": true,
+      "states": {
+        "top": [[0, 0, 33, 17]],
+        "up": [[33, 0, 33, 17]],
+        "idle": [[66, 0, 33, 17]],
+        "down": [[99, 0, 33, 17]],
+        "bottom": [[132, 0, 33, 17]]
+      },
+      "source": "ManuelR-T/R-Type, r-typesheet42.gif, row 0 (cyan), 33 x 17 grid"
+    }
+  ]
+}
+```
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `kind` | string | `PLAYER_SHIP`, `BYDOS_SLAVE`, `PLAYER_MISSILE`, `ENEMY_MISSILE` (the RFC entity kinds), or `EXPLOSION` for the client-only effect. Any case |
+| `variant` | integer 0–255, or `"*"` | `"*"` covers every variant of the kind. `find` prefers an exact entry over `"*"` |
+| `sheet` | string | A path relative to `assets/sprites/` |
+| `frameTime` | number ≥ 0 | Seconds per frame, shared by every state of the entry. 0 means a still image |
+| `loop` | boolean, optional, default `true` | Whether a state starts again after its last frame. `false` for `EXPLOSION` |
+| `states` | object, at least one key | Each key is a state name (non-empty, case-sensitive), each value a non-empty array of `[x, y, w, h]`, whole numbers in pixels of the sheet, with `w` and `h` > 0. `idle` is required: every entity starts in it. It's stored at index 0, then the other states in file order |
+| `source` | string, optional | Where the rectangles were measured, for whoever edits the file next. Ignored by the code |
+
+The catalog must have an entry, exact or `"*"`, for every key the server sends: PLAYER_SHIP variants 0 to 3, BYDOS_SLAVE variants 0 and 1, both missiles, plus EXPLOSION. The current file has one PLAYER_SHIP entry per colour row and `"*"` entries for the rest.
+
+**Sprites and hitboxes stay in step.** Sprites are drawn at scale 1 and one game unit is one pixel, so each entity's largest visible frame is its hitbox in `Rules` ([game.md](game.md)): the ship 32 × 14, the Bydos slave 21 × 24, the player missile 12 × 4 and the enemy missile 7 × 6. The ship uses full 33 × 17 grid cells and the explosion full 32 × 32 frames, so their centre stays still while they tilt or grow. Re-measuring a frame means changing `Rules` too.
 
 **Sound (F-13).**
 
