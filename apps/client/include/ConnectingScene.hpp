@@ -7,99 +7,15 @@
 
 #ifndef R_TYPE_CONNECTING_SCENE_HPP
 #define R_TYPE_CONNECTING_SCENE_HPP
+
 #include "ClientConfig.hpp"
 #include "ClientDispatch.hpp"
-#include "FontCache.hpp"
 #include "RenderQueue.hpp"
+#include "Scenes.hpp"
 #include "ServerLink.hpp"
-#include "TextureCache.hpp"
-#include "engine/audio/IAudio.hpp"
-#include "engine/input/ActionMap.hpp"
 #include "rtype/protocol/Messages.hpp"
 
 namespace rtype::client {
-/*
-** TODO(RTP-121): temporary copies of Actions.hpp and Scenes.hpp, from the
-** class IScene forward declaration down to the end of IScene. Delete them
-** all once RTP-121 is merged into dev, and include those two headers instead
-** (along with FontCache.hpp, RenderQueue.hpp, TextureCache.hpp, IAudio.hpp
-** and ActionMap.hpp, which only these copies need).
-*/
-class IScene;
-
-/*
-** TODO(RTP-121): temporary, belongs to Actions.hpp.
-*/
-enum class Action : std::uint8_t {
-    MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE, TOGGLE_HUD_HELP, QUIT,
-    CONFIRM,
-};
-
-/*
-** TODO(RTP-121): temporary, belongs to Actions.hpp.
-*/
-[[nodiscard]] std::string_view toString(Action action) noexcept;
-
-/*
-** TODO(RTP-121): temporary, belongs to Actions.hpp.
-*/
-[[nodiscard]] bool fromString(std::string_view name, Action &action) noexcept;
-
-/*
-** TODO(RTP-121): temporary, belongs to Actions.hpp.
-*/
-void bindDefaults(engine::input::ActionMap<Action> & actions);
-
-/*
-** TODO(RTP-121): temporary, belongs to Scenes.hpp.
-** TODO(RTP-122): the real one has `const SpriteCatalog &sprites`.
-** TODO(RTP-120): the real one also has `const ClientSettings &settings`.
-*/
-struct FrameContext {
-    engine::input::InputState &input;
-    engine::input::ActionMap<Action> &actions;
-    engine::audio::IAudio &audio;
-    engine::render::TextureCache &textures;
-    engine::render::FontCache &fonts;
-    // const SpriteCatalog &sprites;
-    const ClientConfig &config;
-    // const ClientSettings &settings;
-    TimePoint now;
-};
-
-/*
-** TODO(RTP-121): temporary, belongs to Scenes.hpp.
-*/
-struct SceneRequest {
-    enum class Kind : std::uint8_t { STAY, CHANGE, QUIT };
-
-    Kind kind = Kind::STAY;
-    std::unique_ptr<IScene> next;
-
-    [[nodiscard]] static SceneRequest stay();
-
-    [[nodiscard]] static SceneRequest change(std::unique_ptr<IScene> next);
-
-    [[nodiscard]] static SceneRequest quit();
-};
-
-/*
-** TODO(RTP-121): temporary, belongs to Scenes.hpp.
-*/
-class IScene {
-public:
-    virtual ~IScene() = default;
-
-    virtual void onEnter(FrameContext &context) = 0;
-
-    virtual void onExit(FrameContext &context) = 0;
-
-    [[nodiscard]] virtual SceneRequest update(FrameContext &context, float dt) =
-    0;
-
-    virtual void draw(engine::render::RenderQueue &queue,
-        const FrameContext &context) = 0;
-};
 
 class ConnectingScene: public IScene {
 public:
