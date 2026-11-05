@@ -9,6 +9,7 @@
 #define R_TYPE_SCENES_HPP
 
 #include <cstdint>
+#include <iosfwd>
 #include <memory>
 
 #include "ClientConfig.hpp"
@@ -20,7 +21,6 @@
 #include "engine/audio/IAudio.hpp"
 #include "engine/input/ActionMap.hpp"
 #include "engine/runtime/Clock.hpp"
-
 
 namespace rtype::client {
 class IScene;
@@ -62,11 +62,11 @@ struct SceneRequest {
     Kind kind = Kind::STAY;
     std::unique_ptr<IScene> next;
 
-    [[nodiscard]] static SceneRequest stay();
+    [[nodiscard]] static SceneRequest stay() noexcept;
 
-    [[nodiscard]] static SceneRequest change(std::unique_ptr<IScene> next);
+    [[nodiscard]] static SceneRequest change(std::unique_ptr<IScene> next) noexcept;
 
-    [[nodiscard]] static SceneRequest quit();
+    [[nodiscard]] static SceneRequest quit() noexcept;
 };
 
 class IScene {
