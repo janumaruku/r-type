@@ -7,7 +7,7 @@
 
 #ifndef R_TYPE_GAMESCENE_HPP
 #define R_TYPE_GAMESCENE_HPP
-
+#include <iostream>
 #include <cstdint>
 #include <memory>
 // les include des .hpp du dossier
@@ -28,6 +28,10 @@ namespace rtype::client
         GameScene(std::unique_ptr<ServerLink> link, protocol::Welcome welcome,
             const SpriteCatalog &sprites);
         // the 4 IScene functions
+        void onEnter();
+        void onExit();
+        SceneRequest update(FrameContext& context, float dt);
+        void draw(engine::render::RenderQueue&);
 
     private:
         [[nodiscard]] SceneRequest leaveFor(LeaveCause cause) const;
