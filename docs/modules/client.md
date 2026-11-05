@@ -305,7 +305,7 @@ On a LAN the correction is invisible. With high latency, the player still sees t
 
 **Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.json`, which maps each `(EntityKind, variant)` to a sheet, named states of frame rectangles, and a frame time. The sheets and the starting rectangles come from [ManuelR-T/R-Type](https://github.com/ManuelR-T/R-Type) (MIT licence), and each entry's `source` field names the original sheet and frames. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`, and its 5 columns are the states `top`, `up`, `idle`, `down` and `bottom`.
 
-**`catalog.json`.** `ClientApp` loads it once at start-up, with the path found by `engine::core::AssetLocator`. A missing file, invalid JSON, a missing or wrongly typed field, an unknown kind, an entry without `idle`, or a missing sheet stops the client with exit code 84 before the first frame: the game can't be drawn without its sprites. JSON errors keep nlohmann's message.
+**`catalog.json`.** `ClientApp` loads it once at start-up, with the path found by `engine::core::AssetLocator`. Every problem in it is fatal and stops the client with exit code 84 before the first frame, since the game can't be drawn without its sprites: a missing file, invalid JSON (with nlohmann's position), any field that breaks the table below, a rectangle outside its sheet, a missing sheet, the same `(kind, variant)` twice, or a missing server key. The message names the entry, the field and the state, such as `sprites[2].states.up[1]: expected [x, y, w, h], whole numbers with w and h > 0`. An entry that still has the old `frames` field is rejected with `sprites[i].frames: replaced by states, see client.md`.
 
 ```json
 {
@@ -334,9 +334,9 @@ On a LAN the correction is invisible. With high latency, the player still sees t
 | `kind` | string | `PLAYER_SHIP`, `BYDOS_SLAVE`, `PLAYER_MISSILE`, `ENEMY_MISSILE` (the RFC entity kinds), or `EXPLOSION` for the client-only effect. Any case |
 | `variant` | integer 0–255, or `"*"` | `"*"` covers every variant of the kind. `find` prefers an exact entry over `"*"` |
 | `sheet` | string | A path relative to `assets/sprites/` |
-| `frameTime` | number | Seconds per frame, shared by every state of the entry. 0 means a still image |
+| `frameTime` | number ≥ 0 | Seconds per frame, shared by every state of the entry. 0 means a still image |
 | `loop` | boolean, optional, default `true` | Whether a state starts again after its last frame. `false` for `EXPLOSION` |
-| `states` | object | Each key is a state name (case-sensitive), each value an array of `[x, y, w, h]` in pixels of the sheet. `idle` is required: every entity starts in it, and it's always stored at index 0 |
+| `states` | object, at least one key | Each key is a state name (non-empty, case-sensitive), each value a non-empty array of `[x, y, w, h]`, whole numbers in pixels of the sheet, with `w` and `h` > 0. `idle` is required: every entity starts in it. It's stored at index 0, then the other states in file order |
 | `source` | string, optional | Where the rectangles were measured, for whoever edits the file next. Ignored by the code |
 
 The catalog must have an entry, exact or `"*"`, for every key the server sends: PLAYER_SHIP variants 0 to 3, BYDOS_SLAVE variants 0 and 1, both missiles, plus EXPLOSION. The current file has one PLAYER_SHIP entry per colour row and `"*"` entries for the rest.

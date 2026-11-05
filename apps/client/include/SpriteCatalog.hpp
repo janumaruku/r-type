@@ -64,7 +64,7 @@ public:
     void load(const std::filesystem::path &file,
         engine::render::TextureCache &textures);
 
-    void loadJson(const nlohmann::json &json,
+    void loadJson(const nlohmann::ordered_json &json,
         const std::filesystem::path &sheetsDir,
         engine::render::TextureCache &textures);
 
@@ -76,7 +76,7 @@ public:
         std::uint8_t variant) const noexcept;
 
 private:
-    void add(const nlohmann::json &entry,
+    void add(const nlohmann::ordered_json &entry, const std::string &where,
         const std::filesystem::path &sheetsDir,
         engine::render::TextureCache &textures);
 
