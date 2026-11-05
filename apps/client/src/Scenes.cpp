@@ -104,4 +104,22 @@ void SceneManager::change(std::unique_ptr<IScene> next, FrameContext &context)
     _current = std::move(next);
     _current->onEnter(context);
 }
+
+bool SceneManager::update(FrameContext &context, float dt)
+{
+    if (_current == nullptr)
+        return false;
+    SceneRequest request = _current->update(context, dt);
+
+    switch (request.kind) {
+    case SceneRequest::Kind::STAY:
+        return true;
+    case SceneRequest::Kind::CHANGE:
+        change(std::move(request.next), context);
+        return true;
+    case SceneRequest::Kind::QUIT:
+        return false;
+    }
+    return true;
+}
 }
