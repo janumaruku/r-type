@@ -1,6 +1,9 @@
-//
-// Created by janumaruku on 11/5/26.
-//
+/*
+** EPITECH PROJECT, 2026
+** r-type
+** File description:
+** GameScene
+*/
 
 #include "GameScene.hpp"
 
@@ -89,6 +92,17 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
     return SceneRequest::stay();
 }
 
+void GameScene::draw(engine::render::RenderQueue &queue,
+    [[maybe_unused]] const FrameContext &context)
+{
+    auto &stageQueue = _world.registry().getResource<
+        engine::render::RenderQueue>();
+
+    std::swap(stageQueue, queue);
+    _world.registry().runStage(ClientStage::RENDER);
+    std::swap(stageQueue, queue);
+}
+
 void GameScene::receive(TimePoint now)
 {
     for (const auto &datagram: _link->socket.receiveAll())
@@ -96,10 +110,6 @@ void GameScene::receive(TimePoint now)
     _events.dispatch();
 }
 
-/*
-** A newer server tick restarts the time since it, otherwise that time grows
-** by dt, so renderTick() keeps moving between two snapshots.
-*/
 void GameScene::advanceRenderClock(float dt)
 {
     auto &clock = _world.registry().getResource<RenderClock>();

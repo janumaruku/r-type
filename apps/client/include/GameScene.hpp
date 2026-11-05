@@ -26,7 +26,8 @@ public:
 
     SceneRequest update(FrameContext &context, float dt) override;
 
-    void draw(engine::render::RenderQueue &, const FrameContext &) override{}
+    void draw(engine::render::RenderQueue &queue,
+        const FrameContext &context) override;
 private:
     [[nodiscard]] SceneRequest leaveFor(LeaveCause cause) const;
     void receive(TimePoint now);
