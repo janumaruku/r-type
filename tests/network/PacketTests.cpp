@@ -5,13 +5,12 @@
 ** PacketTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "network/Packet.hpp"
 
 #include <array>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <limits>
-
-#include "network/Packet.hpp"
 
 TEST(Packet, WritesAndReadsBytesIdentically)
 {
@@ -28,13 +27,13 @@ TEST(Packet, WritesAndReadsBytesIdentically)
 
 TEST(Packet, StreamOperatorsWriteAndReadValues)
 {
-    constexpr std::uint16_t expectedShort = 0x1234;
+    constexpr std::uint16_t expectedShort  = 0x1234;
     constexpr std::int32_t expectedInteger = -42;
     net::Packet packet;
 
     packet << expectedShort << expectedInteger;
 
-    std::uint16_t actualShort = 0;
+    std::uint16_t actualShort  = 0;
     std::int32_t actualInteger = 0;
     packet >> actualShort >> actualInteger;
 
@@ -69,13 +68,14 @@ TEST(Packet, WriteRawPastMaximumPreservesSize)
 TEST(Packet, ReadRawSizeMaxThrowsWithoutWrapping)
 {
     const std::uint8_t value = 42;
-    std::uint8_t output = 0;
+    std::uint8_t output      = 0;
     net::Packet packet;
     packet.writeRaw(&value, sizeof(value));
     const auto remaining = packet.remaining();
 
-    EXPECT_THROW(packet.readRaw(&output, std::numeric_limits<std::size_t>::max()),
-                 net::PacketError);
+    EXPECT_THROW(packet.readRaw(&output,
+                     std::numeric_limits<std::size_t>::max()),
+        net::PacketError);
     EXPECT_EQ(packet.remaining(), remaining);
 }
 

@@ -9,11 +9,12 @@
 #include <filesystem>
 #include <format>
 #include <vector>
+
 #include "engine/core/Errors.hpp"
 #include "engine/core/Logger.hpp"
 
 #ifdef _WIN32
-#include <windows.h>
+    #include <windows.h>
 #endif
 
 #include "engine/core/AssetLocator.hpp"
@@ -24,7 +25,7 @@ namespace {
 
 std::filesystem::path executableDirectory()
 {
-    #ifdef _WIN32
+#ifdef _WIN32
     std::wstring buffer(256, L'\0');
     DWORD length = 0;
     do {
@@ -36,20 +37,20 @@ std::filesystem::path executableDirectory()
         return {};
     buffer.resize(length);
     return std::filesystem::path(buffer).parent_path();
-    #else
+#else
     std::error_code error;
-    const auto executable = std::filesystem::read_symlink("/proc/self/exe",
-        error);
+    const auto executable =
+        std::filesystem::read_symlink("/proc/self/exe", error);
     if (error)
         return {};
     return executable.parent_path();
-    #endif
+#endif
 }
 
 std::optional<std::filesystem::path> environmentAssetsDirectory()
 {
-    #ifdef _WIN32
-    char *environmentPath = nullptr;
+#ifdef _WIN32
+    char *environmentPath           = nullptr;
     std::size_t environmentPathSize = 0;
     _dupenv_s(&environmentPath, &environmentPathSize, "RTYPE_ASSETS_DIR");
     if (environmentPath == nullptr)
@@ -58,15 +59,15 @@ std::optional<std::filesystem::path> environmentAssetsDirectory()
     std::filesystem::path path(environmentPath);
     std::free(environmentPath);
     return path;
-    #else
+#else
     const char *const environmentPath = std::getenv("RTYPE_ASSETS_DIR");
     if (environmentPath == nullptr)
         return std::nullopt;
     return std::filesystem::path(environmentPath);
-    #endif
+#endif
 }
 
-}
+} // namespace
 
 AssetLocator::AssetLocator(std::optional<std::filesystem::path> overrideRoot)
 {
@@ -79,8 +80,8 @@ AssetLocator::AssetLocator(std::optional<std::filesystem::path> overrideRoot)
         candidates.push_back(*environmentRoot);
     }
 
-    if (const auto executableRoot = executableDirectory(); !executableRoot.
-        empty())
+    if (const auto executableRoot = executableDirectory();
+        !executableRoot.empty())
         candidates.push_back(executableRoot / "assets");
     candidates.push_back(std::filesystem::current_path() / "assets");
 
@@ -99,8 +100,7 @@ AssetLocator::AssetLocator(std::optional<std::filesystem::path> overrideRoot)
     throw ResourceError(message);
 }
 
-std::filesystem::path AssetLocator::resolve(
-    const std::string &relative) const
+std::filesystem::path AssetLocator::resolve(const std::string &relative) const
 {
     const std::filesystem::path path = _root / relative;
 
@@ -114,4 +114,4 @@ const std::filesystem::path &AssetLocator::root() const noexcept
     return _root;
 }
 
-}
+} // namespace engine::core

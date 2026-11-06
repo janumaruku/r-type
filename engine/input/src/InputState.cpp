@@ -67,4 +67,4 @@ bool InputState::wasReleased(Key key) const noexcept
     return idx < KEY_COUNT && _released.test(idx);
 }
 
-}
+} // namespace engine::input

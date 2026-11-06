@@ -5,23 +5,23 @@
 ** AdapterTests
 */
 
-#include <gtest/gtest.h>
+#include "ClientNetworkAdapter.hpp"
 
 #include <chrono>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
 #include <utility>
 #include <vector>
 
-#include "ClientNetworkAdapter.hpp"
-#include "GameEventBus.hpp"
-#include "ServerLink.hpp"
-#include "SpriteCatalog.hpp"
 #include "engine/core/Logger.hpp"
+#include "GameEventBus.hpp"
 #include "rtype/protocol/Event.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
+#include "ServerLink.hpp"
+#include "SpriteCatalog.hpp"
 
 using rtype::client::ClientNetworkAdapter;
 using rtype::client::ClientWorld;
@@ -37,10 +37,10 @@ using rtype::protocol::Welcome;
 namespace {
 constexpr std::uint16_t SERVER_PORT = 4242;
 
-const asio::ip::udp::endpoint SERVER{asio::ip::address_v4::loopback(),
-    SERVER_PORT};
-const asio::ip::udp::endpoint STRANGER{asio::ip::address_v4::loopback(),
-    SERVER_PORT + 1};
+const asio::ip::udp::endpoint SERVER{
+    asio::ip::address_v4::loopback(), SERVER_PORT};
+const asio::ip::udp::endpoint STRANGER{
+    asio::ip::address_v4::loopback(), SERVER_PORT + 1};
 
 const TimePoint START{};
 const TimePoint LATER = START + std::chrono::seconds(5);
@@ -60,8 +60,12 @@ net::Datagram datagramOf(std::vector<std::uint8_t> bytes,
 
 Event eventWithId(std::uint32_t id)
 {
-    return {.eventId = id, .type = EventType::ENEMY_KILLED, .a = 1, .b = 2,
-        .x = 3.0F, .y = 4.0F};
+    return {.eventId = id,
+        .type        = EventType::ENEMY_KILLED,
+        .a           = 1,
+        .b           = 2,
+        .x           = 3.0F,
+        .y           = 4.0F};
 }
 
 std::vector<std::uint8_t> eventBytes(std::uint32_t id)
@@ -69,7 +73,7 @@ std::vector<std::uint8_t> eventBytes(std::uint32_t id)
     return bytesOf(rtype::protocol::makePacket(MessageType::EVENT, 1,
         eventWithId(id)));
 }
-}
+} // namespace
 
 class Adapter: public testing::Test {
 protected:
@@ -95,7 +99,7 @@ protected:
 TEST_F(Adapter, ThreeCopiesOfOneEventArePublishedOnce)
 {
     std::vector<Event> received;
-    auto sub = _events.subscribe([&](const Event &event) {
+    auto sub         = _events.subscribe([&](const Event &event) {
         received.push_back(event);
     });
     const auto bytes = eventBytes(42);
@@ -125,8 +129,8 @@ TEST_F(Adapter, EventFromAnotherAddressIsDroppedAndLinkNotRefreshed)
 
 TEST_F(Adapter, LateWelcomeInGameIsDroppedAndLinkNotRefreshed)
 {
-    const auto bytes = bytesOf(rtype::protocol::makePacket(
-        MessageType::WELCOME, 3, Welcome{.playerId = 1}));
+    const auto bytes = bytesOf(rtype::protocol::makePacket(MessageType::WELCOME,
+        3, Welcome{.playerId = 1}));
 
     _adapter.handle(datagramOf(bytes), LATER);
 
@@ -135,10 +139,11 @@ TEST_F(Adapter, LateWelcomeInGameIsDroppedAndLinkNotRefreshed)
 
 TEST_F(Adapter, FirstLeaveCauseWinsOverLaterKick)
 {
-    const auto shutdown = bytesOf(rtype::protocol::makePacket(
-        MessageType::SHUTDOWN, 1, rtype::protocol::Shutdown{}));
-    const auto kick = bytesOf(rtype::protocol::makePacket(
-        MessageType::KICK, 2, rtype::protocol::Kick{
+    const auto shutdown =
+        bytesOf(rtype::protocol::makePacket(MessageType::SHUTDOWN, 1,
+            rtype::protocol::Shutdown{}));
+    const auto kick = bytesOf(rtype::protocol::makePacket(MessageType::KICK, 2,
+        rtype::protocol::Kick{
             .reason = rtype::protocol::KickReason::RATE_LIMITED}));
 
     _adapter.handle(datagramOf(shutdown), START);

@@ -66,4 +66,4 @@ std::ostream &operator<<(std::ostream &stream, MessageType type)
 
     return stream << std::format("0x{:02x}", static_cast<unsigned>(type));
 }
-}
+} // namespace rtype::protocol

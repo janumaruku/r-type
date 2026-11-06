@@ -5,10 +5,11 @@
 ** ConnectingSceneTests
 */
 
-#include <gtest/gtest.h>
+#include "ConnectingScene.hpp"
 
 #include <chrono>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <memory>
 #include <sstream>
@@ -17,10 +18,9 @@
 #include <variant>
 #include <vector>
 
-#include "ConnectingScene.hpp"
-#include "LoopbackHelpers.hpp"
 #include "engine/audio/NullAudio.hpp"
 #include "engine/core/Logger.hpp"
+#include "LoopbackHelpers.hpp"
 #include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
@@ -44,11 +44,11 @@ using rtype::protocol::RejectReason;
 using rtype::protocol::Welcome;
 
 namespace {
-constexpr float STEP = 0.25F;
+constexpr float STEP           = 0.25F;
 constexpr int STEPS_TO_TIMEOUT = 20;
-constexpr auto SETTLE = std::chrono::milliseconds(100);
-const std::string DROPPED = "Dropped a datagram";
-}
+constexpr auto SETTLE          = std::chrono::milliseconds(100);
+const std::string DROPPED      = "Dropped a datagram";
+} // namespace
 
 /*
 ** A ConnectingScene against a test server: a net::UdpSocket on loopback that
@@ -147,27 +147,27 @@ protected:
     rtype::client::ClientConfig _config;
     rtype::client::ClientSettings _settings;
     rtype::client::FrameContext _context{.input = _input,
-        .actions = _actions,
-        .audio = _audio,
-        .textures = _textures,
-        .fonts = _fonts,
-        .sprites = _sprites,
-        .config = _config,
-        .settings = _settings,
-        .now = Clock::now()};
+        .actions                                = _actions,
+        .audio                                  = _audio,
+        .textures                               = _textures,
+        .fonts                                  = _fonts,
+        .sprites                                = _sprites,
+        .config                                 = _config,
+        .settings                               = _settings,
+        .now                                    = Clock::now()};
 };
 
 namespace {
 const MessageScene &messageOf(const SceneRequest &request)
 {
-    const auto *message = dynamic_cast<const MessageScene *>(
-        request.next.get());
+    const auto *message =
+        dynamic_cast<const MessageScene *>(request.next.get());
 
     if (message == nullptr)
         throw std::runtime_error("the request isn't a MessageScene");
     return *message;
 }
-}
+} // namespace
 
 TEST_F(Connecting, FirstHelloCarriesVersionOneAndTheName)
 {
@@ -247,8 +247,7 @@ TEST_F(Connecting, ServerFullCanReconnectButVersionMismatchCannot)
 
     ASSERT_EQ(fullRequest.kind, SceneRequest::Kind::CHANGE);
     EXPECT_EQ(messageOf(fullRequest).title(), "Server full");
-    EXPECT_EQ(messageOf(fullRequest).detail(),
-        "4 players are already playing");
+    EXPECT_EQ(messageOf(fullRequest).detail(), "4 players are already playing");
     EXPECT_TRUE(messageOf(fullRequest).canReconnect());
 
     ConnectingScene outdated;
@@ -272,8 +271,9 @@ TEST_F(Connecting, WelcomeFromAnotherAddressIsIgnored)
     net::UdpSocket stranger{0};
 
     stranger.start();
-    stranger.sendTo(hello.from, rtype::protocol::makePacket(
-        MessageType::WELCOME, 1, Welcome{.playerId = 3}));
+    stranger.sendTo(hello.from,
+        rtype::protocol::makePacket(MessageType::WELCOME, 1,
+            Welcome{.playerId = 3}));
     settle(scene);
     answer(hello, MessageType::WELCOME, Welcome{.playerId = 1});
 
@@ -325,8 +325,8 @@ TEST_F(Connecting, QuitActionQuits)
     _actions.bind(Action::QUIT, Key::ESCAPE);
     scene.onEnter(_context);
     _input.beginFrame();
-    _input.apply(InputEvent{.type = InputEvent::Type::KEY_PRESSED,
-        .key = Key::ESCAPE});
+    _input.apply(InputEvent{
+        .type = InputEvent::Type::KEY_PRESSED, .key = Key::ESCAPE});
     EXPECT_EQ(update(scene, 0.0F).kind, SceneRequest::Kind::QUIT);
 }
 
@@ -343,12 +343,11 @@ TEST_F(Connecting, DrawShowsTheServerAndTheSecondsOnTheHudLayer)
     ASSERT_EQ(first.commands().size(), 1U);
     ASSERT_EQ(second.commands().size(), 1U);
 
-    const auto &text = std::get<engine::render::TextCmd>(first.commands()[0]);
-    const auto &again = std::get<engine::render::TextCmd>(
-        second.commands()[0]);
+    const auto &text  = std::get<engine::render::TextCmd>(first.commands()[0]);
+    const auto &again = std::get<engine::render::TextCmd>(second.commands()[0]);
 
-    EXPECT_EQ(text.text, "Connecting to 127.0.0.1:"
-        + std::to_string(_config.port) + "... 2 s");
+    EXPECT_EQ(text.text,
+        "Connecting to 127.0.0.1:" + std::to_string(_config.port) + "... 2 s");
     EXPECT_EQ(text.layer, 1000);
     EXPECT_EQ(again.text, text.text);
     EXPECT_EQ(again.layer, text.layer);

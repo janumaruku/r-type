@@ -5,16 +5,16 @@
 ** RegistryTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/Registry.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #include "engine/core/Errors.hpp"
-#include "engine/ecs/Registry.hpp"
 
 using engine::core::EngineError;
 using engine::ecs::Entity;
@@ -34,12 +34,10 @@ struct Velocity {
     float dy;
 };
 
-struct NeverRegistered {
-};
+struct NeverRegistered {};
 
 template <std::size_t N>
-struct Tag {
-};
+struct Tag {};
 
 Entity entity(std::uint32_t index, std::uint32_t generation = 0)
 {
@@ -90,7 +88,7 @@ TEST(Registry, WritesThroughOneReferenceAreVisibleThroughAnother)
 TEST(Registry, EachTypeHasItsOwnStorage)
 {
     Registry registry;
-    auto &positions = registry.registerComponent<Position>();
+    auto &positions        = registry.registerComponent<Position>();
     const auto &velocities = registry.registerComponent<Velocity>();
 
     positions.insertAt(entity(0), Position{});
@@ -125,10 +123,8 @@ TEST(Registry, GetComponentsOnAnUnregisteredTypeThrowsNamingIt)
 // The slot exists because a later type grew the vector, but holds nullptr.
 TEST(Registry, AnEmptySlotInsideTheVectorStillThrows)
 {
-    struct Skipped {
-    };
-    struct RegisteredAfter {
-    };
+    struct Skipped {};
+    struct RegisteredAfter {};
     Registry registry;
     const auto skipped = typeId<Skipped>();
 
@@ -144,7 +140,7 @@ TEST(Registry, TheConstOverloadWorksThroughAConstRegistry)
 {
     Registry registry;
     registry.registerComponent<Position>().insertAt(entity(3),
-        Position{.x=4.0F, .y=5.0F});
+        Position{.x = 4.0F, .y = 5.0F});
     const Registry &readOnly = registry;
 
     const auto &positions = readOnly.getComponents<Position>();
@@ -160,7 +156,7 @@ TEST(Registry, AReferenceSurvivesSixtyFourMoreRegistrations)
 {
     Registry registry;
     auto &positions = registry.registerComponent<Position>();
-    positions.insertAt(entity(0), Position{.x=1.0F, .y=1.0F});
+    positions.insertAt(entity(0), Position{.x = 1.0F, .y = 1.0F});
 
     [&registry]<std::size_t... I>(std::index_sequence<I...>) {
         (registry.registerComponent<Tag<I>>(), ...);

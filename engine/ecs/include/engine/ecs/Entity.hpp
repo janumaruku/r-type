@@ -8,8 +8,8 @@
 #ifndef R_TYPE_ENTITY_HPP
 #define R_TYPE_ENTITY_HPP
 #include <cstdint>
-#include <type_traits>
 #include <functional>
+#include <type_traits>
 
 namespace engine::ecs {
 class Registry;
@@ -43,8 +43,7 @@ private:
 
     constexpr Entity(std::uint32_t index, std::uint32_t generation) noexcept:
         _index(index), _generation(generation)
-    {
-    }
+    {}
 
     friend class Registry;
     friend struct detail::EntityAccess;

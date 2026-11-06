@@ -15,7 +15,7 @@
 
 namespace render_demo {
 
-enum class Action: std::uint8_t {
+enum class Action : std::uint8_t {
     MOVE_UP,
     MOVE_DOWN,
     MOVE_LEFT,
@@ -43,6 +43,6 @@ enum class Action: std::uint8_t {
 */
 [[nodiscard]] engine::input::ActionMap<Action> defaultBindings();
 
-}
+} // namespace render_demo
 
 #endif // RENDER_DEMO_ACTIONS_HPP

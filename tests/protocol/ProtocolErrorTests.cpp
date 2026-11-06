@@ -5,21 +5,21 @@
 ** ProtocolErrorTests
 */
 
-#include <gtest/gtest.h>
+#include "rtype/protocol/ProtocolError.hpp"
 
 #include <cstddef>
+#include <gtest/gtest.h>
 #include <sstream>
 #include <string>
 #include <utility>
-
-#include "rtype/protocol/ProtocolError.hpp"
 
 using rtype::protocol::DecodeError;
 using rtype::protocol::ProtocolError;
 
 TEST(ProtocolErrorTests, TheDatagramSizeIsChecked)
 {
-    for (const std::size_t size: {std::size_t{0}, std::size_t{7}, std::size_t{1201}}) {
+    for (const std::size_t size:
+        {std::size_t{0}, std::size_t{7}, std::size_t{1201}}) {
         try {
             rtype::protocol::checkDatagramSize(size);
             ADD_FAILURE() << "a datagram of " << size << " bytes was accepted";
@@ -53,10 +53,12 @@ TEST(ProtocolErrorTests, ClassifyGivesTruncatedForAPlainPacketError)
 TEST(ProtocolErrorTests, AProtocolErrorIsCaughtAsAPacketError)
 {
     try {
-        throw ProtocolError(DecodeError::TRAILING_BYTES, "INPUT: trailing bytes");
+        throw ProtocolError(DecodeError::TRAILING_BYTES,
+            "INPUT: trailing bytes");
     } catch (const net::PacketError &error) {
         EXPECT_STREQ(error.what(), "INPUT: trailing bytes");
-        EXPECT_EQ(rtype::protocol::classify(error), DecodeError::TRAILING_BYTES);
+        EXPECT_EQ(rtype::protocol::classify(error),
+            DecodeError::TRAILING_BYTES);
         return;
     }
     FAIL() << "the ProtocolError wasn't caught as a net::PacketError";

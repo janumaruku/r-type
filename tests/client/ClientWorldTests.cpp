@@ -1,6 +1,7 @@
+#include "ClientWorld.hpp"
+
 #include <gtest/gtest.h>
 
-#include "ClientWorld.hpp"
 #include "SnapshotAssembler.hpp"
 
 namespace rtype::client {

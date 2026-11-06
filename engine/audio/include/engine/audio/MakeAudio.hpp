@@ -21,6 +21,6 @@ namespace engine::audio {
 */
 [[nodiscard]] std::unique_ptr<IAudio> makeAudio();
 
-}
+} // namespace engine::audio
 
 #endif // !MAKE_AUDIO_HPP

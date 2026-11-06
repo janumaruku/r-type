@@ -5,10 +5,11 @@
 ** LoggerTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "engine/core/Logger.hpp"
 
 #include <cstddef>
 #include <format>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <numbers>
 #include <regex>
@@ -16,11 +17,9 @@
 #include <string>
 #include <thread>
 
-#include "engine/core/Logger.hpp"
-
+using engine::core::log::isEnabled;
 using engine::core::log::Level;
 using engine::core::log::Logger;
-using engine::core::log::isEnabled;
 using engine::core::log::parseLevel;
 using engine::core::log::setColors;
 using engine::core::log::setLevel;
@@ -136,8 +135,7 @@ TEST_F(LoggerTest, WritesFormattedOutputToStderr)
     const std::string output = testing::internal::GetCapturedStderr();
     EXPECT_TRUE(std::regex_match(output,
         std::regex(
-            R"(\[\d{2}:\d{2}:\d{2}\.\d{3}\] \[INFO\] \[MainThread\] \[Test\] This is an info message\n)"
-        )));
+            R"(\[\d{2}:\d{2}:\d{2}\.\d{3}\] \[INFO\] \[MainThread\] \[Test\] This is an info message\n)")));
 }
 
 TEST_F(LoggerTest, OmitsEmptyContextFromOutput)
@@ -152,8 +150,7 @@ TEST_F(LoggerTest, OmitsEmptyContextFromOutput)
     const std::string output = testing::internal::GetCapturedStderr();
     EXPECT_TRUE(std::regex_match(output,
         std::regex(
-            R"(\[\d{2}:\d{2}:\d{2}\.\d{3}\] \[ERR\] \[TestThread\] This is an error message\n)"
-        )));
+            R"(\[\d{2}:\d{2}:\d{2}\.\d{3}\] \[ERR\] \[TestThread\] This is an error message\n)")));
 }
 
 TEST_F(LoggerTest, SetThreadName)
@@ -180,8 +177,8 @@ TEST_F(LoggerTest, FormatString)
 TEST_F(LoggerTest, FormatMultipleArgs)
 {
     Logger logger("Test");
-    const auto logLine = logger.info("Formatted message: {}, {}, {}", 1, 2.5,
-        "three");
+    const auto logLine =
+        logger.info("Formatted message: {}, {}, {}", 1, 2.5, "three");
     EXPECT_EQ(logLine.level, Level::EG_INFO);
     EXPECT_EQ(logLine.context, "Test");
     EXPECT_TRUE(logLine.active);
@@ -191,8 +188,8 @@ TEST_F(LoggerTest, FormatMultipleArgs)
 TEST_F(LoggerTest, FormatWithDifferentTypes)
 {
     Logger logger("Test");
-    const auto logLine = logger.info("Int: {}, Float: {}, String: {}", 10, 3.14,
-        "Hello");
+    const auto logLine =
+        logger.info("Int: {}, Float: {}, String: {}", 10, 3.14, "Hello");
     EXPECT_EQ(logLine.level, Level::EG_INFO);
     EXPECT_EQ(logLine.context, "Test");
     EXPECT_TRUE(logLine.active);
@@ -212,8 +209,8 @@ TEST_F(LoggerTest, FormatWithSpecifier)
 TEST_F(LoggerTest, FormatWithMultipleFormatSpecifiers)
 {
     Logger logger("Test");
-    const auto logLine = logger.info("Hex: {:x}, Float: {:.2f}", 255,
-        std::numbers::pi);
+    const auto logLine =
+        logger.info("Hex: {:x}, Float: {:.2f}", 255, std::numbers::pi);
     EXPECT_EQ(logLine.level, Level::EG_INFO);
     EXPECT_EQ(logLine.context, "Test");
     EXPECT_TRUE(logLine.active);
@@ -299,8 +296,7 @@ TEST_F(LoggerTest, SetOutputCapturesTheWholeLine)
 
     EXPECT_TRUE(std::regex_match(_output.str(),
         std::regex(
-            R"(\[\d{2}:\d{2}:\d{2}\.\d{3}\] \[INFO\] \[MainThread\] \[Test\] value 42\n)"
-        )));
+            R"(\[\d{2}:\d{2}:\d{2}\.\d{3}\] \[INFO\] \[MainThread\] \[Test\] value 42\n)")));
 }
 
 TEST_F(LoggerTest, ARedirectedStreamGetsNoColours)
@@ -323,8 +319,8 @@ TEST_F(LoggerTest, ColoursCoverThePrefixOnly)
     logger.warn() << "careful";
 
     EXPECT_TRUE(_output.str().starts_with("\033[33m["));
-    EXPECT_TRUE(
-        _output.str().ends_with("[MainThread] [Test]\033[0m careful\n"));
+    EXPECT_TRUE(_output.str()
+            .ends_with("[MainThread] [Test]\033[0m careful\n"));
 }
 
 TEST_F(LoggerTest, ColoursCoverTheWholeErrorLine)

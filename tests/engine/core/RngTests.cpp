@@ -5,9 +5,9 @@
 ** RngTests.cpp
 */
 
-#include <gtest/gtest.h>
-
 #include "engine/core/Rng.hpp"
+
+#include <gtest/gtest.h>
 
 TEST(Rng, SameSeedProducesSameSequence)
 {
@@ -26,9 +26,9 @@ TEST(Rng, DifferentSeedsProduceDifferentSequences)
     bool sequenceDiffers = false;
 
     for (int index = 0; index < 1000; ++index)
-        sequenceDiffers = sequenceDiffers
-            || first.uniformInt(-1000000, 1000000)
-                != second.uniformInt(-1000000, 1000000);
+        sequenceDiffers = sequenceDiffers ||
+            first.uniformInt(-1000000, 1000000) !=
+                second.uniformInt(-1000000, 1000000);
 
     EXPECT_TRUE(sequenceDiffers);
 }

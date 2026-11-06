@@ -27,8 +27,8 @@ void deserialize(net::Packet &packet, Hello &message)
 
 void serialize(net::Packet &packet, const Welcome &message)
 {
-    packet << message.playerId << message.tickRate << message.snapshotRate <<
-        message.maxPlayers << message.serverTick;
+    packet << message.playerId << message.tickRate << message.snapshotRate
+           << message.maxPlayers << message.serverTick;
 }
 
 void deserialize(net::Packet &packet, Welcome &message)
@@ -100,12 +100,10 @@ void deserialize(net::Packet &packet, Disconnect &message)
 }
 
 void serialize(net::Packet &, const Shutdown &)
-{
-}
+{}
 
 void deserialize(net::Packet &, Shutdown &)
-{
-}
+{}
 
 void serialize(net::Packet &packet, const Kick &message)
 {
@@ -121,12 +119,10 @@ void deserialize(net::Packet &packet, Kick &message)
     case KickReason::RATE_LIMITED:
         return;
     }
-    throw ProtocolError(DecodeError::OUT_OF_RANGE,
-        "KICK: reason out of range");
+    throw ProtocolError(DecodeError::OUT_OF_RANGE, "KICK: reason out of range");
 }
 
-std::string sanitizeName(std::string_view name,
-    const std::uint8_t playerId)
+std::string sanitizeName(std::string_view name, const std::uint8_t playerId)
 {
     if (name.empty())
         return std::format("Player {}", playerId + 1);
@@ -141,4 +137,4 @@ std::string sanitizeName(std::string_view name,
 
     return result;
 }
-}
+} // namespace rtype::protocol

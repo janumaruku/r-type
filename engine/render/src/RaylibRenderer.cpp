@@ -10,14 +10,13 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <raylib.h>
 #include <variant>
 
 #include "../include/engine/render/CacheAccess.hpp"
-#include "engine/core/Errors.hpp"
 #include "../include/engine/render/Letterbox.hpp"
 #include "../include/engine/render/RaylibConvert.hpp"
-
-#include <raylib.h>
+#include "engine/core/Errors.hpp"
 
 namespace engine::render {
 
@@ -30,8 +29,8 @@ RenderTexture2D createTarget(const core::Vec2f &size)
     if (!IsWindowReady())
         throw core::EngineError("RaylibRenderer created before the window");
 
-    const RenderTexture2D target = LoadRenderTexture(
-        static_cast<int>(size.x()), static_cast<int>(size.y()));
+    const RenderTexture2D target = LoadRenderTexture(static_cast<int>(size.x()),
+        static_cast<int>(size.y()));
     if (!IsRenderTextureValid(target))
         throw core::EngineError("cannot create the render texture");
     return target;
@@ -39,9 +38,7 @@ RenderTexture2D createTarget(const core::Vec2f &size)
 
 [[maybe_unused]] std::int16_t layerOf(const DrawCommand &command)
 {
-    return std::visit([](const auto &cmd) {
-        return cmd.layer;
-    }, command);
+    return std::visit([](const auto &cmd) { return cmd.layer; }, command);
 }
 
 /*
@@ -59,15 +56,15 @@ struct CommandDrawer {
     void operator()(const SpriteCmd &cmd) const
     {
         const Rectangle source = detail::toRaylib(cmd.source);
-        const float width = std::fabs(source.width) * cmd.scale.x();
-        const float height = std::fabs(source.height) * cmd.scale.y();
-        const Vector2 origin{cmd.origin.x() * cmd.scale.x(),
-                             cmd.origin.y() * cmd.scale.y()};
+        const float width      = std::fabs(source.width) * cmd.scale.x();
+        const float height     = std::fabs(source.height) * cmd.scale.y();
+        const Vector2 origin{
+            cmd.origin.x() * cmd.scale.x(), cmd.origin.y() * cmd.scale.y()};
 
         DrawTexturePro(detail::CacheAccess::texture(textures, cmd.texture),
-            source, Rectangle{cmd.position.x(), cmd.position.y(), width,
-                              height}, origin, cmd.rotationDeg,
-            detail::toRaylib(cmd.tint));
+            source,
+            Rectangle{cmd.position.x(), cmd.position.y(), width, height},
+            origin, cmd.rotationDeg, detail::toRaylib(cmd.tint));
     }
 
     void operator()(const RectCmd &cmd) const
@@ -82,19 +79,19 @@ struct CommandDrawer {
 
     void operator()(const TextCmd &cmd) const
     {
-        const auto size = static_cast<float>(cmd.characterSize);
+        const auto size     = static_cast<float>(cmd.characterSize);
         const float spacing = cmd.font.isDefault() ? size / 10.0F : 0.0F;
-        const Font &font = detail::CacheAccess::font(fonts, cmd.font);
-        Vector2 position = detail::toRaylib(cmd.position);
+        const Font &font    = detail::CacheAccess::font(fonts, cmd.font);
+        Vector2 position    = detail::toRaylib(cmd.position);
 
         if (cmd.align == TextAlign::CENTER)
-            position.x -= MeasureTextEx(font, cmd.text.c_str(), size,
-                spacing).x / 2.0F;
+            position.x -=
+                MeasureTextEx(font, cmd.text.c_str(), size, spacing).x / 2.0F;
         DrawTextEx(font, cmd.text.c_str(), position, size, spacing,
             detail::toRaylib(cmd.color));
     }
 };
-}
+} // namespace
 
 struct RaylibRenderer::Impl {
     Window &window;
@@ -106,15 +103,14 @@ struct RaylibRenderer::Impl {
 };
 
 RaylibRenderer::RaylibRenderer(Window &window, TextureCache &textures,
-    FontCache &fonts, const core::Vec2f logicalSize)
-    : _impl(std::make_unique<Impl>(Impl{.window = window,
-                                        .textures = textures,
-                                        .fonts = fonts,
-                                        .logicalSize = logicalSize,
-                                        .target = createTarget(logicalSize),
-                                        .inFrame = false}))
-{
-}
+    FontCache &fonts, const core::Vec2f logicalSize):
+    _impl(std::make_unique<Impl>(Impl{.window = window,
+        .textures                             = textures,
+        .fonts                                = fonts,
+        .logicalSize                          = logicalSize,
+        .target                               = createTarget(logicalSize),
+        .inFrame                              = false}))
+{}
 
 RaylibRenderer::~RaylibRenderer()
 {
@@ -136,11 +132,11 @@ void RaylibRenderer::beginFrame(const core::Color clear)
 void RaylibRenderer::submit(const RenderQueue &queue)
 {
     assert(_impl->inFrame && "submit called outside beginFrame/endFrame");
-    assert(std::ranges::is_sorted(queue.commands(), {}, layerOf)
-        && "submit needs a queue sorted by layer (RenderQueue::sortByLayer)");
+    assert(std::ranges::is_sorted(queue.commands(), {}, layerOf) &&
+        "submit needs a queue sorted by layer (RenderQueue::sortByLayer)");
 
-    const CommandDrawer draw{.textures = _impl->textures,
-                             .fonts = _impl->fonts};
+    const CommandDrawer draw{
+        .textures = _impl->textures, .fonts = _impl->fonts};
     for (const DrawCommand &command: queue.commands())
         std::visit(draw, command);
 }
@@ -158,7 +154,7 @@ void RaylibRenderer::endFrame()
 
     const auto &texture = _impl->target.texture;
     const Rectangle source{0.0F, 0.0F, static_cast<float>(texture.width),
-                           -static_cast<float>(texture.height)};
+        -static_cast<float>(texture.height)};
     const core::FloatRect destination =
         letterbox(_impl->window.size(), _impl->logicalSize);
 
@@ -176,8 +172,8 @@ void RaylibRenderer::setLogicalSize(const core::Vec2f size)
     const RenderTexture2D target = createTarget(size);
 
     UnloadRenderTexture(_impl->target);
-    _impl->target = target;
+    _impl->target      = target;
     _impl->logicalSize = size;
 }
 
-}
+} // namespace engine::render

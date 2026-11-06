@@ -5,9 +5,10 @@
 ** RegistrySystemTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/Registry.hpp"
 
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
@@ -16,7 +17,6 @@
 #include <vector>
 
 #include "engine/core/Logger.hpp"
-#include "engine/ecs/Registry.hpp"
 
 using engine::core::log::Level;
 using engine::ecs::Entity;
@@ -93,9 +93,9 @@ static_assert(!StageConcept<std::uint8_t>);
 
 static_assert(!std::is_invocable_v<void (*)(Registry &, SparseSet<Velocity> &),
     Registry &, const SparseSet<Velocity> &>);
-static_assert(std::is_invocable_v<
-    void (*)(Registry &, const SparseSet<Velocity> &), Registry &,
-    SparseSet<Velocity> &>);
+static_assert(std::is_invocable_v<void (*)(Registry &,
+                                      const SparseSet<Velocity> &),
+    Registry &, SparseSet<Velocity> &>);
 } // namespace
 
 TEST_F(RegistrySystem, SystemsRunInInsertionOrder)
@@ -137,8 +137,8 @@ TEST_F(RegistrySystem, AStageWithNoSystemsDoesNothing)
 
 TEST_F(RegistrySystem, AddSystemRegistersTheListedComponents)
 {
-    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION,
-        "movement", movement);
+    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION, "movement",
+        movement);
 
     EXPECT_NO_THROW(static_cast<void>(_registry.getComponents<Position>()));
     EXPECT_NO_THROW(static_cast<void>(_registry.getComponents<Velocity>()));
@@ -146,13 +146,13 @@ TEST_F(RegistrySystem, AddSystemRegistersTheListedComponents)
 
 TEST_F(RegistrySystem, StoragesArriveInTheListedOrder)
 {
-    const SparseSet<Health> *health = nullptr;
+    const SparseSet<Health> *health     = nullptr;
     const SparseSet<Position> *position = nullptr;
 
     _registry.addSystem<Health, const Position>(Stage::SIMULATION, "check",
         [&health, &position](Registry &, SparseSet<Health> &first,
             const SparseSet<Position> &second) {
-            health = &first;
+            health   = &first;
             position = &second;
         });
     _registry.runStage(Stage::SIMULATION);
@@ -163,8 +163,8 @@ TEST_F(RegistrySystem, StoragesArriveInTheListedOrder)
 
 TEST_F(RegistrySystem, WritesThroughTheStoragesAreVisibleAfterwards)
 {
-    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION,
-        "movement", movement);
+    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION, "movement",
+        movement);
     const Entity entity = _registry.spawnEntity();
     _registry.addComponent(entity, Position{1});
     _registry.addComponent(entity, Velocity{2});
@@ -194,7 +194,7 @@ TEST_F(RegistrySystem, ASystemCanSpawnAndKillEntities)
 {
     _registry.registerComponent<Health>();
     const Entity doomed = _registry.spawnEntity();
-    Entity spawned = Entity::NONE;
+    Entity spawned      = Entity::NONE;
 
     _registry.addSystem<>(Stage::SIMULATION, "lifecycle",
         [doomed, &spawned](Registry &registry) {
@@ -254,8 +254,8 @@ TEST_F(RegistrySystem, SystemsSurviveMovingTheRegistry)
 
 TEST_F(RegistrySystem, ARecordedKillIsAppliedOnlyOnceTheSystemReturns)
 {
-    const Entity doomed = _registry.spawnEntity();
-    bool aliveAfterRecording = false;
+    const Entity doomed        = _registry.spawnEntity();
+    bool aliveAfterRecording   = false;
     bool aliveForTheNextSystem = true;
 
     _registry.addSystem<>(Stage::SIMULATION, "killer",
@@ -281,11 +281,11 @@ TEST_F(RegistrySystem, ARecordedSpawnIsSeenByTheNextSystem)
 
     _registry.addSystem<Health>(Stage::SIMULATION, "spawner",
         [&spawned](Registry &registry, SparseSet<Health> &) {
-            registry.commands().spawn(
-                [&spawned](Registry &inner, const Entity &entity) {
-                    spawned = entity;
-                    inner.addComponent(entity, Health{5});
-                });
+            registry.commands().spawn([&spawned](Registry &inner,
+                                          const Entity &entity) {
+                spawned = entity;
+                inner.addComponent(entity, Health{5});
+            });
         });
     _registry.addSystem<const Health>(Stage::SIMULATION, "observer",
         [&seenPoints](Registry &, const SparseSet<Health> &health) {
@@ -300,7 +300,7 @@ TEST_F(RegistrySystem, ARecordedSpawnIsSeenByTheNextSystem)
 
 TEST_F(RegistrySystem, CommandsRecordedBeforeTheStageAreAppliedFirst)
 {
-    const Entity doomed = _registry.spawnEntity();
+    const Entity doomed        = _registry.spawnEntity();
     bool aliveInTheFirstSystem = true;
 
     _registry.commands().kill(doomed);
@@ -330,10 +330,10 @@ TEST_F(RegistrySystem, CommandsFromSeveralSystemsAreAppliedInSystemOrder)
         _registry.addSystem<>(Stage::SIMULATION, name,
             [this, name](Registry &registry) {
                 _calls.push_back(name);
-                registry.commands().spawn(
-                    [this, name](Registry &, const Entity &) {
-                        _calls.push_back(name + " command");
-                    });
+                registry.commands().spawn([this, name](Registry &,
+                                              const Entity &) {
+                    _calls.push_back(name + " command");
+                });
             });
 
     _registry.runStage(Stage::SIMULATION);
@@ -397,7 +397,7 @@ TEST_F(RegistrySystem, KillingBothEntitiesOfEveryCollidingPair)
 
     _registry.addSystem<const Position>(Stage::SIMULATION, "collision",
         [](Registry &registry, const SparseSet<Position> &positions) {
-            const auto &entities = positions.entities();
+            const auto &entities   = positions.entities();
             const auto &components = positions.components();
 
             for (std::size_t i = 0; i < entities.size(); ++i)
@@ -419,14 +419,14 @@ TEST_F(RegistrySystem, KillingBothEntitiesOfEveryCollidingPair)
 TEST_F(RegistrySystemLog, AtTraceEachSystemLogsItsNameInOrder)
 {
     engine::core::log::setLevel(Level::EG_TRACE);
-    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION,
-        "movement", movement);
+    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION, "movement",
+        movement);
     _registry.addSystem<>(Stage::SIMULATION, "collision", [](Registry &) {});
 
     _registry.runStage(Stage::SIMULATION);
 
-    const std::string text = _output.str();
-    const auto movementLine = text.find("[ecs] movement took ");
+    const std::string text   = _output.str();
+    const auto movementLine  = text.find("[ecs] movement took ");
     const auto collisionLine = text.find("[ecs] collision took ");
     ASSERT_NE(movementLine, std::string::npos);
     ASSERT_NE(collisionLine, std::string::npos);
@@ -436,8 +436,8 @@ TEST_F(RegistrySystemLog, AtTraceEachSystemLogsItsNameInOrder)
 TEST_F(RegistrySystemLog, BelowTraceNothingIsLogged)
 {
     engine::core::log::setLevel(Level::EG_DEBUG);
-    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION,
-        "movement", movement);
+    _registry.addSystem<Position, const Velocity>(Stage::SIMULATION, "movement",
+        movement);
 
     _registry.runStage(Stage::SIMULATION);
 
@@ -447,7 +447,7 @@ TEST_F(RegistrySystemLog, BelowTraceNothingIsLogged)
 TEST_F(RegistrySystemLog, AtTraceEachSystemLogsHowManyCommandsItRecorded)
 {
     engine::core::log::setLevel(Level::EG_TRACE);
-    const Entity first = _registry.spawnEntity();
+    const Entity first  = _registry.spawnEntity();
     const Entity second = _registry.spawnEntity();
 
     _registry.addSystem<>(Stage::SIMULATION, "killer",
@@ -459,8 +459,8 @@ TEST_F(RegistrySystemLog, AtTraceEachSystemLogsHowManyCommandsItRecorded)
     _registry.runStage(Stage::SIMULATION);
 
     const std::string text = _output.str();
-    const auto killerLine = text.find("[ecs] killer took ");
-    const auto idleLine = text.find("[ecs] idle took ");
+    const auto killerLine  = text.find("[ecs] killer took ");
+    const auto idleLine    = text.find("[ecs] idle took ");
     ASSERT_NE(killerLine, std::string::npos);
     ASSERT_NE(idleLine, std::string::npos);
     EXPECT_NE(text.find("and ran 2 commands", killerLine), std::string::npos);
@@ -479,10 +479,9 @@ TEST_F(RegistrySystem, RunningAStageFromASystemAsserts)
 
 TEST_F(RegistrySystem, AddingASystemDuringARunAsserts)
 {
-    _registry.addSystem<>(Stage::SIMULATION, "adder",
-        [](Registry &registry) {
-            registry.addSystem<>(Stage::RENDER, "late", [](Registry &) {});
-        });
+    _registry.addSystem<>(Stage::SIMULATION, "adder", [](Registry &registry) {
+        registry.addSystem<>(Stage::RENDER, "late", [](Registry &) {});
+    });
 
     EXPECT_DEATH(_registry.runStage(Stage::SIMULATION), "_running");
 }

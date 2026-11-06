@@ -16,4 +16,4 @@ std::size_t nextTypeId() noexcept
 
     return counter++;
 }
-}
+} // namespace engine::ecs::detail

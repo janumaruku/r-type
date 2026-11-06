@@ -13,8 +13,6 @@
 #include "Actions.hpp"
 #include "ClientConfig.hpp"
 #include "ClientSettings.hpp"
-#include "Scenes.hpp"
-#include "SpriteCatalog.hpp"
 #include "engine/audio/IAudio.hpp"
 #include "engine/input/ActionMap.hpp"
 #include "engine/input/InputState.hpp"
@@ -23,6 +21,8 @@
 #include "engine/render/TextureCache.hpp"
 #include "engine/render/Window.hpp"
 #include "engine/runtime/StopWatch.hpp"
+#include "Scenes.hpp"
+#include "SpriteCatalog.hpp"
 
 namespace rtype::client {
 
@@ -50,6 +50,6 @@ private:
     engine::runtime::Stopwatch _frameClock;
 };
 
-}
+} // namespace rtype::client
 
 #endif

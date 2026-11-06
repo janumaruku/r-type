@@ -21,6 +21,6 @@ namespace engine::render {
 [[nodiscard]] core::FloatRect letterbox(const core::Vec2u &window,
     const core::Vec2f &logical);
 
-}
+} // namespace engine::render
 
 #endif /* !LETTERBOX_HPP */

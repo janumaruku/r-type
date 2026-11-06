@@ -7,17 +7,16 @@
 
 #include "../include/engine/render/FontCache.hpp"
 
-#include <raylib.h>
-
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
+#include <raylib.h>
 #include <unordered_map>
 #include <vector>
 
-#include "engine/render/CacheAccess.hpp"
 #include "engine/core/Errors.hpp"
 #include "engine/core/ResourcePath.hpp"
+#include "engine/render/CacheAccess.hpp"
 
 namespace engine::render {
 
@@ -26,15 +25,17 @@ constexpr int BASE_SIZE = 64;
 }
 
 struct FontCache::Impl {
-    std::vector<Font> fonts;                                 // index == FontId::value
-    std::unordered_map<std::filesystem::path, FontId> pathToId;   // key: cacheKey(path)
+    std::vector<Font> fonts; // index == FontId::value
+    std::unordered_map<std::filesystem::path, FontId>
+        pathToId; // key: cacheKey(path)
 };
 
-FontCache::FontCache() : _impl(std::make_unique<Impl>()) {}
+FontCache::FontCache(): _impl(std::make_unique<Impl>())
+{}
 
 FontCache::~FontCache()
 {
-    for (const Font &font : _impl->fonts)
+    for (const Font &font: _impl->fonts)
         UnloadFont(font);
 }
 
@@ -53,11 +54,14 @@ FontId FontCache::load(const std::filesystem::path &path)
         return it->second;
 
     if (!IsWindowReady())
-        throw core::EngineError("FontCache::load called before the window was created: " + key.string());
+        throw core::EngineError(
+            "FontCache::load called before the window was created: " +
+            key.string());
     if (!std::filesystem::is_regular_file(key))
         throw core::ResourceError("Font file does not exist: " + key.string());
     if (_impl->fonts.size() >= FontId::DEFAULT)
-        throw core::ResourceError("Too many fonts (max 65535): " + key.string());
+        throw core::ResourceError("Too many fonts (max 65535): " +
+            key.string());
 
     const Font font = LoadFontEx(key.string().c_str(), BASE_SIZE, nullptr, 0);
     if (font.texture.id == GetFontDefault().texture.id)
@@ -82,4 +86,4 @@ Font detail::CacheAccess::font(const FontCache &cache, FontId id)
     return cache._impl->fonts[id.value];
 }
 
-}
+} // namespace engine::render

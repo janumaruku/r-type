@@ -1,16 +1,15 @@
 #ifndef SERVER_TEST_HELPERS_HPP
 #define SERVER_TEST_HELPERS_HPP
 
+#include <asio.hpp>
 #include <chrono>
 #include <span>
 #include <thread>
 #include <vector>
 
-#include <asio.hpp>
-
-#include "ServerNetworkAdapter.hpp"
 #include "rtype/protocol/Decode.tpp"
 #include "rtype/protocol/Header.hpp"
+#include "ServerNetworkAdapter.hpp"
 
 namespace server_test {
 
@@ -29,7 +28,8 @@ net::Datagram datagram(const asio::ip::udp::endpoint &from,
     std::uint32_t sequence = 0)
 {
     const auto packet = rtype::protocol::makePacket(type, sequence, message);
-    return {std::vector<std::uint8_t>(packet.bytes().begin(), packet.bytes().end()),
+    return {
+        std::vector<std::uint8_t>(packet.bytes().begin(), packet.bytes().end()),
         from};
 }
 
@@ -41,7 +41,8 @@ net::Datagram datagramWithVersion(const asio::ip::udp::endpoint &from,
     net::Packet packet;
     packet << rtype::protocol::Header{.version = version, .type = type}
            << message;
-    return {std::vector<std::uint8_t>(packet.bytes().begin(), packet.bytes().end()),
+    return {
+        std::vector<std::uint8_t>(packet.bytes().begin(), packet.bytes().end()),
         from};
 }
 
@@ -56,11 +57,12 @@ inline std::vector<net::Datagram> receive(asio::ip::udp::socket &socket,
         std::chrono::steady_clock::now() < deadline) {
         asio::ip::udp::endpoint from;
         asio::error_code error;
-        const auto size = socket.receive_from(asio::buffer(bytes), from, 0,
-            error);
+        const auto size =
+            socket.receive_from(asio::buffer(bytes), from, 0, error);
         if (!error) {
-            result.push_back({std::vector<std::uint8_t>(
-                bytes.begin(), bytes.begin() + size), from});
+            result.push_back({std::vector<std::uint8_t>(bytes.begin(),
+                                  bytes.begin() + size),
+                from});
         } else if (error != asio::error::would_block) {
             break;
         } else {
@@ -89,7 +91,8 @@ Message readMessage(const net::Datagram &datagram)
 
 struct Fixture {
     Fixture():
-        socket(0), world(rtype::game::Rules{}, 1), adapter(socket, world, sessions),
+        socket(0), world(rtype::game::Rules{}, 1),
+        adapter(socket, world, sessions),
         client(io, {asio::ip::address_v4::loopback(), 0})
     {
         socket.start();
@@ -114,6 +117,6 @@ struct Fixture {
     TimePoint now{};
 };
 
-}
+} // namespace server_test
 
 #endif

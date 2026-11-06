@@ -5,24 +5,24 @@
 ** UdpSocketTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "network/UdpSocket.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <iterator>
 #include <thread>
 #include <vector>
 
 #include "engine/core/Errors.hpp"
-#include "network/UdpSocket.hpp"
 
 namespace {
 
 asio::ip::udp::socket makeSender(asio::io_context &ioContext)
 {
     return {ioContext,
-            asio::ip::udp::endpoint(asio::ip::address_v4::loopback(), 0)};
+        asio::ip::udp::endpoint(asio::ip::address_v4::loopback(), 0)};
 }
 
 asio::ip::udp::endpoint loopbackOf(const net::UdpSocket &socket)
@@ -48,14 +48,13 @@ std::vector<net::Datagram> waitForDatagrams(net::UdpSocket &receiver,
     std::size_t count)
 {
     std::vector<net::Datagram> received;
-    const auto deadline = std::chrono::steady_clock::now()
-        + std::chrono::seconds(1);
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(1);
 
-    while (received.size() < count
-        && std::chrono::steady_clock::now() < deadline) {
+    while (received.size() < count &&
+        std::chrono::steady_clock::now() < deadline) {
         auto batch = receiver.receiveAll(count - received.size());
-        received.insert(received.end(),
-            std::make_move_iterator(batch.begin()),
+        received.insert(received.end(), std::make_move_iterator(batch.begin()),
             std::make_move_iterator(batch.end()));
         if (received.size() < count)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -66,8 +65,8 @@ std::vector<net::Datagram> waitForDatagrams(net::UdpSocket &receiver,
 template <class Predicate>
 bool waitUntil(Predicate predicate)
 {
-    const auto deadline = std::chrono::steady_clock::now()
-        + std::chrono::seconds(1);
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(1);
 
     while (!predicate()) {
         if (std::chrono::steady_clock::now() >= deadline)
@@ -134,7 +133,7 @@ TEST(UdpSocket, DestructorStopsStartedSocket)
     EXPECT_NO_THROW({
         net::UdpSocket socket(0);
         socket.start();
-        });
+    });
 }
 
 TEST(UdpSocket, ReceivesDatagramsInOrderWithSenderEndpoint)
@@ -142,7 +141,7 @@ TEST(UdpSocket, ReceivesDatagramsInOrderWithSenderEndpoint)
     net::UdpSocket receiver(0);
     receiver.start();
     asio::io_context ioContext;
-    auto sender = makeSender(ioContext);
+    auto sender            = makeSender(ioContext);
     const auto destination = loopbackOf(receiver);
 
     sendDatagram(sender, destination, {1});
@@ -165,9 +164,9 @@ TEST(UdpSocket, ReceiveAllOnEmptyQueueReturnsImmediately)
     net::UdpSocket receiver(0);
     receiver.start();
 
-    const auto begin = std::chrono::steady_clock::now();
+    const auto begin    = std::chrono::steady_clock::now();
     const auto received = receiver.receiveAll();
-    const auto elapsed = std::chrono::steady_clock::now() - begin;
+    const auto elapsed  = std::chrono::steady_clock::now() - begin;
 
     EXPECT_TRUE(received.empty());
     EXPECT_LT(elapsed, std::chrono::milliseconds(100));
@@ -176,27 +175,26 @@ TEST(UdpSocket, ReceiveAllOnEmptyQueueReturnsImmediately)
 TEST(UdpSocket, ReceiveAllRespectsMaximumAndKeepsTheRestQueued)
 {
     constexpr std::size_t sentCount = 10;
-    constexpr std::size_t maximum = 2;
+    constexpr std::size_t maximum   = 2;
     net::UdpSocket receiver(0);
     receiver.start();
     asio::io_context ioContext;
-    auto sender = makeSender(ioContext);
+    auto sender            = makeSender(ioContext);
     const auto destination = loopbackOf(receiver);
 
     for (std::size_t index = 0; index < sentCount; ++index)
         sendDatagram(sender, destination, {static_cast<std::uint8_t>(index)});
 
     std::vector<net::Datagram> received;
-    const auto deadline = std::chrono::steady_clock::now()
-        + std::chrono::seconds(1);
-    while (received.size() < sentCount
-        && std::chrono::steady_clock::now() < deadline) {
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    while (received.size() < sentCount &&
+        std::chrono::steady_clock::now() < deadline) {
         auto batch = receiver.receiveAll(maximum);
         EXPECT_LE(batch.size(), maximum);
         if (batch.empty())
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        received.insert(received.end(),
-            std::make_move_iterator(batch.begin()),
+        received.insert(received.end(), std::make_move_iterator(batch.begin()),
             std::make_move_iterator(batch.end()));
     }
 
@@ -211,15 +209,15 @@ TEST(UdpSocket, OversizedDatagramIsDroppedAndCounted)
     net::UdpSocket receiver(0);
     receiver.start();
     asio::io_context ioContext;
-    auto sender = makeSender(ioContext);
+    auto sender            = makeSender(ioContext);
     const auto destination = loopbackOf(receiver);
     const std::vector<std::uint8_t> oversized(net::Packet::MAX_SIZE + 100, 0);
 
     sendDatagram(sender, destination, oversized);
-    const auto deadline = std::chrono::steady_clock::now()
-        + std::chrono::seconds(1);
-    while (receiver.dropped() == 0
-        && std::chrono::steady_clock::now() < deadline)
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    while (receiver.dropped() == 0 &&
+        std::chrono::steady_clock::now() < deadline)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     EXPECT_EQ(receiver.dropped(), 1U);
@@ -231,7 +229,7 @@ TEST(UdpSocket, EmptyAndOversizedDatagramsAreCountedApart)
     net::UdpSocket receiver(0);
     receiver.start();
     asio::io_context ioContext;
-    auto sender = makeSender(ioContext);
+    auto sender            = makeSender(ioContext);
     const auto destination = loopbackOf(receiver);
 
     sendDatagram(sender, destination, {});
@@ -239,8 +237,9 @@ TEST(UdpSocket, EmptyAndOversizedDatagramsAreCountedApart)
 
     ASSERT_TRUE(waitUntil([&] { return receiver.dropped() == 2; }));
     expectStats(receiver.stats(), {.droppedEmpty = 1, .droppedOversized = 1});
-    EXPECT_EQ(receiver.dropped(), receiver.stats().droppedEmpty
-        + receiver.stats().droppedOversized + receiver.stats().droppedQueueFull);
+    EXPECT_EQ(receiver.dropped(),
+        receiver.stats().droppedEmpty + receiver.stats().droppedOversized +
+            receiver.stats().droppedQueueFull);
     EXPECT_TRUE(receiver.receiveAll().empty());
 }
 
@@ -250,7 +249,7 @@ TEST(UdpSocket, DatagramsLargerThanTheBufferDoNotStopReceiving)
     net::UdpSocket receiver(0);
     receiver.start();
     asio::io_context ioContext;
-    auto sender = makeSender(ioContext);
+    auto sender            = makeSender(ioContext);
     const auto destination = loopbackOf(receiver);
     const std::vector<std::uint8_t> large(2000, 0);
 
@@ -272,7 +271,7 @@ TEST(UdpSocket, FloodIsBoundedAndAccountsForApplicationDrops)
     net::UdpSocket receiver(0);
     receiver.start();
     asio::io_context ioContext;
-    auto sender = makeSender(ioContext);
+    auto sender            = makeSender(ioContext);
     const auto destination = loopbackOf(receiver);
     const std::vector<std::uint8_t> bytes{42};
 
@@ -282,14 +281,14 @@ TEST(UdpSocket, FloodIsBoundedAndAccountsForApplicationDrops)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 
-    const auto deadline = std::chrono::steady_clock::now()
-        + std::chrono::seconds(1);
-    while (receiver.dropped() == 0
-        && std::chrono::steady_clock::now() < deadline)
+    const auto deadline =
+        std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    while (receiver.dropped() == 0 &&
+        std::chrono::steady_clock::now() < deadline)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
 
     const net::SocketStats full = receiver.stats();
-    const auto queued = receiver.receiveAll(sentCount).size();
+    const auto queued           = receiver.receiveAll(sentCount).size();
 
     EXPECT_EQ(queued, net::UdpSocket::MAX_QUEUED_DATAGRAMS);
     EXPECT_GE(receiver.dropped(), 1U);
@@ -311,17 +310,17 @@ TEST(UdpSocket, StatsCanBeReadWhileTheSocketReceives)
     net::UdpSocket receiver(0);
     receiver.start();
     asio::io_context ioContext;
-    auto sender = makeSender(ioContext);
+    auto sender            = makeSender(ioContext);
     const auto destination = loopbackOf(receiver);
     std::atomic<bool> sending{true};
     std::uint64_t lastReceived = 0;
-    bool neverDecreased = true;
+    bool neverDecreased        = true;
 
     std::thread reader([&] {
         while (sending) {
             const std::uint64_t received = receiver.stats().received;
             neverDecreased = neverDecreased && received >= lastReceived;
-            lastReceived = received;
+            lastReceived   = received;
         }
     });
     for (std::size_t index = 0; index < sentCount; ++index) {
@@ -329,8 +328,9 @@ TEST(UdpSocket, StatsCanBeReadWhileTheSocketReceives)
         if ((index + 1) % 100 == 0)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
-    waitUntil([&] { return receiver.stats().received
-        + receiver.dropped() == sentCount; });
+    waitUntil([&] {
+        return receiver.stats().received + receiver.dropped() == sentCount;
+    });
     sending = false;
     reader.join();
 
@@ -341,7 +341,7 @@ TEST(UdpSocket, StatsCanBeReadWhileTheSocketReceives)
 TEST(UdpSocket, SendToDeliversPacketsInOrderWithIntactBytes)
 {
     constexpr std::size_t packetCount = 1000;
-    constexpr std::size_t batchSize = 50;
+    constexpr std::size_t batchSize   = 50;
     static_assert(packetCount % batchSize == 0);
     net::UdpSocket receiver(0);
     net::UdpSocket sender(0);
@@ -360,8 +360,7 @@ TEST(UdpSocket, SendToDeliversPacketsInOrderWithIntactBytes)
         }
 
         auto batch = waitForDatagrams(receiver, batchSize);
-        received.insert(received.end(),
-            std::make_move_iterator(batch.begin()),
+        received.insert(received.end(), std::make_move_iterator(batch.begin()),
             std::make_move_iterator(batch.end()));
     }
 
@@ -373,9 +372,7 @@ TEST(UdpSocket, SendToDeliversPacketsInOrderWithIntactBytes)
         };
         EXPECT_EQ(received[index].bytes, expectedBytes);
     }
-    ASSERT_TRUE(waitUntil([&] {
-        return sender.stats().sent == packetCount;
-    }));
+    ASSERT_TRUE(waitUntil([&] { return sender.stats().sent == packetCount; }));
     expectStats(receiver.stats(), {.received = packetCount});
     expectStats(sender.stats(), {.sent = packetCount});
 }
@@ -469,8 +466,8 @@ TEST(UdpSocket, SendToAfterStopIsHarmless)
 {
     net::UdpSocket sender(0);
     sender.start();
-    const auto destination = asio::ip::udp::endpoint(
-        asio::ip::address_v4::loopback(), 1);
+    const auto destination =
+        asio::ip::udp::endpoint(asio::ip::address_v4::loopback(), 1);
     const auto packet = makePacket({1, 2, 3});
     sender.stop();
 

@@ -5,22 +5,21 @@
 ** RenderSystemTests
 */
 
-#include <gtest/gtest.h>
-
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <utility>
 #include <variant>
 #include <vector>
 
 #include "ClientSettings.hpp"
-#include "PresentationComponents.hpp"
-#include "RenderSystems.hpp"
 #include "engine/core/Color.hpp"
 #include "engine/core/Rect2.hpp"
 #include "engine/core/Vec2.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "engine/render/DrawCommand.hpp"
 #include "engine/render/RenderQueue.hpp"
+#include "PresentationComponents.hpp"
+#include "RenderSystems.hpp"
 #include "rtype/game/Components.hpp"
 
 namespace rtype::client {
@@ -55,10 +54,10 @@ Sprite sprite(IntRect rect, std::int16_t layer)
 {
     return Sprite{
         .texture = SHEET,
-        .frame = rect,
-        .layer = layer,
-        .tint = engine::core::Color::WHITE,
-        .scale = Vec2f(1.0F, 1.0F),
+        .frame   = rect,
+        .layer   = layer,
+        .tint    = engine::core::Color::WHITE,
+        .scale   = Vec2f(1.0F, 1.0F),
     };
 }
 
@@ -102,12 +101,13 @@ const SpriteCmd *findAt(const std::vector<SpriteCmd> &cmds, float x, float y)
 
 bool covers(const FloatRect &box, float x, float y)
 {
-    return x >= box.origin().x() && x <= box.origin().x() + box.width()
-        && y >= box.origin().y() && y <= box.origin().y() + box.height();
+    return x >= box.origin().x() && x <= box.origin().x() + box.width() &&
+        y >= box.origin().y() && y <= box.origin().y() + box.height();
 }
 } // namespace
 
-TEST(RenderSystem, EachSpriteBecomesOneSpriteCmdWithItsLayerAndFrameCentreOrigin)
+TEST(RenderSystem,
+    EachSpriteBecomesOneSpriteCmdWithItsLayerAndFrameCentreOrigin)
 {
     Registry registry;
     registerTypes(registry);
@@ -117,10 +117,11 @@ TEST(RenderSystem, EachSpriteBecomesOneSpriteCmdWithItsLayerAndFrameCentreOrigin
 
     draw(registry, false);
 
-    const auto cmds = commandsOf<SpriteCmd>(registry.getResource<RenderQueue>());
+    const auto cmds =
+        commandsOf<SpriteCmd>(registry.getResource<RenderQueue>());
     ASSERT_EQ(cmds.size(), 2U);
 
-    const SpriteCmd *first = findAt(cmds, 10.0F, 20.0F);
+    const SpriteCmd *first  = findAt(cmds, 10.0F, 20.0F);
     const SpriteCmd *second = findAt(cmds, 30.0F, 40.0F);
     ASSERT_NE(first, nullptr);
     ASSERT_NE(second, nullptr);
@@ -152,7 +153,7 @@ TEST(RenderSystem, AnEntityWithoutASpriteAddsNoCommand)
     draw(registry, false);
 
     EXPECT_TRUE(commandsOf<SpriteCmd>(registry.getResource<RenderQueue>())
-        .empty());
+            .empty());
 }
 
 TEST(RenderSystem, HighContrastOutlinesOnlyTheMarkedEnemy)
@@ -160,14 +161,15 @@ TEST(RenderSystem, HighContrastOutlinesOnlyTheMarkedEnemy)
     Registry registry;
     registerTypes(registry);
     registry.setResource(RenderQueue{});
-    const Entity enemy = place(registry, Vec2f(600.0F, 300.0F),
-        sprite(frame(0, 0, 20, 24), 0));
+    const Entity enemy =
+        place(registry, Vec2f(600.0F, 300.0F), sprite(frame(0, 0, 20, 24), 0));
     registry.addComponent(enemy, HighContrastOutline{});
     place(registry, Vec2f(100.0F, 100.0F), sprite(frame(0, 0, 33, 17), 0));
 
     draw(registry, true);
 
-    const auto outlines = commandsOf<RectCmd>(registry.getResource<RenderQueue>());
+    const auto outlines =
+        commandsOf<RectCmd>(registry.getResource<RenderQueue>());
     ASSERT_EQ(outlines.size(), 1U);
 
     // The enemy is centred on (600, 300) and 20 x 24, so its box is
@@ -185,14 +187,14 @@ TEST(RenderSystem, NoOutlineIsDrawnWhenHighContrastIsOff)
     Registry registry;
     registerTypes(registry);
     registry.setResource(RenderQueue{});
-    const Entity enemy = place(registry, Vec2f(600.0F, 300.0F),
-        sprite(frame(0, 0, 20, 24), 0));
+    const Entity enemy =
+        place(registry, Vec2f(600.0F, 300.0F), sprite(frame(0, 0, 20, 24), 0));
     registry.addComponent(enemy, HighContrastOutline{});
 
     draw(registry, false);
 
     EXPECT_TRUE(commandsOf<RectCmd>(registry.getResource<RenderQueue>())
-        .empty());
+            .empty());
 }
 
 } // namespace rtype::client

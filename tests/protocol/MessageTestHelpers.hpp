@@ -8,10 +8,9 @@
 #ifndef R_TYPE_MESSAGE_TEST_HELPERS_HPP
 #define R_TYPE_MESSAGE_TEST_HELPERS_HPP
 
-#include <gtest/gtest.h>
-
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <span>
 #include <vector>
 
@@ -83,6 +82,6 @@ void expectOutOfRange(const Message &invalid)
     }
 }
 
-}
+} // namespace protocol_test
 
-#endif //R_TYPE_MESSAGE_TEST_HELPERS_HPP
+#endif // R_TYPE_MESSAGE_TEST_HELPERS_HPP

@@ -38,6 +38,6 @@ struct SetInput {
 };
 
 using PlayerCommand = std::variant<JoinPlayer, LeavePlayer, SetInput>;
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_COMMANDS_HPP
+#endif // R_TYPE_COMMANDS_HPP

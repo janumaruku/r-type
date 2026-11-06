@@ -7,9 +7,9 @@
 
 #include "ServerConfig.hpp"
 
-#include <CLI/CLI.hpp>
 #include <algorithm>
 #include <cctype>
+#include <CLI/CLI.hpp>
 #include <memory>
 #include <string>
 #include <vector>
@@ -29,52 +29,53 @@ constexpr std::string_view PROGRAM = "r-type_server";
 */
 const CLI::Validator WHOLE_NUMBER(
     [](const std::string &value) {
-        const bool digitsOnly = !value.empty()
-            && std::ranges::all_of(value, [](unsigned char character) {
+        const bool digitsOnly = !value.empty() &&
+            std::ranges::all_of(value, [](unsigned char character) {
                 return std::isdigit(character) != 0;
             });
 
-        return digitsOnly
-            ? std::string{}
-            : "'" + value + "' is not a whole number";
+        return digitsOnly ? std::string{}
+                          : "'" + value + "' is not a whole number";
     },
     "", "WHOLE_NUMBER");
 
 std::unique_ptr<CLI::App> makeApp(ServerConfig &config,
     std::string_view program)
 {
-    auto app = std::make_unique<CLI::App>("R-Type game server",
-        std::string(program));
+    auto app =
+        std::make_unique<CLI::App>("R-Type game server", std::string(program));
 
     app->set_help_flag("-h,--help", "Prints usage and exits with 0");
 
     app->add_option("-p,--port", config.port,
            "UDP port to bind on every interface")
-       ->type_name("PORT")
-       ->check(WHOLE_NUMBER)
-       ->check(CLI::Range(1, 65535))
-       ->capture_default_str()
-       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+        ->type_name("PORT")
+        ->check(WHOLE_NUMBER)
+        ->check(CLI::Range(1, 65535))
+        ->capture_default_str()
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
     app->add_option("--seed", config.seed,
            "Seeds Rng, for reproducible runs and tests")
-       ->type_name("N")
-       ->required()
-       ->check(WHOLE_NUMBER)
-       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+        ->type_name("N")
+        ->required()
+        ->check(WHOLE_NUMBER)
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
-    app->add_option_function<std::string>("--log-level",
+    app->add_option_function<std::string>(
+           "--log-level",
            [&config](const std::string &name) {
                config.logLevel = engine::core::log::parseLevel(name).value();
-           }, "Minimum level printed")
-       ->check(CLI::IsMember({"trace", "debug", "info", "warn", "error"}))
-       ->default_str("info")
-       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+           },
+           "Minimum level printed")
+        ->check(CLI::IsMember({"trace", "debug", "info", "warn", "error"}))
+        ->default_str("info")
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
     return app;
 }
 
-}
+} // namespace
 
 /*
 ** CLI11 reads a vector in reverse order. Its CallForHelp becomes
@@ -104,4 +105,4 @@ std::string ServerConfig::usage(std::string_view program)
     return makeApp(unused, program)->help();
 }
 
-}
+} // namespace rtype::server

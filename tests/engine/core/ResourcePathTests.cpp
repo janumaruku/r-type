@@ -5,11 +5,10 @@
 ** ResourcePathTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/core/ResourcePath.hpp"
 
 #include <filesystem>
-
-#include "engine/core/ResourcePath.hpp"
+#include <gtest/gtest.h>
 
 using engine::core::cacheKey;
 
@@ -20,7 +19,8 @@ TEST(ResourcePathTests, ADotSegmentGivesTheSameKey)
 
 TEST(ResourcePathTests, AParentSegmentIsFolded)
 {
-    EXPECT_EQ(cacheKey("assets/fonts/../ship.png"), cacheKey("assets/ship.png"));
+    EXPECT_EQ(cacheKey("assets/fonts/../ship.png"),
+        cacheKey("assets/ship.png"));
 }
 
 TEST(ResourcePathTests, RepeatedSeparatorsGiveTheSameKey)

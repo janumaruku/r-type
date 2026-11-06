@@ -5,10 +5,9 @@
 ** DirectionTests
 */
 
-#include <gtest/gtest.h>
-
 #include <array>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <string>
 
 #include "rtype/protocol/MessageType.hpp"
@@ -38,7 +37,7 @@ void expectCheckTypeFails(proto::MessageType type, proto::Direction expected,
     }
 }
 
-}
+} // namespace
 
 TEST(DirectionTests, HelloInputAndDisconnectGoFromClientToServer)
 {
@@ -58,7 +57,8 @@ TEST(DirectionTests, TheSixOtherTypesGoFromServerToClient)
 
 TEST(DirectionTests, AnUnknownTypeGoesNowhere)
 {
-    for (const std::uint8_t byte: std::array<std::uint8_t, 3>{0x04, 0x80, 0xFF}) {
+    for (const std::uint8_t byte:
+        std::array<std::uint8_t, 3>{0x04, 0x80, 0xFF}) {
         const auto type = static_cast<proto::MessageType>(byte);
 
         EXPECT_FALSE(proto::isClientToServer(type)) << type;

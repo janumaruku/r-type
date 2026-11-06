@@ -15,13 +15,13 @@
 
 #include "EventRepeater.hpp"
 #include "Goodbyes.hpp"
-#include "SnapshotBuilder.hpp"
 #include "network/UdpSocket.hpp"
 #include "rtype/game/GameWorld.hpp"
 #include "rtype/protocol/Messages.hpp"
 #include "rtype/protocol/ProtocolError.hpp"
 #include "ServerCommands.hpp"
 #include "Session.hpp"
+#include "SnapshotBuilder.hpp"
 
 namespace rtype::server {
 struct IncomingMessage;
@@ -41,7 +41,7 @@ struct AdapterStats {
 class ServerNetworkAdapter {
 public:
     static constexpr std::uint32_t FIRST_SEQUENCE = 1;
-    static constexpr std::size_t MAX_LOG_ENTRIES = 1024;
+    static constexpr std::size_t MAX_LOG_ENTRIES  = 1024;
 
     explicit ServerNetworkAdapter(::net::UdpSocket &socket,
         game::GameWorld &world, SessionManager &sessions,

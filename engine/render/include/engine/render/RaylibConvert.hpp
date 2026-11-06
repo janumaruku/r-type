@@ -8,11 +8,11 @@
 #ifndef RAYLIB_CONVERT_HPP
 #define RAYLIB_CONVERT_HPP
 
+#include <raylib.h>
+
 #include "engine/core/Color.hpp"
 #include "engine/core/Rect2.hpp"
 #include "engine/core/Vec2.hpp"
-
-#include <raylib.h>
 
 /*
 ** Engine types to Raylib types, field by field. The layouts may look alike,
@@ -34,17 +34,17 @@ namespace engine::render::detail {
 
 [[nodiscard]] inline Rectangle toRaylib(const core::FloatRect &rect) noexcept
 {
-    return Rectangle{rect.origin().x(), rect.origin().y(), rect.width(),
-        rect.height()};
+    return Rectangle{
+        rect.origin().x(), rect.origin().y(), rect.width(), rect.height()};
 }
 
 [[nodiscard]] inline Rectangle toRaylib(const core::IntRect &rect) noexcept
 {
     return Rectangle{static_cast<float>(rect.origin().x()),
-        static_cast<float>(rect.origin().y()),
-        static_cast<float>(rect.width()), static_cast<float>(rect.height())};
+        static_cast<float>(rect.origin().y()), static_cast<float>(rect.width()),
+        static_cast<float>(rect.height())};
 }
 
-}
+} // namespace engine::render::detail
 
 #endif /* !RAYLIB_CONVERT_HPP */

@@ -5,24 +5,28 @@
 ** MessageTypeTests
 */
 
-#include <gtest/gtest.h>
+#include "rtype/protocol/MessageType.hpp"
 
 #include <array>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <sstream>
-
-#include "rtype/protocol/MessageType.hpp"
 
 using rtype::protocol::MessageType;
 
 TEST(MessageTypeTests, TheNineTypesAreKnown)
 {
-    constexpr std::array known{MessageType::HELLO,
-                               MessageType::INPUT, MessageType::DISCONNECT,
-                               MessageType::WELCOME,
-                               MessageType::REJECT, MessageType::SNAPSHOT,
-                               MessageType::EVENT,
-                               MessageType::SHUTDOWN, MessageType::KICK,};
+    constexpr std::array known{
+        MessageType::HELLO,
+        MessageType::INPUT,
+        MessageType::DISCONNECT,
+        MessageType::WELCOME,
+        MessageType::REJECT,
+        MessageType::SNAPSHOT,
+        MessageType::EVENT,
+        MessageType::SHUTDOWN,
+        MessageType::KICK,
+    };
 
     for (const MessageType type: known)
         EXPECT_TRUE(rtype::protocol::isKnown(type)) << type;
@@ -56,6 +60,6 @@ TEST(MessageTypeTests, AnUnknownTypeIsWrittenInHexWithoutLeakingTheFlag)
     std::ostringstream stream;
 
     stream << MessageType::SNAPSHOT << ' ' << static_cast<MessageType>(0x42)
-        << ' ' << 255;
+           << ' ' << 255;
     EXPECT_EQ(stream.str(), "SNAPSHOT 0x42 255");
 }

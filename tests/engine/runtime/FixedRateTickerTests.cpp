@@ -5,14 +5,14 @@
 ** FixedRateTickerTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/runtime/FixedRateTicker.hpp"
 
 #include <chrono>
+#include <gtest/gtest.h>
 #include <thread>
 
 #include "engine/core/Errors.hpp"
 #include "engine/runtime/Clock.hpp"
-#include "engine/runtime/FixedRateTicker.hpp"
 
 using engine::runtime::Clock;
 using engine::runtime::FixedRateTicker;

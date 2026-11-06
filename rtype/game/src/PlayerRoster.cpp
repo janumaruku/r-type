@@ -25,7 +25,7 @@ std::string_view toString(const rtype::game::SlotState state)
     }
     return "UNKNOWN";
 }
-}
+} // namespace
 
 namespace rtype::game {
 
@@ -55,11 +55,11 @@ bool PlayerRoster::join(const std::uint8_t playerId, std::string name,
 
     if (slot == nullptr)
         return false;
-    slot->name = std::move(name);
-    slot->lives = lives;
-    slot->score = 0;
+    slot->name         = std::move(name);
+    slot->lives        = lives;
+    slot->score        = 0;
     slot->respawnTimer = 0.0F;
-    slot->state = SlotState::RESPAWNING;
+    slot->state        = SlotState::RESPAWNING;
     return true;
 }
 
@@ -69,7 +69,7 @@ bool PlayerRoster::joinWaiting(const std::uint8_t playerId, std::string name)
 
     if (slot == nullptr)
         return false;
-    slot->name = std::move(name);
+    slot->name  = std::move(name);
     slot->lives = 0;
     slot->score = 0;
     slot->state = SlotState::SLOT_OUT;
@@ -78,13 +78,12 @@ bool PlayerRoster::joinWaiting(const std::uint8_t playerId, std::string name)
 
 bool PlayerRoster::onShipSpawned(const std::uint8_t playerId, const NetId ship)
 {
-    PlayerSlot *slot = expect(playerId, SlotState::RESPAWNING,
-        "onShipSpawned");
+    PlayerSlot *slot = expect(playerId, SlotState::RESPAWNING, "onShipSpawned");
 
     if (slot == nullptr)
         return false;
     slot->shipNetId = ship;
-    slot->state = SlotState::ALIVE;
+    slot->state     = SlotState::ALIVE;
     return true;
 }
 
@@ -99,7 +98,7 @@ bool PlayerRoster::onShipKilled(const std::uint8_t playerId,
         --slot->lives;
     slot->shipNetId = NO_NET_ID;
     if (slot->lives > 0) {
-        slot->state = SlotState::RESPAWNING;
+        slot->state        = SlotState::RESPAWNING;
         slot->respawnTimer = respawnDelay;
     } else {
         slot->state = SlotState::SLOT_OUT;
@@ -109,14 +108,14 @@ bool PlayerRoster::onShipKilled(const std::uint8_t playerId,
 
 void PlayerRoster::onGameRestarted(const std::uint8_t lives)
 {
-    for (auto &slot : _slots) {
+    for (auto &slot: _slots) {
         if (!slot.has_value() || slot->state == SlotState::EMPTY)
             continue;
-        slot->lives = lives;
-        slot->score = 0;
+        slot->lives        = lives;
+        slot->score        = 0;
         slot->respawnTimer = 0.0F;
-        slot->shipNetId = NO_NET_ID;
-        slot->state = SlotState::RESPAWNING;
+        slot->shipNetId    = NO_NET_ID;
+        slot->state        = SlotState::RESPAWNING;
     }
 }
 
@@ -131,7 +130,7 @@ std::vector<std::uint8_t> PlayerRoster::advanceRespawns(const float dt)
     constexpr float tolerance = 1e-4F;
     std::vector<std::uint8_t> ready;
 
-    for (auto &slot : _slots) {
+    for (auto &slot: _slots) {
         if (!slot.has_value() || slot->state != SlotState::RESPAWNING)
             continue;
         slot->respawnTimer -= dt;
@@ -176,7 +175,7 @@ std::size_t PlayerRoster::active() const noexcept
 {
     std::size_t count = 0;
 
-    for (const auto &slot : _slots)
+    for (const auto &slot: _slots)
         if (slot.has_value())
             ++count;
     return count;
@@ -186,7 +185,7 @@ bool PlayerRoster::allOut() const noexcept
 {
     bool anyJoined = false;
 
-    for (const auto &slot : _slots) {
+    for (const auto &slot: _slots) {
         if (!slot.has_value() || slot->state == SlotState::EMPTY)
             continue;
         if (slot->state != SlotState::SLOT_OUT)
@@ -198,7 +197,7 @@ bool PlayerRoster::allOut() const noexcept
 
 bool PlayerRoster::anyAlive() const noexcept
 {
-    for (const auto &slot : _slots)
+    for (const auto &slot: _slots)
         if (slot.has_value() && slot->state == SlotState::ALIVE)
             return true;
     return false;
@@ -208,7 +207,7 @@ std::uint32_t PlayerRoster::teamScore() const noexcept
 {
     std::uint32_t total = 0;
 
-    for (const auto &slot : _slots)
+    for (const auto &slot: _slots)
         if (slot.has_value())
             total += slot->score;
     return total;
@@ -238,4 +237,4 @@ PlayerSlot *PlayerRoster::expect(const std::uint8_t playerId,
     }
     return slot;
 }
-}
+} // namespace rtype::game

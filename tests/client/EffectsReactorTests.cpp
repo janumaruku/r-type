@@ -5,30 +5,29 @@
 ** EffectsReactorTests
 */
 
-#include <gtest/gtest.h>
-
-#include <nlohmann/json.hpp>
+#include "EffectsReactor.hpp"
 
 #include <cstdint>
 #include <filesystem>
+#include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <string_view>
 #include <utility>
 
 #include "ClientSettings.hpp"
-#include "EffectsReactor.hpp"
-#include "GameEventBus.hpp"
-#include "PresentationComponents.hpp"
-#include "RenderSystems.hpp"
-#include "SpriteCatalog.hpp"
-#include "Starfield.hpp"
 #include "engine/core/Color.hpp"
 #include "engine/core/Vec2.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "engine/ecs/Resources.hpp"
 #include "engine/render/TextureCache.hpp"
+#include "GameEventBus.hpp"
+#include "PresentationComponents.hpp"
+#include "RenderSystems.hpp"
 #include "rtype/game/Components.hpp"
 #include "rtype/protocol/Event.hpp"
+#include "SpriteCatalog.hpp"
+#include "Starfield.hpp"
 
 // raylib defines WHITE, BLANK and friends as macros, so it must come after
 // every engine header.
@@ -44,7 +43,7 @@ using engine::render::TextureCache;
 using protocol::Event;
 using protocol::EventType;
 
-constexpr float EXPLOSION_FRAME_TIME = 0.05F;
+constexpr float EXPLOSION_FRAME_TIME   = 0.05F;
 constexpr std::size_t EXPLOSION_FRAMES = 6;
 
 /*
@@ -79,8 +78,8 @@ Event event(EventType type, float x = 0.0F, float y = 0.0F)
     Event value;
 
     value.type = type;
-    value.x = x;
-    value.y = y;
+    value.x    = x;
+    value.y    = y;
     return value;
 }
 
@@ -148,15 +147,15 @@ std::vector<Explosion> explosions(Registry &registry)
 {
     std::vector<Explosion> found;
 
-    for (auto &&[entity, transform, sprite, effect]:
-        registry.indexedView<rtype::game::Transform, Sprite, TransientEffect>()) {
+    for (auto &&[entity, transform, sprite, effect]: registry
+             .indexedView<rtype::game::Transform, Sprite, TransientEffect>()) {
         (void)effect;
         found.push_back({
-            .entity = entity,
+            .entity   = entity,
             .position = transform.position,
-            .tint = sprite.tint,
-            .scale = sprite.scale.x(),
-            .layer = sprite.layer,
+            .tint     = sprite.tint,
+            .scale    = sprite.scale.x(),
+            .layer    = sprite.layer,
         });
     }
     return found;
@@ -181,7 +180,8 @@ TEST_F(EffectsFixture, EnemyKilledSpawnsOneSmallExplosionAtItsPosition)
     EXPECT_FLOAT_EQ(found[0].scale, EffectsReactor::SMALL_EXPLOSION_SCALE);
     EXPECT_EQ(found[0].layer, layers::EXPLOSIONS);
     EXPECT_EQ(registry.getComponent<Animation>(found[0].entity)->state, 0);
-    EXPECT_NEAR(registry.getComponent<TransientEffect>(found[0].entity)->remaining,
+    EXPECT_NEAR(registry.getComponent<TransientEffect>(found[0].entity)
+                    ->remaining,
         static_cast<float>(EXPLOSION_FRAMES) * EXPLOSION_FRAME_TIME, 1e-4F);
 }
 

@@ -30,13 +30,27 @@ constexpr std::chrono::milliseconds SHUTDOWN_INTERVAL{20};
 void incrementErrorStat(AdapterStats &stats, protocol::DecodeError code)
 {
     switch (code) {
-    case protocol::DecodeError::BAD_SIZE: ++stats.totalBadSize; break;
-    case protocol::DecodeError::BAD_MAGIC: ++stats.totalBadMagic; break;
-    case protocol::DecodeError::UNKNOWN_TYPE: ++stats.totalUnknownType; break;
-    case protocol::DecodeError::WRONG_DIRECTION: ++stats.totalWrongDirection; break;
-    case protocol::DecodeError::TRUNCATED: ++stats.totalTruncated; break;
-    case protocol::DecodeError::TRAILING_BYTES: ++stats.totalTrailingBytes; break;
-    case protocol::DecodeError::OUT_OF_RANGE: ++stats.totalOutOfRange; break;
+    case protocol::DecodeError::BAD_SIZE:
+        ++stats.totalBadSize;
+        break;
+    case protocol::DecodeError::BAD_MAGIC:
+        ++stats.totalBadMagic;
+        break;
+    case protocol::DecodeError::UNKNOWN_TYPE:
+        ++stats.totalUnknownType;
+        break;
+    case protocol::DecodeError::WRONG_DIRECTION:
+        ++stats.totalWrongDirection;
+        break;
+    case protocol::DecodeError::TRUNCATED:
+        ++stats.totalTruncated;
+        break;
+    case protocol::DecodeError::TRAILING_BYTES:
+        ++stats.totalTrailingBytes;
+        break;
+    case protocol::DecodeError::OUT_OF_RANGE:
+        ++stats.totalOutOfRange;
+        break;
     }
 }
 
@@ -46,7 +60,7 @@ bool isQuiet(protocol::DecodeError code) noexcept
         code == protocol::DecodeError::BAD_MAGIC;
 }
 
-}
+} // namespace
 
 ServerNetworkAdapter::ServerNetworkAdapter(::net::UdpSocket &socket,
     game::GameWorld &world, SessionManager &sessions,
@@ -61,10 +75,10 @@ ServerNetworkAdapter::ServerNetworkAdapter(::net::UdpSocket &socket,
 
 void ServerNetworkAdapter::registerCommands() noexcept
 {
-    _commands->registerCreator<HelloCommand>(
-        rtype::protocol::MessageType::HELLO);
-    _commands->registerCreator<InputCommand>(
-        rtype::protocol::MessageType::INPUT);
+    _commands
+        ->registerCreator<HelloCommand>(rtype::protocol::MessageType::HELLO);
+    _commands
+        ->registerCreator<InputCommand>(rtype::protocol::MessageType::INPUT);
     _commands->registerCreator<
         DisconnectCommand>(rtype::protocol::MessageType::DISCONNECT);
 }
@@ -121,9 +135,9 @@ void ServerNetworkAdapter::processDatagram(const ::net::Datagram &datagram,
     protocol::checkType(header.type, protocol::Direction::CLIENT_TO_SERVER);
     assert(_commands->hasKey(header.type));
     IncomingMessage message{
-        .from = datagram.from,
-        .session = session,
-        .packet = packet,
+        .from       = datagram.from,
+        .session    = session,
+        .packet     = packet,
         .receivedAt = now,
     };
     const bool accepted =
@@ -139,9 +153,8 @@ void ServerNetworkAdapter::processDatagram(const ::net::Datagram &datagram,
     current->lastHeard = now;
 }
 
-void ServerNetworkAdapter::handlePacketError(
-    const ::net::Datagram &datagram, ClientSession *session,
-    const net::PacketError &error, TimePoint now)
+void ServerNetworkAdapter::handlePacketError(const ::net::Datagram &datagram,
+    ClientSession *session, const net::PacketError &error, TimePoint now)
 {
     const auto code = classify(error);
 
@@ -168,7 +181,7 @@ bool ServerNetworkAdapter::shouldLog(const asio::ip::udp::endpoint &from,
     protocol::DecodeError code, TimePoint now)
 {
     const auto key = std::pair{from, code};
-    const auto it = _lastProtocolLogs.find(key);
+    const auto it  = _lastProtocolLogs.find(key);
 
     if (it != _lastProtocolLogs.end()) {
         if (now - it->second < LOG_INTERVAL)
@@ -222,7 +235,8 @@ void ServerNetworkAdapter::removeClient(const asio::ip::udp::endpoint &endpoint,
     auto *const session = _sessions.find(endpoint);
     if (session == nullptr)
         return;
-    _world.apply(game::LeavePlayer{.playerId=session->playerId, .reason=reason});
+    _world.apply(game::LeavePlayer{
+        .playerId = session->playerId, .reason = reason});
     _sessions.remove(endpoint);
 }
 
@@ -233,8 +247,9 @@ void ServerNetworkAdapter::kick(const asio::ip::udp::endpoint &endpoint,
     if (session == nullptr)
         return;
     ++session->sendSequence;
-    _goodbyes.add(endpoint, protocol::makePacket(protocol::MessageType::KICK,
-        session->sendSequence, protocol::Kick{.reason = reason}));
+    _goodbyes.add(endpoint,
+        protocol::makePacket(protocol::MessageType::KICK, session->sendSequence,
+            protocol::Kick{.reason = reason}));
     ++_stats.totalKicked;
     _logger.warn("Kicking client " + endpoint.address().to_string() + ":" +
         std::to_string(endpoint.port()) + " (" +
@@ -268,7 +283,7 @@ void ServerNetworkAdapter::reject(const asio::ip::udp::endpoint &endpoint,
 
 void ServerNetworkAdapter::publish(const std::vector<game::GameEvent> &events)
 {
-    for (const auto &event : events) {
+    for (const auto &event: events) {
         const auto outgoing = toProtocol(event);
         _repeater.add(outgoing.event, outgoing.copies);
     }
@@ -277,9 +292,9 @@ void ServerNetworkAdapter::publish(const std::vector<game::GameEvent> &events)
 void ServerNetworkAdapter::flushEvents()
 {
     const auto events = _repeater.takeDue();
-    for (auto &[endpoint, session] : _sessions.all()) {
+    for (auto &[endpoint, session]: _sessions.all()) {
         (void)endpoint;
-        for (const auto &event : events)
+        for (const auto &event: events)
             sendTo(session, protocol::MessageType::EVENT, event);
     }
 }
@@ -293,13 +308,13 @@ void ServerNetworkAdapter::sendSnapshots()
 {
     auto &chunks = _snapshotBuilder.build(_world);
 
-    for (auto &[endpoint, session] : _sessions.all()) {
+    for (auto &[endpoint, session]: _sessions.all()) {
         (void)endpoint;
         const auto *const slot = _world.roster().get(session.playerId);
         const std::uint32_t processed =
             slot != nullptr ? slot->lastInputSequence : 0;
 
-        for (auto &chunk : chunks) {
+        for (auto &chunk: chunks) {
             chunk.lastProcessedInput = processed;
             sendTo(session, protocol::MessageType::SNAPSHOT, chunk);
         }
@@ -308,7 +323,7 @@ void ServerNetworkAdapter::sendSnapshots()
 
 void ServerNetworkAdapter::flushGoodbyes()
 {
-    for (auto &[endpoint, packet] : _goodbyes.takeDue())
+    for (auto &[endpoint, packet]: _goodbyes.takeDue())
         _socket.sendTo(endpoint, packet);
 }
 
@@ -320,7 +335,7 @@ std::size_t ServerNetworkAdapter::broadcastShutdown()
     for (std::uint8_t copy = 0; copy != SHUTDOWN_COPIES; ++copy) {
         if (copy != 0)
             std::this_thread::sleep_for(SHUTDOWN_INTERVAL);
-        for (auto &[endpoint, session] : _sessions.all()) {
+        for (auto &[endpoint, session]: _sessions.all()) {
             (void)endpoint;
             sendTo(session, protocol::MessageType::SHUTDOWN, shutdown);
             ++sent;

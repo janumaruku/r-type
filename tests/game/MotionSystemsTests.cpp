@@ -5,11 +5,12 @@
 ** MotionSystemsTests
 */
 
-#include <gtest/gtest.h>
+#include "rtype/game/Motion.hpp"
 
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <numbers>
 
 #include "engine/core/Rng.hpp"
@@ -18,10 +19,9 @@
 #include "engine/ecs/Resources.hpp"
 #include "rtype/game/Builders.hpp"
 #include "rtype/game/Components.hpp"
-#include "rtype/game/Motion.hpp"
-#include "rtype/game/Systems.hpp"
 #include "rtype/game/NetIdAllocator.hpp"
 #include "rtype/game/Rules.hpp"
+#include "rtype/game/Systems.hpp"
 
 using engine::core::Rng;
 using engine::core::Vec2f;
@@ -47,10 +47,10 @@ namespace {
 
 enum class Stage : std::uint8_t { SIMULATION };
 
-constexpr float DT = 1.0F / 60.0F;
+constexpr float DT           = 1.0F / 60.0F;
 constexpr std::uint32_t SEED = 7;
 
-}
+} // namespace
 
 /*
 ** A registry set up like GameWorld for these 3 systems: every component
@@ -105,7 +105,7 @@ protected:
 
 TEST_F(MotionSystems, RightMovesOneTickAtThePlayerSpeed)
 {
-    const Entity ship = spawnShip();
+    const Entity ship  = spawnShip();
     const float startX = positionOf(ship).x();
 
     press(ship, InputButtons::RIGHT);
@@ -143,7 +143,7 @@ TEST_F(MotionSystems, FireTriggersOnlyWhileHeld)
 
 TEST_F(MotionSystems, InvulnerabilityCountsDownToZero)
 {
-    const Entity ship = spawnShip();
+    const Entity ship    = spawnShip();
     const auto *shipData = _registry.getComponent<PlayerShip>(ship);
 
     ASSERT_FLOAT_EQ(shipData->invulnerableFor, 2.0F);
@@ -188,8 +188,7 @@ TEST_F(MotionSystems, ClampedShipKeepsItsVelocity)
     press(ship, InputButtons::LEFT);
     for (int i = 0; i < 600; ++i)
         tick();
-    EXPECT_FLOAT_EQ(_registry.getComponent<Velocity>(ship)->value.x(),
-        -320.0F);
+    EXPECT_FLOAT_EQ(_registry.getComponent<Velocity>(ship)->value.x(), -320.0F);
 }
 
 TEST_F(MotionSystems, BydosJustOutsideOnTheRightIsKept)
@@ -206,14 +205,14 @@ TEST_F(MotionSystems, BydosJustOutsideOnTheRightIsKept)
 TEST_F(MotionSystems, MissilePastTheMarginIsKilled)
 {
     const Entity missile = _registry.spawnEntity();
-    const float limit = _rules.playfield.x() + _rules.despawnMargin + 6.0F;
+    const float limit    = _rules.playfield.x() + _rules.despawnMargin + 6.0F;
 
     (void)makePlayerMissile(_registry, missile, 1, 0, {limit - 1.0F, 360.0F});
     _registry.getComponent<Velocity>(missile)->value = {0.0F, 0.0F};
     tick();
     EXPECT_TRUE(_registry.isAlive(missile));
-    _registry.getComponent<Transform>(missile)->position = {limit + 1.0F,
-        360.0F};
+    _registry.getComponent<Transform>(missile)->position = {
+        limit + 1.0F, 360.0F};
     tick();
     EXPECT_FALSE(_registry.isAlive(missile));
 }
@@ -221,11 +220,11 @@ TEST_F(MotionSystems, MissilePastTheMarginIsKilled)
 TEST_F(MotionSystems, MissileOffEverySideIsKilled)
 {
     const float margin = _rules.despawnMargin + 10.0F;
-    const std::array<Vec2f, 4> outside{{{-margin, 360.0F},
-        {_rules.playfield.x() + margin, 360.0F}, {640.0F, -margin},
-        {640.0F, _rules.playfield.y() + margin}}};
+    const std::array<Vec2f, 4> outside{
+        {{-margin, 360.0F}, {_rules.playfield.x() + margin, 360.0F},
+            {640.0F, -margin}, {640.0F, _rules.playfield.y() + margin}}};
 
-    for (const Vec2f position : outside) {
+    for (const Vec2f position: outside) {
         const Entity missile = _registry.spawnEntity();
 
         (void)makePlayerMissile(_registry, missile, 1, 0, position);

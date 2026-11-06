@@ -11,7 +11,7 @@
 
 static void BM_Setup(benchmark::State &state)
 {
-    for (auto _ : state) {
+    for (auto _: state) {
         benchmark::DoNotOptimize(pickEntities(densityOf(state)));
     }
 }

@@ -5,21 +5,21 @@
 ** AudioReactorTests
 */
 
-#include <gtest/gtest.h>
+#include "AudioReactor.hpp"
 
 #include <array>
 #include <cstdint>
 #include <filesystem>
+#include <gtest/gtest.h>
 #include <vector>
 
-#include "AudioReactor.hpp"
 #include "ClientWorld.hpp"
-#include "GameEventBus.hpp"
-#include "SoundBank.hpp"
 #include "engine/audio/IAudio.hpp"
 #include "engine/audio/Volume.hpp"
+#include "GameEventBus.hpp"
 #include "rtype/protocol/Event.hpp"
 #include "rtype/protocol/Snapshot.hpp"
+#include "SoundBank.hpp"
 
 namespace rtype::client {
 namespace {
@@ -30,11 +30,11 @@ using engine::audio::Volume;
 using protocol::Event;
 using protocol::EventType;
 
-constexpr std::uint32_t OUR_SHIP = 42;
+constexpr std::uint32_t OUR_SHIP   = 42;
 constexpr std::uint32_t OTHER_SHIP = 7;
 
 /** An IAudio that records every call instead of playing it. */
-class RecordingAudio final : public IAudio {
+class RecordingAudio final: public IAudio {
 public:
     struct Played {
         SoundId sound;
@@ -53,14 +53,34 @@ public:
     {
         sounds.push_back({id, volume});
     }
-    void playMusic(MusicId, bool) override { ++musicCalls; }
-    void stopMusic() override { ++musicCalls; }
-    void setMasterVolume(float volume) override { _volumes.setMaster(volume); }
-    void setSfxVolume(float volume) override { _volumes.setSfx(volume); }
-    void setMusicVolume(float volume) override { _volumes.setMusic(volume); }
-    void setMuted(bool) override {}
-    [[nodiscard]] const Volume &volumes() const override { return _volumes; }
-    void update() override {}
+    void playMusic(MusicId, bool) override
+    {
+        ++musicCalls;
+    }
+    void stopMusic() override
+    {
+        ++musicCalls;
+    }
+    void setMasterVolume(float volume) override
+    {
+        _volumes.setMaster(volume);
+    }
+    void setSfxVolume(float volume) override
+    {
+        _volumes.setSfx(volume);
+    }
+    void setMusicVolume(float volume) override
+    {
+        _volumes.setMusic(volume);
+    }
+    void setMuted(bool) override
+    {}
+    [[nodiscard]] const Volume &volumes() const override
+    {
+        return _volumes;
+    }
+    void update() override
+    {}
 
     std::vector<Played> sounds;
     int musicCalls = 0;
@@ -74,7 +94,7 @@ Event event(EventType type, std::uint32_t a = 0)
     Event value;
 
     value.type = type;
-    value.a = a;
+    value.a    = a;
     return value;
 }
 
@@ -91,7 +111,7 @@ protected:
         // Player 0 flies OUR_SHIP. The reactor reads the local ship from here.
         std::array<protocol::PlayerInfo, 4> roster{};
 
-        roster[0].playerId = 0;
+        roster[0].playerId  = 0;
         roster[0].shipNetId = OUR_SHIP;
         _world.setLocalPlayer(0);
         _world.applyRoster(roster);
@@ -101,12 +121,12 @@ protected:
     ClientWorld _world{SpriteCatalog{}};
     RecordingAudio _audio;
     SoundBank _sounds{
-        .shot = SoundId{1},
+        .shot           = SoundId{1},
         .explosionSmall = SoundId{2},
-        .explosionBig = SoundId{3},
-        .join = SoundId{4},
-        .leave = SoundId{5},
-        .stage1 = MusicId{1},
+        .explosionBig   = SoundId{3},
+        .join           = SoundId{4},
+        .leave          = SoundId{5},
+        .stage1         = MusicId{1},
     };
 };
 

@@ -5,10 +5,10 @@
 ** EcsIntegrationTests
 */
 
-#include <gtest/gtest.h>
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <iterator>
 #include <map>
 #include <optional>
@@ -31,7 +31,7 @@ using engine::ecs::Registry;
 using engine::ecs::SparseSet;
 
 namespace {
-enum class Stage: std::uint8_t {
+enum class Stage : std::uint8_t {
     SIMULATION,
 };
 
@@ -62,13 +62,13 @@ struct Counters {
     std::size_t killed;
 };
 
-constexpr std::uint32_t SEED = 42;
-constexpr int STEPS = 600;
-constexpr int OPERATIONS = 10000;
-constexpr std::size_t MAX_ALIVE = 32;
+constexpr std::uint32_t SEED      = 42;
+constexpr int STEPS               = 600;
+constexpr int OPERATIONS          = 10000;
+constexpr std::size_t MAX_ALIVE   = 32;
 constexpr std::size_t MAX_HANDLES = 64;
-constexpr float STEP = 1.0F / 60.0F;
-constexpr float SPAWN_INTERVAL = 0.1F;
+constexpr float STEP              = 1.0F / 60.0F;
+constexpr float SPAWN_INTERVAL    = 0.1F;
 
 void buildWorld(Registry &registry, std::uint32_t seed)
 {
@@ -88,7 +88,7 @@ void buildWorld(Registry &registry, std::uint32_t seed)
     registry.addSystem<Spawner>(Stage::SIMULATION, "spawner",
         [](Registry &registry, SparseSet<Spawner> &spawners) {
             const float dt = registry.getResource<DeltaTime>().seconds;
-            Rng &rng = registry.getResource<Rng>();
+            Rng &rng       = registry.getResource<Rng>();
 
             for (Spawner &spawner: spawners.components()) {
                 spawner.seconds -= dt;
@@ -96,26 +96,29 @@ void buildWorld(Registry &registry, std::uint32_t seed)
                     continue;
                 spawner.seconds += SPAWN_INTERVAL;
 
-                const Position position{.x=rng.uniformFloat(0.0F, 100.0F),
-                    .y=rng.uniformFloat(0.0F, 100.0F),};
-                const Velocity velocity{.dx=rng.uniformFloat(-20.0F, 20.0F),
-                    .dy=rng.uniformFloat(-20.0F, 20.0F),};
+                const Position position{
+                    .x = rng.uniformFloat(0.0F, 100.0F),
+                    .y = rng.uniformFloat(0.0F, 100.0F),
+                };
+                const Velocity velocity{
+                    .dx = rng.uniformFloat(-20.0F, 20.0F),
+                    .dy = rng.uniformFloat(-20.0F, 20.0F),
+                };
                 const Radius radius{rng.uniformFloat(1.0F, 3.0F)};
                 const Lifetime lifetime{rng.uniformFloat(1.0F, 3.0F)};
 
-                registry.commands().spawn(
-                    [position, velocity, radius, lifetime](Registry &world,
-                        const Entity &entity) {
-                        world.addComponent(entity, position);
-                        world.addComponent(entity, velocity);
-                        world.addComponent(entity, radius);
-                        world.addComponent(entity, lifetime);
-                        ++world.getResource<Counters>().spawned;
-                    });
+                registry.commands().spawn([position, velocity, radius,
+                                              lifetime](Registry &world,
+                                              const Entity &entity) {
+                    world.addComponent(entity, position);
+                    world.addComponent(entity, velocity);
+                    world.addComponent(entity, radius);
+                    world.addComponent(entity, lifetime);
+                    ++world.getResource<Counters>().spawned;
+                });
             }
         });
-    registry.addSystem<Position, const Velocity>(Stage::SIMULATION,
-        "movement",
+    registry.addSystem<Position, const Velocity>(Stage::SIMULATION, "movement",
         [](Registry &registry, SparseSet<Position> &,
             const SparseSet<Velocity> &) {
             const float dt = registry.getResource<DeltaTime>().seconds;
@@ -128,7 +131,7 @@ void buildWorld(Registry &registry, std::uint32_t seed)
         });
     registry.addSystem<Lifetime>(Stage::SIMULATION, "lifetime",
         [](Registry &registry, SparseSet<Lifetime> &lifetimes) {
-            const float dt = registry.getResource<DeltaTime>().seconds;
+            const float dt     = registry.getResource<DeltaTime>().seconds;
             Counters &counters = registry.getResource<Counters>();
 
             for (std::size_t i = 0; i < lifetimes.size(); ++i) {
@@ -145,7 +148,7 @@ void buildWorld(Registry &registry, std::uint32_t seed)
         "collision",
         [](Registry &registry, const SparseSet<Position> &positions,
             const SparseSet<Radius> &radii) {
-            const auto &entities = positions.entities();
+            const auto &entities   = positions.entities();
             const auto &components = positions.components();
             std::unordered_set<Entity> doomed;
 
@@ -157,8 +160,8 @@ void buildWorld(Registry &registry, std::uint32_t seed)
                     const Radius *second = radii.tryGet(entities[j]);
                     if (second == nullptr)
                         continue;
-                    const float dx = components[i].x - components[j].x;
-                    const float dy = components[i].y - components[j].y;
+                    const float dx    = components[i].x - components[j].x;
+                    const float dy    = components[i].y - components[j].y;
                     const float reach = first->value + second->value;
                     if ((dx * dx) + (dy * dy) >= reach * reach)
                         continue;
@@ -191,8 +194,8 @@ testing::AssertionResult worldIsConsistent(const Registry &registry)
 {
     for (const Entity &entity: registry.getComponents<Position>().entities())
         if (registry.getComponent<Velocity>(entity) == nullptr)
-            return testing::AssertionFailure() << "entity " << entity.index()
-                                               << " has no Velocity";
+            return testing::AssertionFailure()
+                << "entity " << entity.index() << " has no Velocity";
     if (!holdsOnlyLiveEntities<Position>(registry) ||
         !holdsOnlyLiveEntities<Velocity>(registry) ||
         !holdsOnlyLiveEntities<Radius>(registry) ||
@@ -269,19 +272,19 @@ protected:
                 _rng.uniformInt(0, static_cast<int>(_model.size()) - 1);
             return std::next(_model.begin(), index)->second.handle;
         }
-        return _handles[static_cast<std::size_t>(
-            _rng.uniformInt(0, static_cast<int>(_handles.size()) - 1))];
+        return _handles[static_cast<std::size_t>(_rng.uniformInt(0,
+            static_cast<int>(_handles.size()) - 1))];
     }
 
     void spawn()
     {
         const Entity entity = _registry.spawnEntity();
-        ModelEntity model{.handle = entity, .position = std::nullopt,
-            .radius = std::nullopt};
+        ModelEntity model{
+            .handle = entity, .position = std::nullopt, .radius = std::nullopt};
 
         if (_rng.chance(0.5F))
-            model.position = _registry.addComponent(entity,
-                Position{.x = 1.0F, .y = 2.0F});
+            model.position =
+                _registry.addComponent(entity, Position{.x = 1.0F, .y = 2.0F});
         if (_rng.chance(0.5F))
             model.radius = _registry.addComponent(entity, Radius{3.0F});
         _model.insert_or_assign(entity.index(), model);
@@ -304,7 +307,7 @@ protected:
         std::optional<Component> ModelEntity::*field)
     {
         const Entity handle = pickHandle();
-        const bool alive = isAliveInModel(handle);
+        const bool alive    = isAliveInModel(handle);
 
         if (_rng.chance(0.5F)) {
             _registry.commands().add(handle, value);
@@ -322,7 +325,7 @@ protected:
     void remove(std::optional<Component> ModelEntity::*field)
     {
         const Entity handle = pickHandle();
-        const bool alive = isAliveInModel(handle);
+        const bool alive    = isAliveInModel(handle);
 
         if (alive && _rng.chance(0.5F)) {
             _registry.removeComponent<Component>(handle);
@@ -355,34 +358,34 @@ protected:
         const auto value = static_cast<float>(operation);
 
         switch (_rng.uniformInt(0, 11)) {
-            case 0:
-            case 1:
-            case 2:
-                if (_model.size() < MAX_ALIVE)
-                    spawn();
-                else
-                    kill();
-                break;
-            case 3:
-            case 4:
+        case 0:
+        case 1:
+        case 2:
+            if (_model.size() < MAX_ALIVE)
+                spawn();
+            else
                 kill();
-                break;
-            case 5:
-            case 6:
-                add(Position{.x = value, .y = -value}, &ModelEntity::position);
-                break;
-            case 7:
-            case 8:
-                add(Radius{value}, &ModelEntity::radius);
-                break;
-            case 9:
-                remove(&ModelEntity::position);
-                break;
-            case 10:
-                remove(&ModelEntity::radius);
-                break;
-            default:
-                killFromView();
+            break;
+        case 3:
+        case 4:
+            kill();
+            break;
+        case 5:
+        case 6:
+            add(Position{.x = value, .y = -value}, &ModelEntity::position);
+            break;
+        case 7:
+        case 8:
+            add(Radius{value}, &ModelEntity::radius);
+            break;
+        case 9:
+            remove(&ModelEntity::position);
+            break;
+        case 10:
+            remove(&ModelEntity::radius);
+            break;
+        default:
+            killFromView();
         }
     }
 
@@ -412,8 +415,8 @@ protected:
     {
         if (_registry.aliveCount() != _model.size())
             return testing::AssertionFailure()
-                << "aliveCount is " << _registry.aliveCount() << ", the model has "
-                << _model.size();
+                << "aliveCount is " << _registry.aliveCount()
+                << ", the model has " << _model.size();
         for (const Entity &handle: _handles)
             if (_registry.isAlive(handle) != isAliveInModel(handle))
                 return testing::AssertionFailure()
@@ -422,11 +425,13 @@ protected:
         for (const auto &[index, entity]: _model) {
             const Position *position =
                 _registry.getComponent<Position>(entity.handle);
-            const Radius *radius = _registry.getComponent<Radius>(entity.handle);
+            const Radius *radius =
+                _registry.getComponent<Radius>(entity.handle);
 
             if ((position != nullptr) != entity.position.has_value() ||
-                (position != nullptr && (position->x != entity.position->x ||
-                    position->y != entity.position->y)))
+                (position != nullptr &&
+                    (position->x != entity.position->x ||
+                        position->y != entity.position->y)))
                 return testing::AssertionFailure()
                     << "Position differs for index " << index;
             if ((radius != nullptr) != entity.radius.has_value() ||
@@ -457,7 +462,7 @@ protected:
     std::map<std::uint32_t, ModelEntity> _model;
     std::vector<Entity> _handles;
 };
-}
+} // namespace
 
 TEST_F(EcsSimulation, TheWorldStartsWithOnlyTheSpawner)
 {

@@ -18,7 +18,7 @@ using engine::input::Key;
 constexpr std::array<std::string_view, 10> NAMES{"MOVE_UP", "MOVE_DOWN",
     "MOVE_LEFT", "MOVE_RIGHT", "FIRE", "QUIT", "EXPLODE", "VOLUME_UP",
     "VOLUME_DOWN", "MUTE"};
-}
+} // namespace
 
 std::string_view toString(const Action action)
 {
@@ -57,4 +57,4 @@ engine::input::ActionMap<Action> defaultBindings()
     return bindings;
 }
 
-}
+} // namespace render_demo

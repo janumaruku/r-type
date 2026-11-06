@@ -6,15 +6,15 @@
 */
 
 #ifndef LOGGER_HPP
-#define LOGGER_HPP
+    #define LOGGER_HPP
 
-#include <cstdint>
-#include <format>
-#include <optional>
-#include <ostream>
-#include <sstream>
-#include <string>
-#include <string_view>
+    #include <cstdint>
+    #include <format>
+    #include <optional>
+    #include <ostream>
+    #include <sstream>
+    #include <string>
+    #include <string_view>
 
 namespace engine::core::log {
 
@@ -33,7 +33,7 @@ struct LogLine {
     bool active;
     std::ostringstream buffer;
     LogLine(Level level, const std::string &context, bool active) noexcept;
-    LogLine(const LogLine &) = delete;
+    LogLine(const LogLine &)            = delete;
     LogLine &operator=(const LogLine &) = delete;
     LogLine(LogLine &&other) noexcept;
     LogLine &operator=(LogLine &&) = delete;
@@ -44,11 +44,11 @@ struct LogLine {
 
 class Logger {
 public:
-    Logger() = default;
+    Logger()  = default;
     ~Logger() = default;
 
     explicit Logger(const std::string &context) noexcept;
-    Logger(const Logger &) = delete;
+    Logger(const Logger &)            = delete;
     Logger &operator=(const Logger &) = delete;
 
     Logger(Logger &&) noexcept;
@@ -62,23 +62,23 @@ public:
 
     void setThreadName(const std::string &name) noexcept;
 
-    template<typename... Args>
+    template <typename... Args>
     LogLine trace(const std::string &format, Args... args);
-    template<typename... Args>
+    template <typename... Args>
     LogLine debug(const std::string &format, Args... args);
-    template<typename... Args>
+    template <typename... Args>
     LogLine info(const std::string &format, Args... args);
-    template<typename... Args>
+    template <typename... Args>
     LogLine warn(const std::string &format, Args... args);
-    template<typename... Args>
+    template <typename... Args>
     LogLine error(const std::string &format, Args... args);
 
 private:
     LogLine makeLine(Level lineLevel);
 
-    template<typename... Args>
+    template <typename... Args>
     LogLine formatted(Level lineLevel, const std::string &format,
-        Args &... args);
+        Args &...args);
 
     std::string _context;
     std::string _threadName;
@@ -101,7 +101,7 @@ void setOutput(std::ostream &stream);
 
 void setColors(bool enabled);
 
-}
+} // namespace engine::core::log
 
 #endif
 
