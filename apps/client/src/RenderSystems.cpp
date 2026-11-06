@@ -173,6 +173,18 @@ void renderSystem(engine::ecs::Registry &registry,
     }
 }
 
+void effectSystem(engine::ecs::Registry &registry,
+    engine::ecs::SparseSet<TransientEffect> &)
+{
+    const auto dt = registry.getResource<engine::ecs::DeltaTime>().seconds;
+
+    for (auto &&[entity, effect]: registry.indexedView<TransientEffect>()) {
+        effect.remaining -= dt;
+        if (effect.remaining <= 0.0F)
+            registry.commands().kill(entity);
+    }
+}
+
 void spawnStarfield(engine::ecs::Registry &registry, engine::core::Rng &rng,
     engine::render::TextureId whitePixel)
 {

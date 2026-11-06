@@ -15,6 +15,7 @@ add_library(client_logic STATIC
         src/Actions.cpp
         src/RenderSystems.cpp
         src/AudioReactor.cpp
+        src/EffectsReactor.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)
