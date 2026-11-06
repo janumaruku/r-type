@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 #include "ClientComponents.hpp"
 #include "engine/ecs/Component.hpp"
@@ -23,6 +24,16 @@ namespace rtype::client {
 ClientWorld::ClientWorld(SpriteCatalog sprites)
 {
     _registry.setResource(std::move(sprites));
+    _registry.registerComponent<game::Transform>();
+    _registry.registerComponent<game::Velocity>();
+    _registry.registerComponent<Replica>();
+    _registry.registerComponent<NetSamples>();
+    _registry.registerComponent<Animation>();
+    _registry.registerComponent<SpriteDef>();
+    _registry.registerComponent<HighContrastOutline>();
+    _registry.registerComponent<PlayerLabel>();
+    _registry.registerComponent<ShipTilt>();
+    _registry.registerComponent<LocalPlayer>();
 }
 
 void ClientWorld::bindEntityComponents(std::uint32_t tick,
@@ -112,25 +123,34 @@ void ClientWorld::applyEntity(std::uint32_t tick,
         return;
     }
     bindEntityComponents(tick, state, catalog, spriteKey, sample);
+    tagLocalShip();
 }
 
 void ClientWorld::applyRoster(std::span<const protocol::PlayerInfo> roster)
 {
-    std::ranges::copy(roster, _roster.begin());
-    auto hasChanged = [this](std::span<const protocol::PlayerInfo> other) {
-        for (std::size_t i = 0; i < _roster.size(); ++i) {
-            if (_roster[i] != other[i])
-                return true;
+    const std::size_t count = std::min(roster.size(), _roster.size());
+
+    for (std::size_t index = 0; index < count; ++index) {
+        if (_roster[index] != roster[index]) {
+            _roster[index] = roster[index];
+            _rosterChanged = true;
         }
-        return false;
-    };
-    auto tmp = std::vector<protocol::PlayerInfo>(roster.begin(), roster.end());
-    if (std::ranges::find(tmp, _roster[_playerId]) == tmp.end())
-        return;
-    const_cast<protocol::PlayerInfo &>(roster[_playerId]).shipNetId =
-        _roster[_playerId].shipNetId;
-    if (hasChanged(roster))
-        _rosterChanged = true;
+    }
+    tagLocalShip();
+}
+
+void ClientWorld::tagLocalShip()
+{
+    auto &locals = _registry.registerComponent<LocalPlayer>();
+    const auto ship = localShip();
+    const std::vector tagged(locals.entities().begin(),
+        locals.entities().end());
+
+    for (const auto &entity: tagged)
+        if (!ship || entity != *ship)
+            _registry.removeComponent<LocalPlayer>(entity);
+    if (ship && !locals.contains(*ship))
+        _registry.addComponent(*ship, LocalPlayer{});
 }
 
 void ClientWorld::removeNotSeenSince(std::uint32_t tick)
@@ -183,9 +203,9 @@ std::uint32_t ClientWorld::lastProcessedInput() const noexcept
     return _lastProcessedInput;
 }
 
-bool ClientWorld::rosterChangedSinceLastCall() const noexcept
+bool ClientWorld::rosterChangedSinceLastCall() noexcept
 {
-    return _rosterChanged;
+    return std::exchange(_rosterChanged, false);
 }
 
 engine::ecs::Registry &ClientWorld::registry() noexcept
