@@ -24,6 +24,16 @@ namespace rtype::client {
 ClientWorld::ClientWorld(SpriteCatalog sprites)
 {
     _registry.setResource(std::move(sprites));
+    _registry.registerComponent<game::Transform>();
+    _registry.registerComponent<game::Velocity>();
+    _registry.registerComponent<Replica>();
+    _registry.registerComponent<NetSamples>();
+    _registry.registerComponent<Animation>();
+    _registry.registerComponent<SpriteDef>();
+    _registry.registerComponent<HighContrastOutline>();
+    _registry.registerComponent<PlayerLabel>();
+    _registry.registerComponent<ShipTilt>();
+    _registry.registerComponent<LocalPlayer>();
 }
 
 void ClientWorld::bindEntityComponents(std::uint32_t tick,
