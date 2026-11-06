@@ -32,7 +32,7 @@ protected:
 
 TEST_F(Collisions, ShipAndBydosOverlappingBothTakeDamage)
 {
-    const Entity ship = spawnAliveShip();
+    const Entity ship  = spawnAliveShip();
     const Entity bydos = spawnBydos({650.0F, 360.0F});
 
     moveTo(ship, {640.0F, 360.0F});
@@ -47,7 +47,7 @@ TEST_F(Collisions, ShipAndBydosOverlappingBothTakeDamage)
 
 TEST_F(Collisions, InvulnerableShipAndBydosAreNotDamaged)
 {
-    const Entity ship = spawnAliveShip();
+    const Entity ship  = spawnAliveShip();
     const Entity bydos = spawnBydos({650.0F, 360.0F});
 
     moveTo(ship, {640.0F, 360.0F});
@@ -61,10 +61,10 @@ TEST_F(Collisions, InvulnerableShipAndBydosAreNotDamaged)
 
 TEST_F(Collisions, PlayerMissileDamagesBydosAndIsSpent)
 {
-    const Entity ship = spawnAliveShip();
+    const Entity ship  = spawnAliveShip();
     const Entity bydos = spawnBydos({800.0F, 360.0F});
-    const Entity missile = spawnPlayerMissile(netIdOf(ship), 0,
-        {800.0F, 360.0F});
+    const Entity missile =
+        spawnPlayerMissile(netIdOf(ship), 0, {800.0F, 360.0F});
 
     tick();
     EXPECT_EQ(healthOf(bydos), 0);
@@ -75,10 +75,9 @@ TEST_F(Collisions, PlayerMissileDamagesBydosAndIsSpent)
 
 TEST_F(Collisions, EnemyMissileDamagesShipAndIsSpent)
 {
-    const Entity ship = spawnAliveShip();
-    const Entity bydos = spawnBydos({1000.0F, 100.0F});
-    const Entity missile = spawnEnemyMissile(netIdOf(bydos),
-        {640.0F, 360.0F});
+    const Entity ship    = spawnAliveShip();
+    const Entity bydos   = spawnBydos({1000.0F, 100.0F});
+    const Entity missile = spawnEnemyMissile(netIdOf(bydos), {640.0F, 360.0F});
 
     moveTo(ship, {640.0F, 360.0F});
     tick();
@@ -91,28 +90,28 @@ TEST_F(Collisions, EnemyMissileDamagesShipAndIsSpent)
 
 TEST_F(Collisions, SameSideAndFriendlyFireDealNoDamage)
 {
-    const Entity first = spawnAliveShip();
+    const Entity first  = spawnAliveShip();
     const Entity second = spawnAliveShip();
-    const Entity playerMissile = spawnPlayerMissile(netIdOf(first), 0,
-        {300.0F, 200.0F});
+    const Entity playerMissile =
+        spawnPlayerMissile(netIdOf(first), 0, {300.0F, 200.0F});
     const Entity bydosA = spawnBydos({900.0F, 500.0F});
     const Entity bydosB = spawnBydos({905.0F, 500.0F});
-    const Entity enemyMissile = spawnEnemyMissile(netIdOf(bydosA),
-        {900.0F, 500.0F});
+    const Entity enemyMissile =
+        spawnEnemyMissile(netIdOf(bydosA), {900.0F, 500.0F});
 
     moveTo(first, {300.0F, 200.0F});
     moveTo(second, {305.0F, 200.0F});
     tick();
-    for (const Entity entity :
-         {first, second, playerMissile, bydosA, bydosB, enemyMissile})
+    for (const Entity entity:
+        {first, second, playerMissile, bydosA, bydosB, enemyMissile})
         EXPECT_EQ(healthOf(entity), 1);
     EXPECT_EQ(countOf<LastHit>(), 0U);
 }
 
 TEST_F(Collisions, MissileOverlappingTwoBydosHitsOnlyOne)
 {
-    const Entity bydosA = spawnBydos({800.0F, 360.0F});
-    const Entity bydosB = spawnBydos({800.0F, 360.0F});
+    const Entity bydosA  = spawnBydos({800.0F, 360.0F});
+    const Entity bydosB  = spawnBydos({800.0F, 360.0F});
     const Entity missile = spawnPlayerMissile(NO_NET_ID, 0, {800.0F, 360.0F});
 
     tick();

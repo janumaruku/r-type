@@ -54,6 +54,6 @@ protected:
 
     void append(const Entity &entity);
 };
-}
+} // namespace engine::ecs
 
-#endif //R_TYPE_SPARSESETBASE_HPP
+#endif // R_TYPE_SPARSESETBASE_HPP

@@ -17,9 +17,10 @@ public:
     explicit Rng(std::uint32_t seed);
     [[nodiscard]] static std::uint32_t randomSeed(); // from std::random_device
 
-    [[nodiscard]] int uniformInt(int lo, int hi); // inclusive: lo <= result <= hi
+    [[nodiscard]] int uniformInt(int lo,
+        int hi); // inclusive: lo <= result <= hi
     [[nodiscard]] float uniformFloat(float lo, float hi); // lo <= result < hi
-    [[nodiscard]] bool chance(float probability); // clamped to [0, 1]
+    [[nodiscard]] bool chance(float probability);         // clamped to [0, 1]
     [[nodiscard]] std::uint32_t seed() const noexcept;
 
 private:
@@ -27,6 +28,6 @@ private:
     std::mt19937 _engine;
 };
 
-}
+} // namespace engine::core
 
 #endif

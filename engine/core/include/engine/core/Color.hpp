@@ -6,19 +6,16 @@
 */
 
 #ifndef COLOR_HPP
-#define COLOR_HPP
+    #define COLOR_HPP
 
-#include <cstdint>
+    #include <cstdint>
 
 namespace engine::core {
 
 struct Color {
     Color() noexcept;
-    Color(std::uint8_t r,
-        std::uint8_t g,
-        std::uint8_t b,
+    Color(std::uint8_t r, std::uint8_t g, std::uint8_t b,
         std::uint8_t a) noexcept;
-
 
     std::uint8_t r;
     std::uint8_t g;
@@ -34,17 +31,18 @@ struct Color {
     static const Color GREEN;
     static const Color BLUE;
     static const Color CLEAR;
-    
+    static const Color YELLOW;
 };
 
-inline const Color Color::WHITE = {255, 255, 255, 255};
-inline const Color Color::BLACK = {0, 0, 0, 255};
-inline const Color Color::RED = {255, 0, 0, 255};
-inline const Color Color::GREEN = {0, 255, 0, 255};
-inline const Color Color::BLUE = {0, 0, 255, 255};
-inline const Color Color::CLEAR = {0, 0, 0, 0};
+inline const Color Color::WHITE  = {255, 255, 255, 255};
+inline const Color Color::BLACK  = {0, 0, 0, 255};
+inline const Color Color::RED    = {255, 0, 0, 255};
+inline const Color Color::GREEN  = {0, 255, 0, 255};
+inline const Color Color::BLUE   = {0, 0, 255, 255};
+inline const Color Color::CLEAR  = {0, 0, 0, 0};
+inline const Color Color::YELLOW = {255, 255, 0, 255};
 
-}
+} // namespace engine::core
 
 #endif
 

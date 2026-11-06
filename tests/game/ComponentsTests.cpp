@@ -5,9 +5,10 @@
 ** ComponentsTests
 */
 
+#include "engine/ecs/Component.hpp"
+
 #include <gtest/gtest.h>
 
-#include "engine/ecs/Component.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "rtype/game/Components.hpp"
 
@@ -58,7 +59,7 @@ using AllComponents = ComponentList<Transform, Velocity, Collider, Health,
 
 static_assert(AllComponents::ALL_COMPONENTS);
 
-}
+} // namespace
 
 TEST(Components, RegisterComponentsRegistersAllSeventeen)
 {

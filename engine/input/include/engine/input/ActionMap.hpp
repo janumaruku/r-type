@@ -11,6 +11,7 @@
 #include <concepts>
 #include <filesystem>
 #include <fstream>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -19,8 +20,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-
-#include <nlohmann/json.hpp>
 
 #include "engine/core/Logger.hpp"
 #include "engine/input/InputState.hpp"
@@ -31,11 +30,11 @@ namespace engine::input {
 // The client writes toString and fromString next to its Action enum, and they
 // are found by argument-dependent lookup.
 template <class Action>
-concept NamedAction = std::is_enum_v<Action>
-    && requires(Action action, std::string_view name) {
-           { toString(action) } -> std::convertible_to<std::string_view>;
-           { fromString(name, action) } -> std::same_as<bool>;
-       };
+concept NamedAction =
+    std::is_enum_v<Action> && requires(Action action, std::string_view name) {
+        { toString(action) } -> std::convertible_to<std::string_view>;
+        { fromString(name, action) } -> std::same_as<bool>;
+    };
 
 template <NamedAction Action>
 class ActionMap {
@@ -86,7 +85,7 @@ public:
         core::log::Logger logger("input");
         Bindings loaded;
         try {
-            const auto data = nlohmann::json::parse(file);
+            const auto data     = nlohmann::json::parse(file);
             const auto &entries = data.at("config");
             for (std::size_t index = 0; index < entries.size(); ++index) {
                 const auto &entry = entries.at(index);
@@ -97,7 +96,7 @@ public:
                         path.string(), index, actionName);
                     continue;
                 }
-                for (const auto &name : entry.at("keys")) {
+                for (const auto &name: entry.at("keys")) {
                     const auto keyName = name.get<std::string>();
                     if (const auto key = keyFromString(keyName))
                         loaded[action].insert(*key);
@@ -111,7 +110,7 @@ public:
                 std::string{error.what()});
             return false;
         }
-        for (auto &[action, keys] : loaded)
+        for (auto &[action, keys]: loaded)
             _bindings[action] = std::move(keys);
         return true;
     }
@@ -119,9 +118,9 @@ public:
     [[nodiscard]] bool save(const std::filesystem::path &path) const
     {
         nlohmann::json config = nlohmann::json::array();
-        for (const auto &[action, keys] : _bindings) {
+        for (const auto &[action, keys]: _bindings) {
             nlohmann::json names = nlohmann::json::array();
-            for (const Key key : keys)
+            for (const Key key: keys)
                 names.push_back(toString(key));
             config.push_back({{"name", toString(action)}, {"keys", names}});
         }
@@ -146,8 +145,8 @@ private:
     {
         const auto it = _bindings.find(action);
 
-        return it != _bindings.end()
-            && std::ranges::any_of(it->second, predicate);
+        return it != _bindings.end() &&
+            std::ranges::any_of(it->second, predicate);
     }
 
     Bindings _bindings;

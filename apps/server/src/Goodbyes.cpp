@@ -11,15 +11,13 @@
 
 namespace rtype::server {
 
-void Goodbyes::add(const asio::ip::udp::endpoint &to,
-    net::Packet packet)
+void Goodbyes::add(const asio::ip::udp::endpoint &to, net::Packet packet)
 {
-    Pending p {.to = to, .packet = std::move(packet), .copiesLeft = BASE_COPIES};
+    Pending p{.to = to, .packet = std::move(packet), .copiesLeft = BASE_COPIES};
     _pending.push_back(std::move(p));
 }
 
-std::vector<std::pair<asio::ip::udp::endpoint, net::Packet>>
-Goodbyes::takeDue()
+std::vector<std::pair<asio::ip::udp::endpoint, net::Packet>> Goodbyes::takeDue()
 {
     std::vector<std::pair<asio::ip::udp::endpoint, net::Packet>> due;
     for (auto it = _pending.begin(); it != _pending.end();) {

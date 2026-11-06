@@ -41,11 +41,11 @@ public:
 
 private:
     float _master = 1.0F;
-    float _sfx = 1.0F;
-    float _music = 1.0F;
-    bool _muted = false;
+    float _sfx    = 1.0F;
+    float _music  = 1.0F;
+    bool _muted   = false;
 };
 
-}
+} // namespace engine::audio
 
 #endif // !VOLUME_HPP

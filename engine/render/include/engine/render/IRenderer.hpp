@@ -9,8 +9,8 @@
 #define IRENDERER_HPP
 
 #include "engine/core/Color.hpp"
-#include "RenderQueue.hpp"
 #include "engine/core/Vec2.hpp"
+#include "RenderQueue.hpp"
 
 namespace engine::render {
 
@@ -42,6 +42,6 @@ public:
     virtual void setLogicalSize(core::Vec2f size) = 0;
 };
 
-}
+} // namespace engine::render
 
 #endif // !IRENDERER_HPP

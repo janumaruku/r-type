@@ -5,9 +5,10 @@
 ** RegistryBenchmarks
 */
 
-#include <benchmark/benchmark.h>
+#include "engine/ecs/Registry.hpp"
 
 #include <algorithm>
+#include <benchmark/benchmark.h>
 #include <cstddef>
 #include <cstdint>
 #include <random>
@@ -15,7 +16,6 @@
 #include <vector>
 
 #include "BenchmarkHelpers.hpp"
-#include "engine/ecs/Registry.hpp"
 
 using engine::ecs::Entity;
 using engine::ecs::Registry;
@@ -67,8 +67,8 @@ static void BM_Registry_IsAlive(benchmark::State &state) // NOLINT
         benchmark::DoNotOptimize(alive);
     }
 
-    state.SetItemsProcessed(state.iterations()
-        * static_cast<std::int64_t>(handles.size()));
+    state.SetItemsProcessed(state.iterations() *
+        static_cast<std::int64_t>(handles.size()));
 }
 
 BENCHMARK(BM_Registry_IsAlive)->Arg(1000)->Arg(100000)->Arg(1000000);
@@ -84,7 +84,7 @@ static void BM_Registry_SpawnKill(benchmark::State &state) // NOLINT
     }(std::make_index_sequence<Types>{});
     registry.registerComponent<Position>();
 
-    for (auto _ : state) {
+    for (auto _: state) {
         const Entity entity = registry.spawnEntity();
         registry.addComponent(entity, Position{1.0F, 2.0F});
         registry.killEntity(entity);

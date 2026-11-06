@@ -1,9 +1,8 @@
-#include <gtest/gtest.h>
-
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <gtest/gtest.h>
 #include <memory>
 #include <optional>
 #include <thread>
@@ -39,8 +38,8 @@ public:
         rtype::server::ServerConfig config;
         config.port = 0;
         config.seed = 7;
-        _app = std::make_unique<rtype::server::ServerApp>(config,
-            _stopRequested);
+        _app =
+            std::make_unique<rtype::server::ServerApp>(config, _stopRequested);
         _thread = std::thread([this] { _result = _app->run(); });
     }
 
@@ -71,7 +70,7 @@ private:
     std::atomic<bool> _stopRequested{false};
     std::unique_ptr<rtype::server::ServerApp> _app;
     std::thread _thread;
-    int _result = -1;
+    int _result   = -1;
     bool _stopped = false;
 };
 
@@ -98,9 +97,8 @@ std::optional<Joined> join(server_test::TestClient &client)
 const PlayerInfo *slotOf(const Snapshot &snapshot, std::uint8_t playerId)
 {
     const auto slot = std::find_if(snapshot.roster.begin(),
-        snapshot.roster.end(), [playerId](const auto &player) {
-            return player.playerId == playerId;
-        });
+        snapshot.roster.end(),
+        [playerId](const auto &player) { return player.playerId == playerId; });
     return slot == snapshot.roster.end() ? nullptr : &*slot;
 }
 
@@ -124,8 +122,8 @@ std::optional<Snapshot> waitForSnapshot(server_test::TestClient &client,
     const auto deadline = std::chrono::steady_clock::now() + timeout;
 
     while (std::chrono::steady_clock::now() < deadline) {
-        const auto snapshot = client.waitFor<Snapshot>(
-            MessageType::SNAPSHOT, 100ms);
+        const auto snapshot =
+            client.waitFor<Snapshot>(MessageType::SNAPSHOT, 100ms);
         if (snapshot && !snapshot->roster.empty() && matches(*snapshot))
             return snapshot;
     }
@@ -161,9 +159,8 @@ TEST(IntegrationTests, JoinReceivesWelcomeAndOwnShip)
     EXPECT_EQ(mine->state, PlayerState::ALIVE);
     ASSERT_NE(mine->shipNetId, 0U);
     const auto ship = std::find_if(snapshot.entities.begin(),
-        snapshot.entities.end(), [mine](const auto &entity) {
-            return entity.netId == mine->shipNetId;
-        });
+        snapshot.entities.end(),
+        [mine](const auto &entity) { return entity.netId == mine->shipNetId; });
     ASSERT_NE(ship, snapshot.entities.end());
     EXPECT_EQ(ship->kind, rtype::protocol::EntityKind::PLAYER_SHIP);
 }
@@ -177,12 +174,12 @@ TEST(IntegrationTests, TwoPlayersSeeMovement)
     ASSERT_TRUE(join(second).has_value());
 
     first.send(MessageType::INPUT,
-        rtype::protocol::Input{.inputSequence = 1,
-            .buttons = rtype::protocol::buttons::RIGHT});
+        rtype::protocol::Input{
+            .inputSequence = 1, .buttons = rtype::protocol::buttons::RIGHT});
     const auto initial = second.waitFor<Snapshot>(MessageType::SNAPSHOT);
     ASSERT_TRUE(initial.has_value());
     std::vector<std::pair<std::uint32_t, float>> initialShips;
-    for (const auto &entity : initial->entities) {
+    for (const auto &entity: initial->entities) {
         if (entity.kind == rtype::protocol::EntityKind::PLAYER_SHIP)
             initialShips.emplace_back(entity.netId, entity.x);
     }
@@ -193,13 +190,13 @@ TEST(IntegrationTests, TwoPlayersSeeMovement)
             rtype::protocol::Input{.inputSequence = sequence,
                 .buttons = rtype::protocol::buttons::RIGHT});
 
-    bool moved = false;
+    bool moved          = false;
     const auto deadline = std::chrono::steady_clock::now() + 2s;
     while (!moved && std::chrono::steady_clock::now() < deadline) {
-        const auto snapshot = second.waitFor<Snapshot>(
-            MessageType::SNAPSHOT, 100ms);
+        const auto snapshot =
+            second.waitFor<Snapshot>(MessageType::SNAPSHOT, 100ms);
         if (snapshot) {
-            for (const auto &[netId, initialX] : initialShips) {
+            for (const auto &[netId, initialX]: initialShips) {
                 const auto ship = std::find_if(snapshot->entities.begin(),
                     snapshot->entities.end(), [netId](const auto &entity) {
                         return entity.netId == netId;
@@ -218,12 +215,13 @@ TEST(IntegrationTests, FullServerRejectsFifthClient)
     ServerFixture server;
     std::vector<std::unique_ptr<server_test::TestClient>> players;
     for (int i = 0; i != 4; ++i) {
-        players.push_back(std::make_unique<server_test::TestClient>(
-            server.port()));
-        players.back()->send(MessageType::HELLO,
-            Hello{.playerName = "player"});
-        ASSERT_TRUE(players.back()->waitFor<Welcome>(
-            MessageType::WELCOME).has_value()) << "player " << i;
+        players.push_back(std::make_unique<server_test::TestClient>(server
+                .port()));
+        players.back()->send(MessageType::HELLO, Hello{.playerName = "player"});
+        ASSERT_TRUE(players.back()
+                ->waitFor<Welcome>(MessageType::WELCOME)
+                .has_value())
+            << "player " << i;
     }
     server_test::TestClient fifth(server.port());
 
@@ -239,9 +237,8 @@ TEST(IntegrationTests, VersionMismatchIsRejected)
     ServerFixture server;
     server_test::TestClient client(server.port());
     net::Packet packet;
-    packet << rtype::protocol::Header{
-        .version = 2, .type = MessageType::HELLO}
-        << Hello{.playerName = "bad"};
+    packet << rtype::protocol::Header{.version = 2, .type = MessageType::HELLO}
+           << Hello{.playerName = "bad"};
     client.sendRaw(packet.bytes());
 
     const auto reject = client.waitFor<Reject>(MessageType::REJECT);
@@ -257,15 +254,14 @@ TEST(IntegrationTests, QuitIsRepeatedAndRemovesTheShip)
     const auto joined = join(quitter);
     ASSERT_TRUE(joined.has_value());
     ASSERT_TRUE(join(other).has_value());
-    const auto quitterId = joined->welcome.playerId;
+    const auto quitterId   = joined->welcome.playerId;
     const auto *const slot = slotOf(joined->snapshot, quitterId);
     ASSERT_NE(slot, nullptr);
     const auto ship = slot->shipNetId;
     ASSERT_NE(ship, 0U);
 
     for (int copy = 0; copy != 3; ++copy)
-        quitter.send(MessageType::DISCONNECT,
-            rtype::protocol::Disconnect{});
+        quitter.send(MessageType::DISCONNECT, rtype::protocol::Disconnect{});
 
     std::vector<Event> left;
     for (int copy = 0; copy != 3; ++copy) {
@@ -273,15 +269,15 @@ TEST(IntegrationTests, QuitIsRepeatedAndRemovesTheShip)
         ASSERT_TRUE(event.has_value()) << "copy " << copy;
         left.push_back(*event);
     }
-    for (const auto &event : left) {
+    for (const auto &event: left) {
         EXPECT_EQ(event.eventId, left.front().eventId);
         EXPECT_EQ(event.a, quitterId);
         EXPECT_EQ(event.b, static_cast<std::uint32_t>(LeaveReason::QUIT));
     }
     const auto after = waitForSnapshot(other, [&](const Snapshot &snapshot) {
         const auto *const quitterSlot = slotOf(snapshot, quitterId);
-        return quitterSlot != nullptr
-            && quitterSlot->state == PlayerState::EMPTY;
+        return quitterSlot != nullptr &&
+            quitterSlot->state == PlayerState::EMPTY;
     });
     ASSERT_TRUE(after.has_value()) << "the slot never became EMPTY";
     EXPECT_FALSE(hasEntity(*after, ship));
@@ -297,7 +293,7 @@ TEST(IntegrationTests, SlowClientTimesOut)
     ASSERT_TRUE(welcome.has_value());
     ASSERT_TRUE(join(other).has_value());
     std::uint32_t inputSequence = 0;
-    const auto keepAlive = [&other, &inputSequence] {
+    const auto keepAlive        = [&other, &inputSequence] {
         other.send(MessageType::INPUT,
             Input{.inputSequence = ++inputSequence, .buttons = 0});
     };
@@ -315,18 +311,19 @@ TEST(IntegrationTests, SlowClientTimesOut)
     EXPECT_EQ(left->a, welcome->playerId);
     EXPECT_EQ(left->b, static_cast<std::uint32_t>(LeaveReason::TIMEOUT));
     std::optional<Snapshot> snapshot;
-    for (int attempt = 0; attempt != 10
-        && (!snapshot || snapshot->roster.empty()); ++attempt) {
+    for (int attempt = 0;
+        attempt != 10 && (!snapshot || snapshot->roster.empty()); ++attempt) {
         keepAlive();
         snapshot = other.waitFor<Snapshot>(MessageType::SNAPSHOT, 200ms);
     }
     ASSERT_TRUE(snapshot.has_value());
     ASSERT_FALSE(snapshot->roster.empty());
-    for (const auto &player : snapshot->roster) {
-        if (player.playerId == welcome->playerId)
+    for (const auto &player: snapshot->roster) {
+        if (player.playerId == welcome->playerId) {
             EXPECT_EQ(player.state, PlayerState::EMPTY);
-        else if (player.name == "player")
+        } else if (player.name == "player") {
             EXPECT_NE(player.state, PlayerState::EMPTY);
+        }
     }
 }
 
@@ -374,7 +371,7 @@ TEST(IntegrationTests, WrongDirectionIsDropped)
     client.send(MessageType::SHUTDOWN, rtype::protocol::Shutdown{});
     const auto kick = client.waitFor<Kick>(MessageType::KICK);
     ASSERT_TRUE(kick.has_value()) << "the wrong-direction messages were not "
-        "counted as offences";
+                                     "counted as offences";
     EXPECT_EQ(kick->reason, KickReason::PROTOCOL_ERROR);
 }
 
@@ -387,11 +384,11 @@ TEST(IntegrationTests, ShutdownStopsServer)
     ASSERT_TRUE(join(second).has_value());
 
     server.stop();
-    EXPECT_TRUE(first.waitFor<rtype::protocol::Shutdown>(
-        MessageType::SHUTDOWN).has_value());
-    EXPECT_TRUE(second.waitFor<rtype::protocol::Shutdown>(
-        MessageType::SHUTDOWN).has_value());
+    EXPECT_TRUE(first.waitFor<rtype::protocol::Shutdown>(MessageType::SHUTDOWN)
+            .has_value());
+    EXPECT_TRUE(second.waitFor<rtype::protocol::Shutdown>(MessageType::SHUTDOWN)
+            .has_value());
     EXPECT_EQ(server.result(), 0);
 }
 
-}
+} // namespace

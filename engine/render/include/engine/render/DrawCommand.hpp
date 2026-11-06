@@ -25,7 +25,8 @@ struct TextureId {
     std::uint16_t value{};
 
     TextureId() = default;
-    constexpr explicit TextureId(std::uint16_t id) : value{id} {}
+    constexpr explicit TextureId(std::uint16_t id): value{id}
+    {}
 
     bool operator==(const TextureId &) const = default;
 };
@@ -41,7 +42,8 @@ struct FontId {
     std::uint16_t value = DEFAULT;
 
     FontId() = default;
-    constexpr explicit FontId(std::uint16_t id) : value{id} {}
+    constexpr explicit FontId(std::uint16_t id): value{id}
+    {}
 
     [[nodiscard]] constexpr bool isDefault() const noexcept
     {
@@ -90,7 +92,7 @@ struct TextCmd {
 
 using DrawCommand = std::variant<SpriteCmd, RectCmd, TextCmd>;
 
-}
+} // namespace engine::render
 
 template <>
 struct std::hash<engine::render::TextureId> {

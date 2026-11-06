@@ -41,11 +41,10 @@ inline std::vector<net::Datagram> waitForDatagrams(net::UdpSocket &receiver,
     std::vector<net::Datagram> received;
     const auto deadline = std::chrono::steady_clock::now() + timeout;
 
-    while (received.size() < count
-        && std::chrono::steady_clock::now() < deadline) {
+    while (received.size() < count &&
+        std::chrono::steady_clock::now() < deadline) {
         auto batch = receiver.receiveAll(count - received.size());
-        received.insert(received.end(),
-            std::make_move_iterator(batch.begin()),
+        received.insert(received.end(), std::make_move_iterator(batch.begin()),
             std::make_move_iterator(batch.end()));
         if (received.size() < count)
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -73,11 +72,11 @@ inline std::size_t occurrences(const std::string &text,
     std::size_t count = 0;
 
     for (auto at = text.find(needle); at != std::string::npos;
-        at = text.find(needle, at + needle.size()))
+        at       = text.find(needle, at + needle.size()))
         ++count;
     return count;
 }
 
-}
+} // namespace client_tests
 
-#endif //R_TYPE_LOOPBACK_HELPERS_HPP
+#endif // R_TYPE_LOOPBACK_HELPERS_HPP

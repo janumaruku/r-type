@@ -18,15 +18,15 @@ enum class Direction : std::uint8_t {
 };
 
 enum class MessageType : std::uint8_t {
-    HELLO = 0x01,
-    INPUT = 0x02,
+    HELLO      = 0x01,
+    INPUT      = 0x02,
     DISCONNECT = 0x03,
-    WELCOME = 0x81,
-    REJECT = 0x82,
-    SNAPSHOT = 0x83,
-    EVENT = 0x84,
-    SHUTDOWN = 0x85,
-    KICK = 0x86,
+    WELCOME    = 0x81,
+    REJECT     = 0x82,
+    SNAPSHOT   = 0x83,
+    EVENT      = 0x84,
+    SHUTDOWN   = 0x85,
+    KICK       = 0x86,
 };
 
 void checkType(MessageType type, Direction expected);
@@ -60,6 +60,6 @@ void checkType(MessageType type, Direction expected);
 }
 
 std::ostream &operator<<(std::ostream &stream, MessageType type);
-}
+} // namespace rtype::protocol
 
-#endif //R_TYPE_MESSAGE_TYPE_HPP
+#endif // R_TYPE_MESSAGE_TYPE_HPP

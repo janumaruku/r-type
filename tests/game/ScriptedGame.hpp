@@ -8,10 +8,9 @@
 #ifndef R_TYPE_SCRIPTEDGAME_HPP
 #define R_TYPE_SCRIPTEDGAME_HPP
 
-#include <gtest/gtest.h>
-
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -80,6 +79,6 @@ inline ScriptedResult runScript(const std::uint32_t seed,
     return result;
 }
 
-}
+} // namespace game_tests
 
-#endif //R_TYPE_SCRIPTEDGAME_HPP
+#endif // R_TYPE_SCRIPTEDGAME_HPP

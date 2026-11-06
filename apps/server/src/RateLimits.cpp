@@ -47,9 +47,8 @@ TimePoint WindowCounter::windowStart() const noexcept
 */
 bool RejectLimiter::allow(const asio::ip::udp::endpoint &to, TimePoint now)
 {
-    std::erase_if(_lastByAddress, [now](const auto &entry) {
-        return now - entry.second >= WINDOW;
-    });
+    std::erase_if(_lastByAddress,
+        [now](const auto &entry) { return now - entry.second >= WINDOW; });
 
     if (_lastByAddress.contains(to) || !_global.record(now))
         return false;
@@ -89,8 +88,8 @@ bool FloodTracker::allow(TimePoint now)
 
 bool FloodTracker::shouldKick(TimePoint now) const noexcept
 {
-    return _floodedSeconds >= KICK_AFTER
-        && now - _lastFloodedWindow < 2 * WINDOW;
+    return _floodedSeconds >= KICK_AFTER &&
+        now - _lastFloodedWindow < 2 * WINDOW;
 }
 
 } // namespace rtype::server

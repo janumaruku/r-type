@@ -59,6 +59,6 @@ public:
     virtual void update() = 0;
 };
 
-}
+} // namespace engine::audio
 
 #endif // !IAUDIO_HPP

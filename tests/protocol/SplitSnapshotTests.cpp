@@ -5,16 +5,15 @@
 ** SplitSnapshotTests
 */
 
-#include <gtest/gtest.h>
-
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "MessageTestHelpers.hpp"
 #include "engine/core/Errors.hpp"
+#include "MessageTestHelpers.hpp"
 #include "rtype/protocol/Snapshot.hpp"
 
 namespace proto = rtype::protocol;
@@ -28,33 +27,41 @@ namespace {
 */
 proto::Snapshot wholeTick(std::size_t entityCount)
 {
-    proto::Snapshot full{.serverTick = 1234, .lastProcessedInput = 812,
-        .chunkIndex = 5, .chunkCount = 3};
+    proto::Snapshot full{.serverTick = 1234,
+        .lastProcessedInput          = 812,
+        .chunkIndex                  = 5,
+        .chunkCount                  = 3};
 
     for (std::uint8_t slot = 0; slot < 4; ++slot)
         full.roster.push_back(proto::PlayerInfo{.playerId = slot,
-            .state = proto::PlayerState::ALIVE, .lives = 3,
-                .shipNetId = 900U + slot,
-            .name = "Player " + std::to_string(slot + 1)});
+            .state     = proto::PlayerState::ALIVE,
+            .lives     = 3,
+            .shipNetId = 900U + slot,
+            .name      = "Player " + std::to_string(slot + 1)});
     for (std::size_t index = 0; index < entityCount; ++index)
         full.entities.push_back(proto::EntityState{
             .netId = static_cast<std::uint32_t>(index + 1),
-            .kind = proto::EntityKind::BYDOS_SLAVE,
-                .x = static_cast<float>(index)});
+            .kind  = proto::EntityKind::BYDOS_SLAVE,
+            .x     = static_cast<float>(index)});
     return full;
 }
 
-}
+} // namespace
 
 TEST(SplitSnapshotTests, ATickIsSplitIntoChunksThatEachDecodeAlone)
 {
     const std::pair<std::size_t, std::size_t> cases[]{
-        {0, 1}, {1, 1}, {48, 1}, {49, 2}, {94, 2}, {768, 16},
+        {0, 1},
+        {1, 1},
+        {48, 1},
+        {49, 2},
+        {94, 2},
+        {768, 16},
     };
 
     for (const auto &[entityCount, expectedChunks]: cases) {
         SCOPED_TRACE(std::to_string(entityCount) + " entities");
-        const proto::Snapshot full = wholeTick(entityCount);
+        const proto::Snapshot full                = wholeTick(entityCount);
         const std::vector<proto::Snapshot> chunks = proto::splitSnapshot(full);
         std::vector<proto::EntityState> reassembled;
 

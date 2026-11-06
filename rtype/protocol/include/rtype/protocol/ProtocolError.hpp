@@ -16,7 +16,7 @@
 #include "network/Packet.hpp"
 
 namespace rtype::protocol {
-enum class DecodeError: std::uint8_t {
+enum class DecodeError : std::uint8_t {
     BAD_SIZE,
     BAD_MAGIC,
     UNKNOWN_TYPE,
@@ -41,6 +41,6 @@ private:
 void checkDatagramSize(std::size_t size);
 
 [[nodiscard]] DecodeError classify(const net::PacketError &error) noexcept;
-}
+} // namespace rtype::protocol
 
-#endif //R_TYPE_PROTOCOL_ERROR_HPP
+#endif // R_TYPE_PROTOCOL_ERROR_HPP

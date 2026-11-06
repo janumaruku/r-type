@@ -5,21 +5,20 @@
 ** DeterminismTests
 */
 
-#include <gtest/gtest.h>
-
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <set>
 #include <string>
 #include <utility>
 #include <variant>
 #include <vector>
 
-#include "ScriptedGame.hpp"
 #include "engine/core/Rng.hpp"
 #include "engine/core/Vec2.hpp"
 #include "rtype/game/Commands.hpp"
 #include "rtype/game/Events.hpp"
 #include "rtype/game/GameWorld.hpp"
+#include "ScriptedGame.hpp"
 
 using engine::core::Vec2f;
 using game_tests::runScript;
@@ -36,12 +35,12 @@ using rtype::game::NetId;
 using rtype::game::SetInput;
 
 namespace {
-constexpr std::uint32_t TICKS = 3600;
-constexpr std::uint32_t INPUT_SEED = 1234;
+constexpr std::uint32_t TICKS       = 3600;
+constexpr std::uint32_t INPUT_SEED  = 1234;
 constexpr std::uint32_t INPUT_EVERY = 15;
-constexpr std::uint32_t LEAVE_TICK = 2400;
-constexpr std::uint8_t PLAYERS = 4;
-constexpr std::uint8_t LEAVER = 2;
+constexpr std::uint32_t LEAVE_TICK  = 2400;
+constexpr std::uint8_t PLAYERS      = 4;
+constexpr std::uint8_t LEAVER       = 2;
 
 /*
 ** Four players join on the first ticks, then every 15 ticks each player
@@ -56,22 +55,23 @@ std::vector<ScriptedStep> fourPlayerScript()
 
     for (std::uint8_t id = 0; id < PLAYERS; ++id)
         script.push_back({.tick = id,
-            .command = JoinPlayer{.playerId = id,
-                .name = "player" + std::to_string(id)}});
+            .command            = JoinPlayer{
+                .playerId = id, .name = "player" + std::to_string(id)}});
     for (std::uint32_t tick = PLAYERS; tick < TICKS; tick += INPUT_EVERY) {
         if (tick >= LEAVE_TICK && tick < LEAVE_TICK + INPUT_EVERY)
             script.push_back({.tick = tick,
-                .command = LeavePlayer{.playerId = LEAVER,
-                    .reason = LeaveReason::QUIT}});
+                .command            = LeavePlayer{
+                    .playerId = LEAVER, .reason = LeaveReason::QUIT}});
         ++sequence;
         for (std::uint8_t id = 0; id < PLAYERS; ++id) {
             if (id == LEAVER && tick >= LEAVE_TICK)
                 continue;
             script.push_back({.tick = tick,
-                .command = SetInput{.playerId = id,
-                    .inputSequence = sequence,
-                    .buttons = InputButtons{.bits = static_cast<std::uint8_t>(
-                        inputs.uniformInt(0, 31))}}});
+                .command            = SetInput{.playerId = id,
+                    .inputSequence            = sequence,
+                    .buttons                  = InputButtons{
+                        .bits = static_cast<std::uint8_t>(inputs.uniformInt(0,
+                            31))}}});
         }
     }
     return script;
@@ -98,17 +98,17 @@ std::vector<Vec2f> bydosSpawns(const ScriptedResult &result)
 
     for (const auto &tick: result.replicated)
         for (const auto &entity: tick)
-            if (entity.kind == EntityKind::BYDOS_SLAVE
-                && seen.insert(entity.netId).second)
+            if (entity.kind == EntityKind::BYDOS_SLAVE &&
+                seen.insert(entity.netId).second)
                 spawns.push_back(entity.position);
     return spawns;
 }
-}
+} // namespace
 
 TEST(Determinism, SameSeedAndScriptGiveTheSameGameBitForBit)
 {
-    const auto script = fourPlayerScript();
-    const ScriptedResult first = runScript(42, script, TICKS, true);
+    const auto script           = fourPlayerScript();
+    const ScriptedResult first  = runScript(42, script, TICKS, true);
     const ScriptedResult second = runScript(42, script, TICKS, true);
 
     ASSERT_GT(countOf<Fired>(first), 0U);
@@ -123,7 +123,7 @@ TEST(Determinism, SameSeedAndScriptGiveTheSameGameBitForBit)
 TEST(Determinism, TheSeedChangesWhereEnemiesSpawn)
 {
     const auto script = fourPlayerScript();
-    const auto first = bydosSpawns(runScript(1, script, TICKS, true));
+    const auto first  = bydosSpawns(runScript(1, script, TICKS, true));
     const auto second = bydosSpawns(runScript(2, script, TICKS, true));
 
     ASSERT_FALSE(first.empty());

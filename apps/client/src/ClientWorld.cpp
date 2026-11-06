@@ -13,6 +13,7 @@
 #include "ClientComponents.hpp"
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/Entity.hpp"
+#include "PresentationComponents.hpp"
 #include "rtype/game/Components.hpp"
 #include "rtype/game/GameWorld.hpp"
 #include "rtype/protocol/Snapshot.hpp"
@@ -166,6 +167,11 @@ std::optional<engine::ecs::Entity> ClientWorld::find(game::NetId netId) const
 std::optional<engine::ecs::Entity> ClientWorld::localShip() const
 {
     return find(_roster[_playerId].shipNetId);
+}
+
+game::NetId ClientWorld::localShipNetId() const noexcept
+{
+    return _roster[_playerId].shipNetId;
 }
 
 const std::array<protocol::PlayerInfo, 4> &ClientWorld::roster() const noexcept

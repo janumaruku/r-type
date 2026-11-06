@@ -5,9 +5,8 @@
 ** EnemyBehaviourTests
 */
 
-#include <gtest/gtest.h>
-
 #include <cmath>
+#include <gtest/gtest.h>
 
 #include "GameSystemsFixture.hpp"
 
@@ -23,10 +22,10 @@ using rtype::game::Weapon;
 
 namespace {
 
-constexpr float BASE_Y = 360.0F;
+constexpr float BASE_Y    = 360.0F;
 constexpr float AMPLITUDE = 80.0F;
 
-}
+} // namespace
 
 class EnemyBehaviour: public game_tests::GameSystems {
 protected:
@@ -34,12 +33,14 @@ protected:
     {
         const Entity entity = _registry.spawnEntity();
 
-        _registry.addComponent(entity,
-            Transform{.position = {640.0F, BASE_Y}});
+        _registry.addComponent(entity, Transform{.position = {640.0F, BASE_Y}});
         _registry.addComponent(entity, Velocity{});
         _registry.addComponent(entity,
-            SineMover{.speed = 200.0F, .baseY = BASE_Y,
-                .amplitude = AMPLITUDE, .frequency = 0.5F, .age = 0.0F});
+            SineMover{.speed = 200.0F,
+                .baseY       = BASE_Y,
+                .amplitude   = AMPLITUDE,
+                .frequency   = 0.5F,
+                .age         = 0.0F});
         return entity;
     }
 };
@@ -65,7 +66,8 @@ TEST_F(EnemyBehaviour, SineMoverStaysWithinItsAmplitudeOverOnePeriod)
     for (int i = 0; i < 120; ++i) {
         tick();
         ASSERT_LE(std::abs(component<Transform>(entity).position.y() - BASE_Y),
-            AMPLITUDE + 1e-3F) << "tick " << i + 1;
+            AMPLITUDE + 1e-3F)
+            << "tick " << i + 1;
     }
     EXPECT_NEAR(component<Transform>(entity).position.y(), BASE_Y, 0.5F);
     EXPECT_FLOAT_EQ(component<Transform>(entity).position.x(),
@@ -98,7 +100,7 @@ TEST_F(EnemyBehaviour, SineMoverWinsOverStraightMoverOnTheSameEntity)
 TEST_F(EnemyBehaviour, ShooterAimsAtTheNearerShipFromItsMuzzle)
 {
     const Entity farther = spawnAliveShip();
-    const Entity nearer = spawnAliveShip();
+    const Entity nearer  = spawnAliveShip();
     const Vec2f position{800.0F, 550.0F};
     const Entity bydos = spawnBydos(position);
 
@@ -108,10 +110,10 @@ TEST_F(EnemyBehaviour, ShooterAimsAtTheNearerShipFromItsMuzzle)
     component<AimedShooter>(bydos).timer = DT / 2.0F;
     tick();
 
-    const Vec2f muzzle = position + _rules.enemyMuzzleOffset;
+    const Vec2f muzzle   = position + _rules.enemyMuzzleOffset;
     const Vec2f expected = (Vec2f{200.0F, 600.0F} - muzzle).normalized();
     const Weapon &weapon = component<Weapon>(bydos);
-    const float timer = component<AimedShooter>(bydos).timer;
+    const float timer    = component<AimedShooter>(bydos).timer;
 
     EXPECT_TRUE(weapon.triggered);
     EXPECT_FLOAT_EQ(weapon.aim.x(), expected.x());
@@ -129,7 +131,7 @@ TEST_F(EnemyBehaviour, ShooterWithNoShipAliveDrawsATimerWithoutFiring)
     tick();
 
     const Weapon &weapon = component<Weapon>(bydos);
-    const float timer = component<AimedShooter>(bydos).timer;
+    const float timer    = component<AimedShooter>(bydos).timer;
 
     EXPECT_FALSE(weapon.triggered);
     EXPECT_FLOAT_EQ(weapon.aim.x(), -1.0F);

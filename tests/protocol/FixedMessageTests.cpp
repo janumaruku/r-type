@@ -5,9 +5,8 @@
 ** FixedMessageTests
 */
 
-#include <gtest/gtest.h>
-
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <string>
 #include <vector>
 
@@ -25,22 +24,25 @@ namespace {
 
 const std::string SIXTEEN_BYTES = "ABCDEFGHIJKLMNOP";
 
-constexpr std::uint8_t ALL_BUTTONS = proto::buttons::UP | proto::buttons::DOWN
-    | proto::buttons::LEFT | proto::buttons::RIGHT | proto::buttons::FIRE;
+constexpr std::uint8_t ALL_BUTTONS = proto::buttons::UP | proto::buttons::DOWN |
+    proto::buttons::LEFT | proto::buttons::RIGHT | proto::buttons::FIRE;
 
-}
+} // namespace
 
 TEST(FixedMessageTests, EveryMessageRoundTrips)
 {
-    expectRoundTrip(proto::Hello{.protocolVersion = 1,
-        .playerName = SIXTEEN_BYTES});
-    expectRoundTrip(proto::Welcome{.playerId = 3, .tickRate = 120,
-        .snapshotRate = 20, .maxPlayers = 2, .serverTick = 0xFFFFFFFF});
+    expectRoundTrip(proto::Hello{
+        .protocolVersion = 1, .playerName = SIXTEEN_BYTES});
+    expectRoundTrip(proto::Welcome{.playerId = 3,
+        .tickRate                            = 120,
+        .snapshotRate                        = 20,
+        .maxPlayers                          = 2,
+        .serverTick                          = 0xFFFFFFFF});
     expectRoundTrip(proto::Reject{.reason = proto::RejectReason::SERVER_FULL});
     expectRoundTrip(proto::Reject{
         .reason = proto::RejectReason::VERSION_MISMATCH});
-    expectRoundTrip(proto::Input{.inputSequence = 0xFFFFFFFF,
-        .buttons = ALL_BUTTONS});
+    expectRoundTrip(proto::Input{
+        .inputSequence = 0xFFFFFFFF, .buttons = ALL_BUTTONS});
     expectRoundTrip(proto::Disconnect{.reason = proto::DisconnectReason::QUIT});
     expectRoundTrip(proto::Shutdown{});
     expectRoundTrip(proto::Kick{.reason = proto::KickReason::PROTOCOL_ERROR});
@@ -52,7 +54,8 @@ TEST(FixedMessageTests, TheRfcInputPayloadIsWrittenByteForByte)
     const std::vector<std::uint8_t> expected{0x2C, 0x03, 0x00, 0x00, 0x11};
 
     EXPECT_EQ(encode(proto::Input{.inputSequence = 812,
-        .buttons = proto::buttons::UP | proto::buttons::FIRE}), expected);
+                  .buttons = proto::buttons::UP | proto::buttons::FIRE}),
+        expected);
 }
 
 TEST(FixedMessageTests, PayloadSizesMatchTheRfc)
@@ -72,8 +75,8 @@ TEST(FixedMessageTests, EveryPrefixOfAPayloadIsTruncated)
     expectEveryPrefixTruncated(proto::Hello{.playerName = "Pilot"});
     expectEveryPrefixTruncated(proto::Welcome{});
     expectEveryPrefixTruncated(proto::Reject{});
-    expectEveryPrefixTruncated(proto::Input{.inputSequence = 812,
-        .buttons = proto::buttons::FIRE});
+    expectEveryPrefixTruncated(proto::Input{
+        .inputSequence = 812, .buttons = proto::buttons::FIRE});
     expectEveryPrefixTruncated(proto::Disconnect{});
     expectEveryPrefixTruncated(proto::Kick{});
 }
@@ -90,7 +93,8 @@ TEST(FixedMessageTests, AHelloIsDecodedWhateverItsVersion)
 
 TEST(FixedMessageTests, AHelloNameWithAControlByteIsDecoded)
 {
-    expectRoundTrip(proto::Hello{.playerName = std::string("Ab\x01" "c")});
+    expectRoundTrip(proto::Hello{.playerName = std::string("Ab\x01"
+                                                           "c")});
 }
 
 TEST(FixedMessageTests, AnInvalidWelcomeIsRejected)

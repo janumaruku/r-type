@@ -5,11 +5,10 @@
 ** RegistryEntityTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/Registry.hpp"
 
 #include <cstdint>
-
-#include "engine/ecs/Registry.hpp"
+#include <gtest/gtest.h>
 
 using engine::ecs::Entity;
 using engine::ecs::Registry;
@@ -31,9 +30,9 @@ TEST(RegistryEntity, FreshEntitiesGetIndicesZeroOneTwoWithGenerationZero)
 {
     Registry registry;
 
-    const Entity first = registry.spawnEntity();
+    const Entity first  = registry.spawnEntity();
     const Entity second = registry.spawnEntity();
-    const Entity third = registry.spawnEntity();
+    const Entity third  = registry.spawnEntity();
 
     EXPECT_EQ(first, EntityAccess::make(0, 0));
     EXPECT_EQ(second, EntityAccess::make(1, 0));
@@ -77,7 +76,7 @@ TEST(RegistryEntity, KillingTwiceDoesNothingTheSecondTime)
     registry.killEntity(entity);
     registry.killEntity(entity);
 
-    const Entity first = registry.spawnEntity();
+    const Entity first  = registry.spawnEntity();
     const Entity second = registry.spawnEntity();
     EXPECT_NE(first.index(), second.index());
     EXPECT_EQ(registry.aliveCount(), 2U);
@@ -87,10 +86,10 @@ TEST(RegistryEntity, NoneAndFabricatedHandlesAreNeverAliveAndCantBeKilled)
 {
     Registry registry;
     const Entity entity = registry.spawnEntity();
-    registry.registerComponent<Position>().insertAt(entity, Position{1.0F,
-        2.0F});
+    registry.registerComponent<Position>().insertAt(entity,
+        Position{1.0F, 2.0F});
     const Entity futureGeneration = EntityAccess::make(entity.index(), 5);
-    const Entity outOfRange = EntityAccess::make(99, 0);
+    const Entity outOfRange       = EntityAccess::make(99, 0);
 
     EXPECT_FALSE(registry.isAlive(Entity::NONE));
     EXPECT_FALSE(registry.isAlive(futureGeneration));
@@ -108,9 +107,9 @@ TEST(RegistryEntity, NoneAndFabricatedHandlesAreNeverAliveAndCantBeKilled)
 TEST(RegistryEntity, AKillRemovesEveryComponentOfThatEntityOnly)
 {
     Registry registry;
-    auto &positions = registry.registerComponent<Position>();
-    auto &healths = registry.registerComponent<Health>();
-    const Entity victim = registry.spawnEntity();
+    auto &positions       = registry.registerComponent<Position>();
+    auto &healths         = registry.registerComponent<Health>();
+    const Entity victim   = registry.spawnEntity();
     const Entity survivor = registry.spawnEntity();
     positions.insertAt(victim, Position{});
     healths.insertAt(victim, Health{3});
@@ -128,7 +127,7 @@ TEST(RegistryEntity, AKillRemovesEveryComponentOfThatEntityOnly)
 TEST(RegistryEntity, ARespawnedIndexHasNoGhostComponents)
 {
     Registry registry;
-    auto &positions = registry.registerComponent<Position>();
+    auto &positions  = registry.registerComponent<Position>();
     const Entity old = registry.spawnEntity();
     positions.insertAt(old, Position{});
 
@@ -144,7 +143,7 @@ TEST(RegistryEntity, AKillErasesComponentsOfATypeRegisteredAfterTheSpawn)
 {
     Registry registry;
     const Entity entity = registry.spawnEntity();
-    auto &healths = registry.registerComponent<Health>();
+    auto &healths       = registry.registerComponent<Health>();
     healths.insertAt(entity, Health{1});
 
     registry.killEntity(entity);
@@ -173,7 +172,7 @@ TEST(RegistryEntity, AliveCountFollowsSpawnsAndKills)
     Registry registry;
     EXPECT_EQ(registry.aliveCount(), 0U);
 
-    const Entity first = registry.spawnEntity();
+    const Entity first  = registry.spawnEntity();
     const Entity second = registry.spawnEntity();
     EXPECT_EQ(registry.aliveCount(), 2U);
 

@@ -35,6 +35,6 @@ private:
     NetId _next = 1;
     std::unordered_map<NetId, engine::ecs::Entity> _byNetId;
 };
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_NET_ID_ALLOCATOR_HPP
+#endif // R_TYPE_NET_ID_ALLOCATOR_HPP

@@ -6,7 +6,6 @@
 */
 
 #include <gtest/gtest.h>
-
 #include <string>
 
 #include "rtype/protocol/Messages.hpp"
@@ -15,12 +14,20 @@ using rtype::protocol::sanitizeName;
 
 TEST(SanitizeNameTests, AControlByteIsReplaced)
 {
-    EXPECT_EQ(sanitizeName("Ab\x01" "c", 0), "Ab?c");
+    EXPECT_EQ(sanitizeName("Ab\x01"
+                           "c",
+                  0),
+        "Ab?c");
 }
 
 TEST(SanitizeNameTests, BytesOutsidePrintableAsciiAreReplaced)
 {
-    EXPECT_EQ(sanitizeName("\x1F" "a\x7F" "b\x80" "c\xFF", 0), "?a?b?c?");
+    EXPECT_EQ(sanitizeName("\x1F"
+                           "a\x7F"
+                           "b\x80"
+                           "c\xFF",
+                  0),
+        "?a?b?c?");
 }
 
 TEST(SanitizeNameTests, TheBoundsOfPrintableAsciiAreKept)

@@ -5,18 +5,18 @@
 ** PlayerRosterTests
 */
 
-#include <gtest/gtest.h>
+#include "rtype/game/PlayerRoster.hpp"
 
 #include <algorithm>
 #include <cstdint>
 #include <functional>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <vector>
 
 #include "engine/core/Logger.hpp"
-#include "rtype/game/PlayerRoster.hpp"
 
 using rtype::game::NO_NET_ID;
 using rtype::game::PlayerRoster;
@@ -25,8 +25,8 @@ using rtype::game::SlotState;
 
 namespace {
 
-constexpr std::uint8_t LIVES = 3;
-constexpr float RESPAWN_DELAY = 2.0F;
+constexpr std::uint8_t LIVES      = 3;
+constexpr float RESPAWN_DELAY     = 2.0F;
 constexpr rtype::game::NetId SHIP = 7;
 
 void expectSameSlot(const PlayerSlot &actual, const PlayerSlot &expected)
@@ -59,7 +59,7 @@ void reach(PlayerRoster &roster, const SlotState state)
     }
 }
 
-}
+} // namespace
 
 /*
 ** The log output is process-wide: each test captures it and gives
@@ -159,7 +159,7 @@ TEST(PlayerRoster, ShipKilledUntilOut)
     PlayerRoster roster;
 
     reach(roster, SlotState::ALIVE);
-    for (const std::uint8_t livesLeft : {2, 1}) {
+    for (const std::uint8_t livesLeft: {2, 1}) {
         ASSERT_TRUE(roster.onShipKilled(0, RESPAWN_DELAY));
         EXPECT_EQ(roster.get(0)->state, SlotState::RESPAWNING);
         EXPECT_EQ(roster.get(0)->lives, livesLeft);
@@ -201,18 +201,16 @@ TEST_F(PlayerRosterLog, EveryTransitionRefusesEveryWrongState)
         {"onShipSpawned", SlotState::RESPAWNING,
             [](PlayerRoster &r) { return r.onShipSpawned(0, SHIP + 1); }},
         {"onShipKilled", SlotState::ALIVE,
-            [](PlayerRoster &r) {
-                return r.onShipKilled(0, RESPAWN_DELAY);
-            }},
+            [](PlayerRoster &r) { return r.onShipKilled(0, RESPAWN_DELAY); }},
     };
 
-    for (const auto &transition : transitions) {
-        for (const auto state : {SlotState::EMPTY, SlotState::ALIVE,
+    for (const auto &transition: transitions) {
+        for (const auto state: {SlotState::EMPTY, SlotState::ALIVE,
                  SlotState::RESPAWNING, SlotState::SLOT_OUT}) {
             if (state == transition.from)
                 continue;
-            SCOPED_TRACE(transition.name + " from state "
-                + std::to_string(static_cast<int>(state)));
+            SCOPED_TRACE(transition.name + " from state " +
+                std::to_string(static_cast<int>(state)));
             PlayerRoster roster;
 
             reach(roster, state);
@@ -231,7 +229,7 @@ TEST_F(PlayerRosterLog, TransitionsRefuseAFreeSlotAndAnIdOutOfRange)
 {
     PlayerRoster roster;
 
-    for (const std::uint8_t id : {0, 4}) {
+    for (const std::uint8_t id: {0, 4}) {
         SCOPED_TRACE(static_cast<int>(id));
         _output.str("");
         EXPECT_FALSE(roster.join(id, "Bob", LIVES));

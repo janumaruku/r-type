@@ -5,12 +5,12 @@
 ** NullAudioTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/audio/NullAudio.hpp"
 
+#include <gtest/gtest.h>
 #include <memory>
 
 #include "engine/audio/IAudio.hpp"
-#include "engine/audio/NullAudio.hpp"
 
 using engine::audio::IAudio;
 using engine::audio::MusicId;
@@ -34,22 +34,25 @@ TEST(NullAudioTests, TheSamePathGivesTheSameId)
 {
     NullAudio audio;
 
-    EXPECT_EQ(audio.loadSound("sounds/shot.wav"), audio.loadSound("sounds/./shot.wav"));
-    EXPECT_EQ(audio.loadMusic("music/stage1.ogg"), audio.loadMusic("music/stage1.ogg"));
+    EXPECT_EQ(audio.loadSound("sounds/shot.wav"),
+        audio.loadSound("sounds/./shot.wav"));
+    EXPECT_EQ(audio.loadMusic("music/stage1.ogg"),
+        audio.loadMusic("music/stage1.ogg"));
 }
 
 TEST(NullAudioTests, MusicsGetDistinctIds)
 {
     NullAudio audio;
 
-    EXPECT_NE(audio.loadMusic("music/stage1.ogg"), audio.loadMusic("music/stage2.ogg"));
+    EXPECT_NE(audio.loadMusic("music/stage1.ogg"),
+        audio.loadMusic("music/stage2.ogg"));
 }
 
 TEST(NullAudioTests, PlayingStoppingAndUpdatingDoNotThrow)
 {
     const std::unique_ptr<IAudio> audio = std::make_unique<NullAudio>();
-    const SoundId shot = audio->loadSound("sounds/shot.wav");
-    const MusicId stage = audio->loadMusic("music/stage1.ogg");
+    const SoundId shot                  = audio->loadSound("sounds/shot.wav");
+    const MusicId stage                 = audio->loadMusic("music/stage1.ogg");
 
     EXPECT_NO_THROW(audio->playSound(shot, 1.0F));
     EXPECT_NO_THROW(audio->playSound(SoundId{999}, 1.0F));

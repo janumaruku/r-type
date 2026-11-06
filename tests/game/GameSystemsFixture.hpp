@@ -8,10 +8,9 @@
 #ifndef R_TYPE_GAMESYSTEMSFIXTURE_HPP
 #define R_TYPE_GAMESYSTEMSFIXTURE_HPP
 
-#include <gtest/gtest.h>
-
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <optional>
 #include <stdexcept>
 #include <variant>
@@ -35,7 +34,7 @@ namespace game_tests {
 
 enum class Stage : std::uint8_t { SIMULATION };
 
-inline constexpr float DT = 1.0F / 60.0F;
+inline constexpr float DT           = 1.0F / 60.0F;
 inline constexpr std::uint32_t SEED = 7;
 
 /*
@@ -74,17 +73,17 @@ protected:
 
     void addSineMoverSystem()
     {
-        _registry.addSystem<rtype::game::SineMover, rtype::game::Velocity>(
-            Stage::SIMULATION, "sineMoverSystem",
+        _registry.addSystem<rtype::game::SineMover,
+            rtype::game::Velocity>(Stage::SIMULATION, "sineMoverSystem",
             rtype::game::sineMoverSystem);
     }
 
     void addAimedShooterSystem()
     {
-        _registry.addSystem<rtype::game::AimedShooter,
-            const rtype::game::Transform, rtype::game::Weapon>(
-            Stage::SIMULATION, "aimedShooterSystem",
-            rtype::game::aimedShooterSystem);
+        _registry
+            .addSystem<rtype::game::AimedShooter, const rtype::game::Transform,
+                rtype::game::Weapon>(Stage::SIMULATION, "aimedShooterSystem",
+                rtype::game::aimedShooterSystem);
     }
 
     void addWeaponSystem()
@@ -104,8 +103,8 @@ protected:
     void addCollisionSystem()
     {
         _registry.addSystem<const rtype::game::Collider,
-            const rtype::game::Transform, rtype::game::Health>(
-            Stage::SIMULATION, "collisionSystem",
+            const rtype::game::Transform,
+            rtype::game::Health>(Stage::SIMULATION, "collisionSystem",
             rtype::game::collisionSystem);
     }
 
@@ -160,8 +159,8 @@ protected:
     */
     engine::ecs::Entity spawnAliveShip(const std::uint8_t lives = 3)
     {
-        auto &players = roster();
-        const std::uint8_t playerId = players.reserve().value();
+        auto &players                  = roster();
+        const std::uint8_t playerId    = players.reserve().value();
         const engine::ecs::Entity ship = _registry.spawnEntity();
 
         EXPECT_TRUE(players.join(playerId, "player", lives));
@@ -195,8 +194,8 @@ protected:
     {
         const engine::ecs::Entity missile = _registry.spawnEntity();
 
-        (void)rtype::game::makeEnemyMissile(_registry, missile, owner,
-            position, {-1.0F, 0.0F});
+        (void)rtype::game::makeEnemyMissile(_registry, missile, owner, position,
+            {-1.0F, 0.0F});
         return missile;
     }
 
@@ -222,7 +221,7 @@ protected:
         std::size_t count = 0;
 
         for ([[maybe_unused]] auto &&[entity, found]:
-             _registry.indexedView<const Component>())
+            _registry.indexedView<const Component>())
             ++count;
         return count;
     }
@@ -238,11 +237,11 @@ protected:
         component<rtype::game::Transform>(entity).position = position;
     }
 
-    [[nodiscard]] std::optional<engine::ecs::Entity> find(
-        const rtype::game::NetId netId)
+    [[nodiscard]] std::optional<engine::ecs::Entity> find(const rtype::game::
+            NetId netId)
     {
-        return _registry.getResource<rtype::game::NetIdAllocator>().find(
-            netId, _registry);
+        return _registry.getResource<rtype::game::NetIdAllocator>().find(netId,
+            _registry);
     }
 
     /*
@@ -287,7 +286,7 @@ protected:
         std::vector<engine::ecs::Entity> found;
 
         for (auto &&[entity, replicated]:
-             _registry.indexedView<const rtype::game::Replicated>())
+            _registry.indexedView<const rtype::game::Replicated>())
             if (replicated.kind == rtype::game::EntityKind::BYDOS_SLAVE)
                 found.push_back(entity);
         return found;
@@ -296,8 +295,8 @@ protected:
     /*
     ** The slot of a reserved player. Throws, failing the test, if it's free.
     */
-    [[nodiscard]] const rtype::game::PlayerSlot &slot(
-        const std::uint8_t playerId)
+    [[nodiscard]] const rtype::game::PlayerSlot &slot(const std::uint8_t
+            playerId)
     {
         const auto *found = roster().get(playerId);
 
@@ -315,8 +314,8 @@ protected:
     }
 
     template <typename Event>
-    [[nodiscard]] static std::size_t countOf(
-        const std::vector<rtype::game::GameEvent> &events)
+    [[nodiscard]] static std::size_t countOf(const std::vector<
+        rtype::game::GameEvent> &events)
     {
         std::size_t count = 0;
 
@@ -332,7 +331,7 @@ protected:
         std::vector<Event> kept;
 
         for (const auto &event:
-             _registry.getResource<rtype::game::EventOutbox>().drain())
+            _registry.getResource<rtype::game::EventOutbox>().drain())
             if (const auto *found = std::get_if<Event>(&event))
                 kept.push_back(*found);
         return kept;
@@ -342,6 +341,6 @@ protected:
     rtype::game::Rules _rules;
 };
 
-}
+} // namespace game_tests
 
-#endif //R_TYPE_GAMESYSTEMSFIXTURE_HPP
+#endif // R_TYPE_GAMESYSTEMSFIXTURE_HPP

@@ -22,17 +22,6 @@
 
 namespace rtype::client {
 
-class SpriteCatalog;
-
-// Remove this after RTP-128 is merged
-struct Animation {
-    SpriteDefId def;
-    std::uint8_t state = 0;
-    std::size_t index  = 0;
-    float timer        = 0.0F;
-};
-///////////////////////////////////////
-
 class ClientWorld {
 public:
     explicit ClientWorld(SpriteCatalog sprites);
@@ -43,12 +32,14 @@ public:
     void setLocalPlayer(std::uint8_t playerId) noexcept;
     void setLastProcessedInput(std::uint32_t sequence) noexcept;
 
-    void bindEntityComponents(std::uint32_t tick, const protocol::EntityState &state,
-        SpriteCatalog &catalog, SpriteKey spriteKey, const NetSample &sample);
+    void bindEntityComponents(std::uint32_t tick,
+        const protocol::EntityState &state, SpriteCatalog &catalog,
+        SpriteKey spriteKey, const NetSample &sample);
 
     [[nodiscard]] std::optional<engine::ecs::Entity> find(game::NetId netId)
         const;
     [[nodiscard]] std::optional<engine::ecs::Entity> localShip() const;
+    [[nodiscard]] game::NetId localShipNetId() const noexcept;
     [[nodiscard]] const std::array<protocol::PlayerInfo, 4> &roster()
         const noexcept;
     [[nodiscard]] std::uint32_t latestServerTick() const noexcept;

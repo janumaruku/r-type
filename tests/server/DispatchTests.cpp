@@ -1,16 +1,16 @@
+#include <algorithm>
 #include <gtest/gtest.h>
 
-#include <algorithm>
 #include "ServerTestHelpers.hpp"
 
 namespace {
 
-namespace game = rtype::game;
+namespace game  = rtype::game;
 namespace proto = rtype::protocol;
-using server_test::Fixture;
 using server_test::datagram;
 using server_test::datagramWithVersion;
 using server_test::endpointFor;
+using server_test::Fixture;
 using server_test::readMessage;
 using namespace std::chrono_literals;
 
@@ -47,7 +47,8 @@ TEST(DispatchTests, HelloCreatesSessionSendsWelcomeAndJoinsWorld)
 
     ASSERT_EQ(fixture.sessions.size(), 1U);
     ASSERT_NE(fixture.sessions.find(from), nullptr);
-    EXPECT_EQ(fixture.world.roster().get(0)->state, game::SlotState::RESPAWNING);
+    EXPECT_EQ(fixture.world.roster().get(0)->state,
+        game::SlotState::RESPAWNING);
     const auto responses = server_test::receive(fixture.client, 1);
     ASSERT_EQ(responses.size(), 1U);
     const auto welcome = readMessage<proto::Welcome>(responses.front());
@@ -60,7 +61,7 @@ TEST(DispatchTests, HelloCreatesSessionSendsWelcomeAndJoinsWorld)
 TEST(DispatchTests, SameHelloRepairsWelcomeWithoutCreatingSession)
 {
     Fixture fixture;
-    const auto from = fixture.client.local_endpoint();
+    const auto from  = fixture.client.local_endpoint();
     const auto hello = datagram(from, proto::MessageType::HELLO,
         proto::Hello{.playerName = "Alice"});
     fixture.send(hello);
@@ -72,7 +73,7 @@ TEST(DispatchTests, SameHelloRepairsWelcomeWithoutCreatingSession)
 TEST(DispatchTests, SessionDatagramsAreNumberedFromOne)
 {
     Fixture fixture;
-    const auto from = fixture.client.local_endpoint();
+    const auto from  = fixture.client.local_endpoint();
     const auto hello = datagram(from, proto::MessageType::HELLO,
         proto::Hello{.playerName = "Alice"});
 
@@ -110,8 +111,8 @@ TEST(DispatchTests, ShutdownGoesToEverySessionThreeTimesTwentyMsApart)
     fixture.sessions.add(from, 0, "Alice", fixture.now);
     fixture.sessions.add(endpointFor(30), 1, "Bob", fixture.now);
 
-    const auto start = std::chrono::steady_clock::now();
-    const auto sent = fixture.adapter.broadcastShutdown();
+    const auto start   = std::chrono::steady_clock::now();
+    const auto sent    = fixture.adapter.broadcastShutdown();
     const auto elapsed = std::chrono::steady_clock::now() - start;
 
     EXPECT_EQ(sent, 6U);
@@ -123,8 +124,7 @@ TEST(DispatchTests, ShutdownGoesToEverySessionThreeTimesTwentyMsApart)
     for (std::uint32_t copy = 0; copy != 3; ++copy) {
         EXPECT_EQ(server_test::readHeader(shutdowns[copy]).type,
             proto::MessageType::SHUTDOWN);
-        EXPECT_EQ(server_test::readHeader(shutdowns[copy]).sequence,
-            copy + 1);
+        EXPECT_EQ(server_test::readHeader(shutdowns[copy]).sequence, copy + 1);
     }
     EXPECT_TRUE(server_test::receive(fixture.client, 1, 50ms).empty());
 }
@@ -234,11 +234,12 @@ TEST(DispatchTests, ElevenMalformedDatagramsKickTheSession)
     fixture.send(datagram(from, proto::MessageType::HELLO,
         proto::Hello{.playerName = "Player"}));
     ASSERT_EQ(server_test::receive(fixture.client, 1).size(), 1U);
-    const auto malformed = datagram(from, proto::MessageType::INPUT,
-        proto::Input{});
+    const auto malformed =
+        datagram(from, proto::MessageType::INPUT, proto::Input{});
     for (int i = 0; i != 11; ++i)
         fixture.send({std::vector<std::uint8_t>(malformed.bytes.begin(),
-            malformed.bytes.end() - 1), from});
+                          malformed.bytes.end() - 1),
+            from});
     EXPECT_EQ(fixture.sessions.find(from), nullptr);
     EXPECT_EQ(fixture.adapter.stats().totalTruncated, 11U)
         << "each bad datagram is counted once, not twice";
@@ -258,8 +259,8 @@ TEST(DispatchTests, DisconnectCopiesAreIdempotent)
     const auto from = endpointFor(8);
     fixture.send(datagram(from, proto::MessageType::HELLO,
         proto::Hello{.playerName = "Player"}));
-    const auto disconnect = datagram(from, proto::MessageType::DISCONNECT,
-        proto::Disconnect{});
+    const auto disconnect =
+        datagram(from, proto::MessageType::DISCONNECT, proto::Disconnect{});
     fixture.send(disconnect);
     fixture.send(disconnect);
     fixture.send(disconnect);
@@ -276,8 +277,7 @@ TEST(DispatchTests, ThreeFloodedSecondsKickTheSession)
     std::uint32_t sequence = 0;
 
     for (int second = 0; second != 3; ++second) {
-        fixture.now = rtype::server::TimePoint{} +
-            std::chrono::seconds(second);
+        fixture.now = rtype::server::TimePoint{} + std::chrono::seconds(second);
         for (int packet = 0; packet != 300; ++packet)
             fixture.send(datagram(from, proto::MessageType::INPUT,
                 proto::Input{.inputSequence = ++sequence}));
@@ -285,17 +285,20 @@ TEST(DispatchTests, ThreeFloodedSecondsKickTheSession)
             const auto *const session = fixture.sessions.find(from);
 
             ASSERT_NE(session, nullptr);
-            EXPECT_EQ(fixture.world.roster().get(session->playerId)
-                    ->lastInputSequence, 240U)
+            EXPECT_EQ(fixture.world.roster()
+                          .get(session->playerId)
+                          ->lastInputSequence,
+                240U)
                 << "the 60 INPUTs over 240 in one second are dropped";
         }
-        if (second == 1)
+        if (second == 1) {
             EXPECT_NE(fixture.sessions.find(from), nullptr)
                 << "2 flooded seconds aren't enough to kick";
+        }
     }
     EXPECT_EQ(fixture.sessions.find(from), nullptr);
     EXPECT_EQ(fixture.adapter.stats().totalKicked, 1U);
     expectKickOnThreeTicks(fixture, proto::KickReason::RATE_LIMITED);
 }
 
-}
+} // namespace

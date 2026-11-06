@@ -25,4 +25,4 @@ std::size_t EventOutbox::size() const noexcept
 {
     return _events.size();
 }
-}
+} // namespace rtype::game

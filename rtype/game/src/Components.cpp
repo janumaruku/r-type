@@ -29,4 +29,4 @@ void registerComponents(engine::ecs::Registry &registry)
     registry.registerComponent<DespawnOutsidePlayfield>();
     registry.registerComponent<ScoreValue>();
 }
-}
+} // namespace rtype::game

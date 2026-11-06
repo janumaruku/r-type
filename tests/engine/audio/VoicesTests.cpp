@@ -5,12 +5,12 @@
 ** VoicesTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/audio/Voices.hpp"
 
 #include <array>
+#include <gtest/gtest.h>
 #include <vector>
 
-#include "engine/audio/Voices.hpp"
 #include "engine/core/Errors.hpp"
 
 using engine::audio::chooseVoice;
@@ -25,21 +25,24 @@ TEST(VoicesTests, NoneIsPlayingSoTheFirstIsChosen)
 
 TEST(VoicesTests, TheFirstFreeVoiceIsChosen)
 {
-    const std::array<Voice, 5> voices{{{true, 0}, {true, 1}, {false, 0}, {false, 0}, {false, 0}}};
+    const std::array<Voice, 5> voices{
+        {{true, 0}, {true, 1}, {false, 0}, {false, 0}, {false, 0}}};
 
     EXPECT_EQ(chooseVoice(voices), 2U);
 }
 
 TEST(VoicesTests, AFreeVoiceWinsOverAnOlderPlayingOne)
 {
-    const std::array<Voice, 5> voices{{{true, 7}, {true, 2}, {true, 9}, {true, 5}, {false, 0}}};
+    const std::array<Voice, 5> voices{
+        {{true, 7}, {true, 2}, {true, 9}, {true, 5}, {false, 0}}};
 
     EXPECT_EQ(chooseVoice(voices), 4U);
 }
 
 TEST(VoicesTests, AllPlayingSoTheOneThatStartedFirstIsCut)
 {
-    const std::array<Voice, 5> voices{{{true, 4}, {true, 2}, {true, 5}, {true, 1}, {true, 3}}};
+    const std::array<Voice, 5> voices{
+        {{true, 4}, {true, 2}, {true, 5}, {true, 1}, {true, 3}}};
 
     EXPECT_EQ(chooseVoice(voices), 3U);
 }

@@ -15,26 +15,30 @@ namespace rtype::client {
 class SnapshotCommand: public IGameCommand {
 public:
     bool execute(ClientNetworkAdapter &adapter, net::Packet &packet) override;
-    bool operator()(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    bool operator()(ClientNetworkAdapter &adapter,
+        net::Packet &packet) override;
     static std::unique_ptr<IGameCommand> create();
 };
 
 class EventCommand: public IGameCommand {
 public:
     bool execute(ClientNetworkAdapter &adapter, net::Packet &packet) override;
-    bool operator()(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    bool operator()(ClientNetworkAdapter &adapter,
+        net::Packet &packet) override;
     static std::unique_ptr<IGameCommand> create();
 };
 class ShutdownCommand: public IGameCommand {
 public:
     bool execute(ClientNetworkAdapter &adapter, net::Packet &packet) override;
-    bool operator()(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    bool operator()(ClientNetworkAdapter &adapter,
+        net::Packet &packet) override;
     static std::unique_ptr<IGameCommand> create();
 };
 class KickCommand: public IGameCommand {
 public:
     bool execute(ClientNetworkAdapter &adapter, net::Packet &packet) override;
-    bool operator()(ClientNetworkAdapter &adapter, net::Packet &packet) override;
+    bool operator()(ClientNetworkAdapter &adapter,
+        net::Packet &packet) override;
     static std::unique_ptr<IGameCommand> create();
 };
 

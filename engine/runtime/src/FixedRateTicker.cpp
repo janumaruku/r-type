@@ -17,8 +17,8 @@ namespace {
 constexpr std::chrono::milliseconds MAX_LATENESS{250};
 }
 
-FixedRateTicker::FixedRateTicker(std::chrono::nanoseconds period)
-    : _period(period), _next(Clock::now() + period)
+FixedRateTicker::FixedRateTicker(std::chrono::nanoseconds period):
+    _period(period), _next(Clock::now() + period)
 {
     if (_period <= std::chrono::nanoseconds::zero())
         throw core::EngineError("FixedRateTicker: the period must be > 0");
@@ -35,8 +35,8 @@ void FixedRateTicker::waitNext()
     if (const TimePoint now = Clock::now(); now - _next > MAX_LATENESS) {
         const auto late =
             std::chrono::duration_cast<std::chrono::milliseconds>(now - _next);
-        _logger.warn("tick {} is {} ms late, skipping the missed ticks",
-            _tick, late.count());
+        _logger.warn("tick {} is {} ms late, skipping the missed ticks", _tick,
+            late.count());
         _next = now;
         ++_overruns;
     } else {
@@ -56,4 +56,4 @@ std::uint64_t FixedRateTicker::overruns() const noexcept
     return _overruns;
 }
 
-}
+} // namespace engine::runtime

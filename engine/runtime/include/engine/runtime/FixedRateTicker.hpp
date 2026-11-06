@@ -28,10 +28,10 @@ public:
 private:
     std::chrono::nanoseconds _period;
     TimePoint _next;
-    std::uint32_t _tick = 0;
+    std::uint32_t _tick     = 0;
     std::uint64_t _overruns = 0;
     core::log::Logger _logger{"runtime"};
 };
-}
+} // namespace engine::runtime
 
 #endif

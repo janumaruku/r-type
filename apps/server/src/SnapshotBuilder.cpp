@@ -20,8 +20,8 @@ namespace {
 ** Goes through toProtocol, the one place that maps a ReplicatedEntity, so
 ** no field (the variant, the player's colour) can be forgotten here.
 */
-std::vector<protocol::EntityState> convertEntities(
-    const std::vector<game::ReplicatedEntity> &entities)
+std::vector<protocol::EntityState> convertEntities(const std::vector<
+    game::ReplicatedEntity> &entities)
 {
     std::vector<protocol::EntityState> result;
 
@@ -32,17 +32,18 @@ std::vector<protocol::EntityState> convertEntities(
         });
     return result;
 }
-}
+} // namespace
 
-std::vector<protocol::Snapshot> &SnapshotBuilder::build(
-    const game::GameWorld &world)
+std::vector<protocol::Snapshot> &SnapshotBuilder::build(const game::GameWorld
+        &world)
 {
     world.collectReplicated(_entities);
     const auto roster = rosterToProtocol(world.roster());
     protocol::Snapshot s{
-        .serverTick = world.tick(),
+        .serverTick         = world.tick(),
         .lastProcessedInput = 0,
-        .roster = std::vector<protocol::PlayerInfo>(roster.begin(), roster.end()),
+        .roster =
+            std::vector<protocol::PlayerInfo>(roster.begin(), roster.end()),
         .entities = convertEntities(_entities),
     };
     _chunks = protocol::splitSnapshot(s);

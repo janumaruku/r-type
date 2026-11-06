@@ -22,9 +22,9 @@ public:
     [[nodiscard]] bool update(float dt);
 
 private:
-    Phase _phase = Phase::PLAYING;
+    Phase _phase      = Phase::PLAYING;
     float _untilReset = 0.0F;
 };
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_GAME_PHASE_HPP
+#endif // R_TYPE_GAME_PHASE_HPP

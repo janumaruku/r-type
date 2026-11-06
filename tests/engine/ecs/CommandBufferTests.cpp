@@ -5,15 +5,15 @@
 ** CommandBufferTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/CommandBuffer.hpp"
 
+#include <gtest/gtest.h>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
 
 #include "engine/core/Errors.hpp"
-#include "engine/ecs/CommandBuffer.hpp"
 #include "engine/ecs/Registry.hpp"
 
 using engine::core::EngineError;
@@ -101,7 +101,7 @@ TEST_F(CommandBufferTest, RemoveThenAddLeavesOneComponent)
 
 TEST_F(CommandBufferTest, TwoKillsOfOneEntityKillItOnce)
 {
-    const Entity first = _registry.spawnEntity();
+    const Entity first  = _registry.spawnEntity();
     const Entity second = _registry.spawnEntity();
 
     _buffer.kill(first);
@@ -304,11 +304,11 @@ TEST_F(CommandBufferTest, ACommandCanRecordIntoTheRegistryBuffer)
 {
     Entity spawned = Entity::NONE;
 
-    _registry.commands().spawn(
-        [&spawned](Registry &registry, const Entity &entity) {
-            spawned = entity;
-            registry.commands().add(entity, Health{2});
-        });
+    _registry.commands().spawn([&spawned](Registry &registry,
+                                   const Entity &entity) {
+        spawned = entity;
+        registry.commands().add(entity, Health{2});
+    });
     _registry.applyCommands();
 
     ASSERT_TRUE(_registry.isAlive(spawned));

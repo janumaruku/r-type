@@ -5,9 +5,9 @@
 #include <chrono>
 #include <cstdint>
 
+#include "engine/runtime/FixedRateTicker.hpp"
 #include "ServerConfig.hpp"
 #include "ServerNetworkAdapter.hpp"
-#include "engine/runtime/FixedRateTicker.hpp"
 
 namespace rtype::server {
 
@@ -31,7 +31,7 @@ public:
      */
     ServerApp(ServerConfig config, const std::atomic<bool> &stopRequested);
 
-    ServerApp(const ServerApp &) = delete;
+    ServerApp(const ServerApp &)            = delete;
     ServerApp &operator=(const ServerApp &) = delete;
 
     [[nodiscard]] std::uint16_t port() const noexcept;
@@ -69,6 +69,6 @@ private:
     engine::core::log::Logger _logger{"ServerApp"};
 };
 
-}
+} // namespace rtype::server
 
 #endif

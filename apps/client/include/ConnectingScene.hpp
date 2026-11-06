@@ -8,12 +8,12 @@
 #ifndef R_TYPE_CONNECTING_SCENE_HPP
 #define R_TYPE_CONNECTING_SCENE_HPP
 
+#include "../../../engine/render/include/engine/render/RenderQueue.hpp"
 #include "ClientConfig.hpp"
 #include "ClientDispatch.hpp"
-#include "../../../engine/render/include/engine/render/RenderQueue.hpp"
+#include "rtype/protocol/Messages.hpp"
 #include "Scenes.hpp"
 #include "ServerLink.hpp"
-#include "rtype/protocol/Messages.hpp"
 
 namespace rtype::client {
 
@@ -39,8 +39,7 @@ public:
      * WELCOME, to a message on REJECT, a start error or after 5 s of
      * silence, and out on QUIT. Resends HELLO every 0.5 s meanwhile.
      */
-    [[nodiscard]] SceneRequest update(FrameContext &context,
-        float dt) override;
+    [[nodiscard]] SceneRequest update(FrameContext &context, float dt) override;
 
     /**
      * @brief "Connecting to host:port..." with the seconds waited, on the
@@ -59,7 +58,7 @@ private:
     std::unique_ptr<ServerLink> _link;
     ConnectCommandFactory _commands;
     float _sinceHello = 0.0F;
-    float _elapsed = 0.0F;
+    float _elapsed    = 0.0F;
     std::optional<protocol::Welcome> _welcome;
     std::optional<protocol::RejectReason> _rejected;
     std::optional<std::string> _startError;
@@ -100,16 +99,13 @@ class GameScene: public IScene {
 public:
     GameScene(std::unique_ptr<ServerLink> link, protocol::Welcome welcome):
         _link(std::move(link)), _welcome(welcome)
-    {
-    }
+    {}
 
     void onEnter([[maybe_unused]] FrameContext &context) override
-    {
-    }
+    {}
 
     void onExit([[maybe_unused]] FrameContext &context) override
-    {
-    }
+    {}
 
     [[nodiscard]] SceneRequest update([[maybe_unused]] FrameContext &context,
         [[maybe_unused]] float dt) override
@@ -119,8 +115,7 @@ public:
 
     void draw([[maybe_unused]] engine::render::RenderQueue &queue,
         [[maybe_unused]] const FrameContext &context) override
-    {
-    }
+    {}
 
     [[nodiscard]] const ServerLink &link() const noexcept
     {
@@ -136,6 +131,6 @@ private:
     std::unique_ptr<ServerLink> _link;
     protocol::Welcome _welcome;
 };
-}
+} // namespace rtype::client
 
-#endif //R_TYPE_CONNECTING_SCENE_HPP
+#endif // R_TYPE_CONNECTING_SCENE_HPP

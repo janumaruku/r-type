@@ -6,7 +6,6 @@
 */
 
 #include <gtest/gtest.h>
-
 #include <vector>
 
 #include "GameSystemsFixture.hpp"
@@ -41,7 +40,7 @@ protected:
     */
     Leftovers loseTheGame()
     {
-        const Entity first = spawnAliveShip(1);
+        const Entity first  = spawnAliveShip(1);
         const Entity second = spawnAliveShip(1);
 
         EXPECT_TRUE(roster().addScore(0, 100));
@@ -54,7 +53,7 @@ protected:
         const Entity bydos = spawnBydos({900.0F, 300.0F});
 
         return {.bydos = bydos,
-            .missile = spawnEnemyMissile(netIdOf(bydos), {700.0F, 300.0F})};
+            .missile   = spawnEnemyMissile(netIdOf(bydos), {700.0F, 300.0F})};
     }
 
     void expectRestartedSlot(const std::uint8_t playerId)

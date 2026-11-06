@@ -11,6 +11,12 @@ rtype_add_test(client_tests
         ClientConfigTests.cpp
         ClientSettingsTests.cpp
         KeybindingsFileTests.cpp
+        AnimationTests.cpp
+        RenderSystemTests.cpp
+        StarfieldTests.cpp
+        AudioReactorTests.cpp
+        EffectsReactorTests.cpp
+        HudTests.cpp
 )
 
 target_compile_definitions(client_tests PRIVATE

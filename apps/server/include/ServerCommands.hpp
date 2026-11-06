@@ -46,7 +46,6 @@ public:
 
     bool operator()(ServerNetworkAdapter &adapter,
         IncomingMessage &message) override;
-
 };
 
 class InputCommand: public IServerCommand {
@@ -58,7 +57,6 @@ public:
 
     bool operator()(ServerNetworkAdapter &adapter,
         IncomingMessage &message) override;
-
 };
 
 class DisconnectCommand: public IServerCommand {
@@ -70,7 +68,6 @@ public:
 
     bool operator()(ServerNetworkAdapter &adapter,
         IncomingMessage &message) override;
-
 };
 } // namespace rtype::server
 #endif
