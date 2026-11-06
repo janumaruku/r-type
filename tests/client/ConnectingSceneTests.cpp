@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "ConnectingScene.hpp"
+#include "GameScene.hpp"
 #include "LoopbackHelpers.hpp"
 #include "engine/audio/NullAudio.hpp"
 #include "engine/core/Logger.hpp"
@@ -194,13 +195,17 @@ TEST_F(Connecting, WelcomeSwitchesToTheGameSceneWithThatPlayerId)
 
     ASSERT_EQ(request.kind, SceneRequest::Kind::CHANGE);
 
-    const auto *game = dynamic_cast<const GameScene *>(request.next.get());
+    auto *game = dynamic_cast<GameScene *>(request.next.get());
 
     ASSERT_NE(game, nullptr);
-    EXPECT_EQ(game->welcome().playerId, 2);
-    EXPECT_EQ(game->link().server, loopbackOf(_server));
-    EXPECT_EQ(game->link().socket.localEndpoint().port(), hello.from.port());
+    EXPECT_EQ(game->playerId(), 2);
     scene.onExit(_context);
+    game->onExit(_context);
+
+    const auto goodbyes = waitForDatagrams(_server, 3);
+
+    ASSERT_EQ(goodbyes.size(), 3U);
+    EXPECT_EQ(goodbyes.front().from.port(), hello.from.port());
 }
 
 TEST_F(Connecting, SilentServerGetsTenHellosThenServerUnreachable)
@@ -281,7 +286,7 @@ TEST_F(Connecting, WelcomeFromAnotherAddressIsIgnored)
     const auto *game = dynamic_cast<const GameScene *>(request.next.get());
 
     ASSERT_NE(game, nullptr);
-    EXPECT_EQ(game->welcome().playerId, 1);
+    EXPECT_EQ(game->playerId(), 1);
     EXPECT_EQ(droppedLines(), 0U);
 }
 
