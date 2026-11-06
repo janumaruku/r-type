@@ -53,7 +53,7 @@ public:
         const noexcept;
     [[nodiscard]] std::uint32_t latestServerTick() const noexcept;
     [[nodiscard]] std::uint32_t lastProcessedInput() const noexcept;
-    [[nodiscard]] bool rosterChangedSinceLastCall() const noexcept;
+    [[nodiscard]] bool rosterChangedSinceLastCall() noexcept;
     [[nodiscard]] engine::ecs::Registry &registry() noexcept;
 
 private:
