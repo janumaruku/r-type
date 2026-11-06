@@ -17,7 +17,6 @@
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
 #include "engine/render/RenderQueue.hpp"
-#include "rtype/game/Motion.hpp"
 
 namespace rtype::client {
 namespace {
@@ -73,8 +72,6 @@ void GameScene::onEnter([[maybe_unused]] FrameContext &context)
 /*
 ** The 5 steps of client.md § Frame loop: quit, receive, send the inputs at
 ** 60 Hz, check the connection, then run the UPDATE stage.
-** TODO(RTP-127): _prediction.record(_inputSequence, buttons, context.now)
-** after each sendInput.
 */
 SceneRequest GameScene::update(FrameContext &context, float dt)
 {
@@ -91,6 +88,7 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
             context.input);
 
         _adapter.sendInput(++_inputSequence, buttons);
+        _prediction.record(_inputSequence, buttons, context.now);
         stepLocalShip(buttons);
     }
     if (_adapter.leaveCause() != LeaveCause::NO_CAUSE) {
@@ -158,9 +156,8 @@ void GameScene::stepLocalShip(std::uint8_t buttons)
     auto *transform = _world.registry().getComponent<game::Transform>(*ship);
 
     if (transform != nullptr)
-        transform->position = game::movePlayer(transform->position,
-            game::InputButtons{.bits = buttons},
-            static_cast<float>(_inputStep.step()), _rules);
+        transform->position = _prediction.step(transform->position, buttons,
+            _rules);
 }
 
 void GameScene::receive(TimePoint now)
