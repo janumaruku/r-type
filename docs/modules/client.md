@@ -139,8 +139,10 @@ classDiagram
         +applyRoster(std::span~const protocol::PlayerInfo~) void
         +removeNotSeenSince(uint32_t tick) void
         +find(NetId) std::optional~Entity~
-        +localShip(uint8_t playerId) std::optional~Entity~
+        +setLocalPlayer(uint8_t playerId) void
+        +localShip() std::optional~Entity~
         +registry() ecs::Registry&
+        -tagLocalShip() void
     }
     class EventFilter {
         -std::deque~uint32_t~ _recent
@@ -270,7 +272,7 @@ These live in `apps/client/` because they refer to `render::TextureId`, which th
 | `Animation` | `SpriteDefId def`, `uint8_t state`, `size_t index`, `float timer`. The frames, the frame time and `loop` stay in the catalog's `SpriteDef`: the component holds the entry's id and a state index, so it's plain data with no pointers, and spawning an entity copies no vectors |
 | `ShipTilt` | `float lastY`, `int8_t direction`, `float heldTime`. On player ships only: `shipTiltSystem` picks `idle`, `up` then `top`, or `down` then `bottom` from the drawn vertical speed (over 20 u/s, the full tilt after 0.15 s) |
 | `NetSamples` | Ring of the last 3 `{uint32_t tick, Vec2f position, Vec2f velocity}`, plus `uint32_t lastSeenTick` |
-| `LocalPlayer` | Tag on the ship whose NetId equals the roster's `shipNetId` for our `playerId` |
+| `LocalPlayer` | Tag on the ship whose NetId equals the roster's `shipNetId` for our `playerId`. `ClientWorld` moves it after every `applyRoster` and after `applyEntity` creates an entity, since the roster can name the ship before or after its first snapshot, and a respawn gives a new NetId. `interpolationSystem` skips the tagged ship, which `GameScene` moves itself on each input step |
 | `PlayerLabel` | `uint8_t playerId`, drawn as `P1`–`P4` above the ship |
 | `TransientEffect` | `float remaining`: explosions, which are never replicated |
 

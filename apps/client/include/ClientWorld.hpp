@@ -57,6 +57,8 @@ public:
     [[nodiscard]] engine::ecs::Registry &registry() noexcept;
 
 private:
+    void tagLocalShip();
+
     engine::ecs::Registry _registry;
     std::unordered_map<game::NetId, engine::ecs::Entity> _byNetId;
     std::array<protocol::PlayerInfo, 4> _roster{};
@@ -66,4 +68,4 @@ private:
     bool _rosterChanged               = false;
 };
 } // namespace rtype::client
-#endif /* !CLIENT_WORLD_HPP_ */
+#endif // CLIENT_WORLD_HPP
