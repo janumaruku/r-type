@@ -32,6 +32,7 @@ private:
     [[nodiscard]] SceneRequest leaveFor(LeaveCause cause) const;
     void receive(TimePoint now);
     void advanceRenderClock(float dt);
+    void stepLocalShip(std::uint8_t buttons);
 
     std::unique_ptr<ServerLink> _link;
     std::uint8_t _playerId;
