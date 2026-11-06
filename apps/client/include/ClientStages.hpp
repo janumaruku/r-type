@@ -12,10 +12,13 @@
 
 namespace rtype::client
 {
-
-    enum class ClientStage : std::uint8_t {
-        UPDATE, RENDER
-    };
-
+enum class ClientStage : std::uint8_t { UPDATE, RENDER };
+struct RenderClock {
+    std::uint32_t latestServerTick = 0;
+    float sinceLatestTick = 0.0F;
+    [[nodiscard]] float renderTick() const noexcept;
+};
+inline constexpr std::uint32_t INTERPOLATION_DELAY_TICKS = 6;
+inline constexpr float MAX_EXTRAPOLATION_TICKS = 6.0F;
 }
 #endif //R_TYPE_CLIENTSTAGES_HPP
