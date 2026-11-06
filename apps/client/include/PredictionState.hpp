@@ -16,6 +16,10 @@
 #include "engine/core/Vec2.hpp"
 #include "engine/core/Logger.hpp"
 // #include "ServerLink.hpp"
+// #include "ServerApp.hpp"
+// #include "ClientWorld.hpp"
+
+
 
 namespace rtype::client {
     struct PendingInput {
@@ -45,12 +49,11 @@ namespace rtype::client {
             std::uint32_t _lastPinged = 0;
     };
 
-        struct Correction {
-            std::optional<engine::core::Vec2f> target;
-        };
+    struct Correction {
+        std::optional<engine::core::Vec2f> target;
+    };
 
-        void predictionSystem(engine::ecs::Registry &registry);
-
+    void predictionSystem(engine::ecs::Registry &registry);
 
 
     class ConfigError: public std::runtime_error {
