@@ -94,12 +94,20 @@ classDiagram
     class GameScene {
         -std::unique_ptr~ServerLink~ _link
         -uint8_t _playerId
+        -GameEventBus _events
         -ClientWorld _world
         -ClientNetworkAdapter _adapter
         -PredictionState _prediction
         -runtime::FixedTimestep _inputStep
+        -uint32_t _inputSequence
+        -game::Rules _rules
+        -bool _leftByChoice
+        -bool _serverGone
         -Starfield _starfield
         -Hud _hud
+        +GameScene(std::unique_ptr~ServerLink~ link, protocol::Welcome welcome, SpriteCatalog const& sprites)
+        +playerId() uint8_t
+        -leaveFor(LeaveCause cause) SceneRequest
     }
     class MessageScene {
         -std::string _title
@@ -308,8 +316,10 @@ Each frame of `GameScene`, with `dt = frameClock.restart()` capped at 0.25 s:
 1. `window.pollEvents()` → `input.apply(e)`. `WINDOW_CLOSED` and the QUIT action send DISCONNECT and exit.
 2. `for (auto& d : link.socket.receiveAll()) adapter.handle(d, now)`.
 3. `inputStep.advance(dt)` returns *n*. For each of the *n* steps, sample the buttons from the action map, `sendInput(++sequence, buttons)`, `prediction.record(...)`, and move the local ship with `movePlayer(...)`. INPUT therefore goes out at exactly 60 Hz whatever the frame rate.
-4. If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
+4. If the server sent SHUTDOWN or KICK, switch to the `MessageScene` for that cause ("Server closed" or "Kicked"). If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
 5. Set the `DeltaTime` resource, run the `UPDATE` stage then the `RENDER` stage (which fills the `RenderQueue`), then `renderer.beginFrame / submit / endFrame`, and `audio.update()`.
+
+`GameScene::onExit` sends DISCONNECT (3 times, since UDP can lose it) when the player quits or the window closes. It doesn't after SHUTDOWN, KICK or a timeout: the server has already forgotten us, or can't be reached.
 
 **Interpolation for remote entities.** Everything except the local ship is drawn 100 ms in the past. That is `renderTick = latestServerTick − 6` ticks, so there are normally two snapshots to blend between. The position is a linear interpolation between the two samples on either side of `renderTick`. If the newer sample is missing (packet loss), the entity is extrapolated along its last velocity for at most 100 ms and then held in place. A new entity is drawn at its first sample until a second one arrives.
 
