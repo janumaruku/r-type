@@ -9,6 +9,7 @@
 #define R_TYPE_GAME_SCENE_HPP
 
 #include "ClientNetworkAdapter.hpp"
+#include "PredictionState.hpp"
 #include "Scenes.hpp"
 #include "ServerLink.hpp"
 #include "engine/runtime/FixedTimestep.hpp"
@@ -41,7 +42,7 @@ private:
     GameEventBus _events;
     ClientWorld _world;
     ClientNetworkAdapter _adapter;
-    // PredictionState _prediction;
+    PredictionState _prediction;
     engine::runtime::FixedTimestep _inputStep{1.0 / 60.0, 15};
     std::uint32_t _inputSequence = 0;
     game::Rules _rules;
