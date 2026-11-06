@@ -16,6 +16,7 @@ add_library(client_logic STATIC
         src/SnapshotAssembler.cpp
         src/SpriteCatalog.cpp
         src/PredictionState.cpp
+        src/PredictionSystem.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)

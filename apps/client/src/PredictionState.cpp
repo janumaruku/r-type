@@ -46,7 +46,7 @@ engine::core::Vec2f PredictionState::reconcile(
 }
 
 engine::core::Vec2f PredictionState::smooth(engine::core::Vec2f drawn,
-    engine::core::Vec2f corrected) const
+    engine::core::Vec2f corrected)
 {
     const engine::core::Vec2f gap = corrected - drawn;
 

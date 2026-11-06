@@ -44,8 +44,8 @@ public:
         std::uint32_t lastProcessed,
         const game::Rules &rules);
 
-    [[nodiscard]] engine::core::Vec2f smooth(engine::core::Vec2f drawn,
-        engine::core::Vec2f corrected) const;
+    [[nodiscard]] static engine::core::Vec2f smooth(engine::core::Vec2f drawn,
+        engine::core::Vec2f corrected);
 
     [[nodiscard]] std::optional<engine::runtime::TimePoint> sentAt(
         std::uint32_t sequence) const;

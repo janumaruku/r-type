@@ -289,7 +289,7 @@ The `GameScene` constructor registers these systems in `ClientWorld`'s registry,
 | Stage | System | Components | Status |
 | --- | --- | --- | --- |
 | `UPDATE` | `interpolationSystem` | `Transform`, `const NetSamples` | Registered (RTP-126) |
-| `UPDATE` | `predictionSystem` | | RTP-127 |
+| `UPDATE` | `predictionSystem` | The `LocalPlayer` ship's `Transform`, the `Correction` resource | Registered (RTP-127) |
 | `UPDATE` | `shipTiltSystem` | | RTP-128 |
 | `UPDATE` | `animationSystem` | | RTP-128 |
 | `UPDATE` | `effectSystem` | | RTP-128 |
@@ -304,6 +304,7 @@ The registry also holds these resources:
 | `SpriteCatalog` | `ClientWorld`'s constructor, a copy of `ClientApp`'s catalog | `animationSystem` and `shipTiltSystem` read it |
 | `RenderQueue` | `GameScene`'s constructor | The `RENDER` stage fills it |
 | `RenderClock` | `GameScene`'s constructor | `latestServerTick` and the time since it give `renderTick()`, the tick `interpolationSystem` draws |
+| `Correction` | `GameScene`'s constructor; `target` set by `GameScene` on each new server sample of our ship | `std::optional<Vec2f> target`, the corrected position *C* that `predictionSystem` eases our ship towards |
 | `engine::ecs::DeltaTime` | `GameScene`'s constructor, then every frame | The frame's `dt` |
 | `engine::core::Rng` | `GameScene`'s constructor, seeded with `Rng::randomSeed()` | Client-side randomness, such as effects |
 
@@ -323,16 +324,18 @@ Each frame of `GameScene`, with `dt = frameClock.restart()` capped at 0.25 s:
 
 **Interpolation for remote entities.** Everything except the local ship is drawn 100 ms in the past. That is `renderTick = latestServerTick − 6` ticks, so there are normally two snapshots to blend between. The position is a linear interpolation between the two samples on either side of `renderTick`. If the newer sample is missing (packet loss), the entity is extrapolated along its last velocity for at most 100 ms and then held in place. A new entity is drawn at its first sample until a second one arrives.
 
-**Prediction for the local ship.** On each SNAPSHOT that contains the local ship:
+**Prediction for the local ship.** `GameScene` owns a `PredictionState`. On each input step, it records the INPUT it sends (`prediction.record`) and moves our ship by one 1/60 s step with `prediction.step`, which calls the server's `movePlayer`. So the ship moves on the frame the key is pressed. Then, each frame right after receiving, `GameScene::reconcileLocalShip` checks whether the assembler completed a new tick (`lastCompleteTick()`). It waits for a complete tick because `lastProcessedInput` only comes with chunk 0: a chunk holding our ship can arrive before it, with *L* still from the previous snapshot. If the new complete tick has a sample of our ship:
 
-1. Take the server's position *P* for the local ship and the snapshot's `lastProcessedInput` *L*.
-2. Discard pending inputs with a sequence ≤ *L*.
-3. Replay the remaining inputs on *P* with `movePlayer`. That gives the corrected position *C*.
-4. If *C* is more than 64 units away from the drawn position, snap to it. Otherwise close 20% of the gap each frame.
+1. Take the server's position *P* from that sample, and *L* = `world.lastProcessedInput()`, chunk 0's `lastProcessedInput`.
+2. Call `prediction.notePing(L, now)`. This must come before `reconcile`, which drops input *L* and its send time.
+3. Call `prediction.reconcile(P, L, rules)`: it discards pending inputs with a sequence ≤ *L*, and replays the others on *P* with `movePlayer`. That gives the corrected position *C*, stored in the `Correction` resource's `target`.
+4. `predictionSystem`, in `UPDATE` after `interpolationSystem`, moves our ship towards *C* with `PredictionState::smooth`: it snaps if *C* is more than 64 units away, otherwise it closes 20% of the gap each frame. Once the gap is under 0.5 units, it puts the ship on *C* and clears the target.
+
+The input steps that follow a correction also move the target, by the same `step` as the ship. *C* is where the server would put our ship at the moment of the snapshot, while the ship keeps moving after it. Without this, the correction would pull the ship back while a key is held.
 
 On a LAN the correction is invisible. With high latency, the player still sees their ship react immediately. The server remains the only judge of collisions (requirement F-14).
 
-**Ping.** `prediction.sentAt(L)` gives the time INPUT *L* was sent. `now − sentAt(L)` is an upper estimate of the round trip, off by at most one snapshot interval (33 ms). The HUD shows its average over the last second.
+**Ping.** `prediction.sentAt(L)` gives the time INPUT *L* was sent. `notePing` stores `now − sentAt(L)` as a sample, once per new *L*. It's an upper estimate of the round trip, off by at most one snapshot interval (33 ms). `prediction.averagePing(now)` gives the average over the last second, which the HUD shows, or nothing if no sample arrived in that second.
 
 ## Presentation
 

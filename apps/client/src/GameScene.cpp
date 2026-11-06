@@ -7,6 +7,7 @@
 
 #include "GameScene.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <memory>
 #include <string>
@@ -14,6 +15,7 @@
 
 #include "ClientStages.hpp"
 #include "InterpolationSystem.hpp"
+#include "PredictionSystem.hpp"
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
 #include "engine/render/RenderQueue.hpp"
@@ -30,7 +32,6 @@ constexpr auto SERVER_TIMEOUT = std::chrono::seconds(5);
 
 /*
 ** Adds the systems in client.md's order.
-** TODO(RTP-127): predictionSystem after interpolationSystem.
 ** TODO(RTP-128): shipTiltSystem, animationSystem, effectSystem and
 ** starfieldSystem after it in UPDATE, then renderSystem and hudSystem in
 ** RENDER.
@@ -39,12 +40,14 @@ void addSystems(engine::ecs::Registry &registry)
 {
     registry.addSystem<game::Transform, const NetSamples>(ClientStage::UPDATE,
         "interpolation", interpolationSystem);
+    registry.addSystem<>(ClientStage::UPDATE, "prediction", predictionSystem);
 }
 
 void setResources(engine::ecs::Registry &registry)
 {
     registry.emplaceResource<engine::render::RenderQueue>();
     registry.emplaceResource<RenderClock>();
+    registry.emplaceResource<Correction>();
     registry.emplaceResource<engine::ecs::DeltaTime>();
     registry.emplaceResource<engine::core::Rng>(
         engine::core::Rng::randomSeed());
@@ -80,6 +83,7 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
         return SceneRequest::quit();
     }
     receive(context.now);
+    reconcileLocalShip(context.now);
     advanceRenderClock(dt);
     const int steps = _inputStep.advance(dt);
 
@@ -149,8 +153,12 @@ SceneRequest GameScene::leaveFor(LeaveCause cause) const
 
 void GameScene::stepLocalShip(std::uint8_t buttons)
 {
+    auto &correction = _world.registry().getResource<Correction>();
     const auto ship = _world.localShip();
 
+    if (correction.target)
+        correction.target = _prediction.step(*correction.target, buttons,
+            _rules);
     if (!ship)
         return;
     auto *transform = _world.registry().getComponent<game::Transform>(*ship);
@@ -158,6 +166,28 @@ void GameScene::stepLocalShip(std::uint8_t buttons)
     if (transform != nullptr)
         transform->position = _prediction.step(transform->position, buttons,
             _rules);
+}
+
+void GameScene::reconcileLocalShip(TimePoint now)
+{
+    const std::uint32_t complete = _adapter.assembler().lastCompleteTick();
+    const auto ship = _world.localShip();
+
+    if (complete <= _reconciledTick || !ship)
+        return;
+    _reconciledTick = complete;
+    const auto *net = _world.registry().getComponent<NetSamples>(*ship);
+
+    if (net == nullptr)
+        return;
+    const auto sample = std::ranges::find(net->ring, complete,
+        &NetSample::tick);
+
+    if (sample == net->ring.end())
+        return;
+    _prediction.notePing(_world.lastProcessedInput(), now);
+    _world.registry().getResource<Correction>().target = _prediction.reconcile(
+        sample->position, _world.lastProcessedInput(), _rules);
 }
 
 void GameScene::receive(TimePoint now)
