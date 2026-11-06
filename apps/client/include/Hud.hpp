@@ -8,23 +8,25 @@
 #ifndef HUD_HPP
 #define HUD_HPP
 
+#include <algorithm>
 #include <string>
+
 #include "ClientWorld.hpp"
 #include "GameEventBus.hpp"
 
 namespace rtype::client {
 
-constexpr float MARGIN = 16.0F;
-constexpr float SCREEN_WIDTH = 1280.0F;    // the 720p playfield
+constexpr float MARGIN        = 16.0F;
+constexpr float SCREEN_WIDTH  = 1280.0F; // the 720p playfield
 constexpr float SCREEN_HEIGHT = 720.0F;
-constexpr float RIGHT_COLUMN_X = 960.0F;   // TextAlign has no RIGHT: a fixed column
-constexpr float LINE_SPACING = 1.4F;       // line height, as a multiple of the font size
-constexpr float LABEL_OFFSET = 36.0F;      // label centre, above the ship centre
-constexpr float HELP_X = MARGIN;
-constexpr float HELP_Y = 160.0F;           // below the four slot lines
+constexpr float RIGHT_COLUMN_X =
+    960.0F; // TextAlign has no RIGHT: a fixed column
+constexpr float LINE_SPACING =
+    1.4F; // line height, as a multiple of the font size
+constexpr float LABEL_OFFSET = 36.0F; // label centre, above the ship centre
+constexpr float HELP_X       = MARGIN;
+constexpr float HELP_Y       = 160.0F; // below the four slot lines
 constexpr unsigned MAX_CHARACTER_SIZE = 255;
-
-
 
 struct Banner {
     std::string text;
