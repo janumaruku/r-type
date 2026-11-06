@@ -21,7 +21,9 @@ public:
     Vec2(const T &x, const T &y) noexcept;
 
     [[nodiscard]] const T &x() const noexcept;
+    [[nodiscard]] T &x() noexcept;
     [[nodiscard]] const T &y() const noexcept;
+    [[nodiscard]] T &y() noexcept;
 
     [[nodiscard]] T length() const noexcept;
     [[nodiscard]] T lengthSquared() const noexcept;

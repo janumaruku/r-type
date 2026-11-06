@@ -19,6 +19,7 @@
 
 #include "ClientComponents.hpp"
 #include "PresentationComponents.hpp"
+#include "RenderSystems.hpp"
 #include "SpriteCatalog.hpp"
 #include "engine/core/Rect2.hpp"
 #include "engine/core/Vec2.hpp"
