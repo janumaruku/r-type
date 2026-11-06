@@ -21,6 +21,12 @@
 
 namespace rtype::client {
 
+namespace {
+constexpr float PLAYFIELD_WIDTH  = 1280.0F;
+constexpr float PLAYFIELD_HEIGHT = 720.0F;
+constexpr float OUTLINE_PADDING  = 1.0F;
+} // namespace
+
 std::int16_t layerFor(protocol::EntityKind kind) noexcept
 {
     switch (kind) {
@@ -96,11 +102,13 @@ void shipTiltSystem(engine::ecs::Registry &registry,
         else if (vy > TILT_SPEED_THRESHOLD)
             direction = 1;
 
-        if (direction != tilt.direction) {
+        if (direction == 0)
             tilt.heldTime = 0.0F;
-        } else {
+        else if (direction != tilt.direction)
+            tilt.heldTime = dt;
+        else
             tilt.heldTime += dt;
-        }
+        tilt.direction = static_cast<std::int8_t>(direction);
 
         bool full        = tilt.heldTime >= TILT_FULL_DELAY;
         std::string name = "idle";
@@ -121,48 +129,60 @@ void renderSystem(engine::ecs::Registry &registry,
     auto &queue = registry.getResource<engine::render::RenderQueue>();
 
     for (auto &&[transform, sprite]: registry.view<game::Transform, Sprite>()) {
+        const auto width  = static_cast<float>(sprite.frame.width());
+        const auto height = static_cast<float>(sprite.frame.height());
+
         engine::render::SpriteCmd cmd{
             .texture     = sprite.texture,
             .source      = sprite.frame,
             .position    = transform.position,
-            .origin      = transform.position,
-            .scale       = {1.0F, 1.0F},
+            .origin      = engine::core::Vec2f(width / 2.0F, height / 2.0F),
+            .scale       = sprite.scale,
             .rotationDeg = 0.0F,
             .tint        = sprite.tint,
             .layer       = sprite.layer,
         };
 
         queue.push(cmd);
-        if (settings.highContrast &&
-            sprite.tint != engine::core::Color::WHITE) {
-            engine::core::FloatRect outlineRect{
-                {static_cast<float>(cmd.source.height()) + 2.0F,
-                    static_cast<float>(cmd.source.width()) + 2.0F},
-                cmd.position.x() - 1.0F,
-                cmd.position.y() - 1.0F,
-            };
-            engine::render::RectCmd rectCmd{
-                .rect             = {outlineRect},
-                .fill             = engine::core::Color::CLEAR,
-                .outline          = engine::core::Color::YELLOW,
-                .outlineThickness = 2.0F,
-                .layer            = static_cast<int16_t>(sprite.layer + 1),
-            };
-            queue.push(rectCmd);
-        }
+    }
+
+    if (!settings.highContrast)
+        return;
+    for (auto &&[transform, sprite, outline]:
+        registry.view<game::Transform, Sprite, HighContrastOutline>()) {
+        (void)outline;
+        const float width =
+            static_cast<float>(sprite.frame.width()) * sprite.scale.x();
+        const float height =
+            static_cast<float>(sprite.frame.height()) * sprite.scale.y();
+        const engine::core::Vec2f corner{
+            transform.position.x() - (width / 2.0F) - OUTLINE_PADDING,
+            transform.position.y() - (height / 2.0F) - OUTLINE_PADDING,
+        };
+        engine::render::RectCmd rectCmd{
+            .rect =
+                engine::core::FloatRect(corner, width + 2.0F * OUTLINE_PADDING,
+                    height + 2.0F * OUTLINE_PADDING),
+            .fill             = engine::core::Color::CLEAR,
+            .outline          = engine::core::Color::YELLOW,
+            .outlineThickness = 2.0F,
+            .layer            = static_cast<int16_t>(sprite.layer + 1),
+        };
+
+        queue.push(rectCmd);
     }
 }
 
 void spawnStarfield(engine::ecs::Registry &registry, engine::core::Rng &rng,
-    engine::render::TextureId whitePixel, const ClientSettings &)
+    engine::render::TextureId whitePixel)
 {
     for (const auto &star: STAR_LAYERS) {
         for (std::size_t i = 0; i != star.count; i++) {
             const auto entity = registry.spawnEntity();
 
             game::Transform transform{};
-            transform.position = {rng.uniformFloat(0.0F, 1280.0F),
-                rng.uniformFloat(0.0F, 720.0F)};
+            transform.position = {rng.uniformFloat(0.0F, PLAYFIELD_WIDTH),
+                rng.uniformFloat(0.0F, PLAYFIELD_HEIGHT)};
             registry.addComponent(entity, transform);
 
             registry.addComponent(entity, Star{star.speed});
@@ -189,8 +209,8 @@ void starfieldSystem(engine::ecs::Registry &registry,
     for (auto &&[transform, star]: registry.view<game::Transform, Star>()) {
         transform.position.x() -= star.speed * dt;
         if (transform.position.x() < -1.0F) {
-            transform.position.x() = 1280.0F;
-            transform.position.y() = rng.uniformFloat(0.0F, 720.0F);
+            transform.position.x() += PLAYFIELD_WIDTH;
+            transform.position.y() = rng.uniformFloat(0.0F, PLAYFIELD_HEIGHT);
         }
     }
 }

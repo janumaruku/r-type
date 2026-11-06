@@ -45,7 +45,7 @@ void spawnStarfield(engine::ecs::Registry &registry, engine::core::Rng &rng,
 
 void starfieldSystem(engine::ecs::Registry &registry,
     engine::ecs::SparseSet<game::Transform> &transforms,
-    const engine::ecs::SparseSet<Star> &stars);
+    const engine::ecs::SparseSet<Star> &stars, engine::core::Rng &rng);
 } // namespace rtype::client
 
 #endif /* !RENDER_SYSTEMS_HPP_ */
