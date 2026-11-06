@@ -8,11 +8,11 @@
 #ifndef RAYLIB_CONVERT_HPP
 #define RAYLIB_CONVERT_HPP
 
-#include <raylib.h>
-
 #include "engine/core/Color.hpp"
 #include "engine/core/Rect2.hpp"
 #include "engine/core/Vec2.hpp"
+
+#include <raylib.h>
 
 /*
 ** Engine types to Raylib types, field by field. The layouts may look alike,
