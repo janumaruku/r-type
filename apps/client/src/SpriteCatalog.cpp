@@ -14,7 +14,6 @@
 #include <fstream>
 #include <ostream>
 #include <limits>
-#include <stdexcept>
 
 #include <nlohmann/json.hpp>
 

@@ -289,9 +289,10 @@ TEST(DispatchTests, ThreeFloodedSecondsKickTheSession)
                     ->lastInputSequence, 240U)
                 << "the 60 INPUTs over 240 in one second are dropped";
         }
-        if (second == 1)
+        if (second == 1) {
             EXPECT_NE(fixture.sessions.find(from), nullptr)
                 << "2 flooded seconds aren't enough to kick";
+        }
     }
     EXPECT_EQ(fixture.sessions.find(from), nullptr);
     EXPECT_EQ(fixture.adapter.stats().totalKicked, 1U);

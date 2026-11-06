@@ -22,17 +22,6 @@
 
 namespace rtype::client {
 
-class SpriteCatalog;
-
-// Remove this after RTP-128 is merged
-struct Animation {
-    SpriteDefId def;
-    std::uint8_t state = 0;
-    std::size_t index  = 0;
-    float timer        = 0.0F;
-};
-///////////////////////////////////////
-
 class ClientWorld {
 public:
     explicit ClientWorld(SpriteCatalog sprites);

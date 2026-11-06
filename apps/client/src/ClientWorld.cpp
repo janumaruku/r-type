@@ -17,6 +17,7 @@
 #include "rtype/game/GameWorld.hpp"
 #include "rtype/protocol/Snapshot.hpp"
 #include "SpriteCatalog.hpp"
+#include "PresentationComponents.hpp"
 
 namespace rtype::client {
 
