@@ -52,4 +52,6 @@ void starfieldSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<Star> &stars, engine::core::Rng &rng);
 } // namespace rtype::client
 
+void hudSystem(engine::ecs::Registry &registry);
+
 #endif /* !RENDER_SYSTEMS_HPP_ */
