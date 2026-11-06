@@ -11,6 +11,9 @@ rtype_add_test(client_tests
         ClientConfigTests.cpp
         ClientSettingsTests.cpp
         KeybindingsFileTests.cpp
+        InputSamplingTests.cpp
+        InterpolationTests.cpp
+        GameSceneTests.cpp
 )
 
 target_compile_definitions(client_tests PRIVATE

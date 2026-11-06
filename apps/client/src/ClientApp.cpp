@@ -12,6 +12,7 @@
 #include <vector>
 #include <utility>
 
+#include "ConnectingScene.hpp"
 #include "engine/audio/MakeAudio.hpp"
 #include "engine/core/AssetLocator.hpp"
 #include "engine/core/Logger.hpp"
@@ -96,9 +97,6 @@ engine::core::log::Logger &logger()
 }
 }
 
-/*
-** TODO(RTP-117): start on a ConnectingScene once story 2 is done.
-*/
 ClientApp::ClientApp(ClientConfig config, ClientSettings settings):
     _config(std::move(config)), _settings(settings),
     _window(windowConfig(_settings)),
@@ -109,8 +107,7 @@ ClientApp::ClientApp(ClientConfig config, ClientSettings settings):
 {
     FrameContext context = frameContext();
 
-    _scenes.change(std::make_unique<MessageScene>("R-Type",
-        "Not connected yet", false), context);
+    _scenes.change(std::make_unique<ConnectingScene>(), context);
 }
 
 int ClientApp::run()
