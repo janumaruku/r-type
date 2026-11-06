@@ -39,11 +39,11 @@ const std::map<Level, const char *> LEVEL_NAMES{
 };
 
 const std::map<Level, const char *> LEVEL_COLORS{
-    {Level::EG_TRACE, "90"},
-    {Level::EG_DEBUG, "36"},
-    {Level::EG_INFO, "32"},
-    {Level::EG_WARN, "33"},
-    {Level::EG_ERROR, "31"},
+    {Level::EG_TRACE, "37"}, // White
+    {Level::EG_DEBUG, "35"}, // Purple
+    {Level::EG_INFO,  "36"}, // Cyan
+    {Level::EG_WARN,  "33"}, // Yellow
+    {Level::EG_ERROR, "31"}, // Red
 };
 
 const char *levelName(Level level) noexcept
