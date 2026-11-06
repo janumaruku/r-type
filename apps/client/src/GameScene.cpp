@@ -89,10 +89,14 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
     for (int step = 0; step < steps; ++step)
         _adapter.sendInput(++_inputSequence,
             sampleButtons(context.actions, context.input));
-    if (_adapter.leaveCause() != LeaveCause::NO_CAUSE)
+    if (_adapter.leaveCause() != LeaveCause::NO_CAUSE) {
+        _serverGone = true;
         return leaveFor(_adapter.leaveCause());
-    if (context.now - _link->lastHeard > SERVER_TIMEOUT)
+    }
+    if (context.now - _link->lastHeard > SERVER_TIMEOUT) {
+        _serverGone = true;
         return showMessage("Connection lost", "The server stopped answering");
+    }
     _world.registry().getResource<engine::ecs::DeltaTime>().seconds = dt;
     _world.registry().runStage(ClientStage::UPDATE);
     return SceneRequest::stay();
@@ -109,15 +113,27 @@ void GameScene::draw(engine::render::RenderQueue &queue,
     std::swap(stageQueue, queue);
 }
 
+/*
+** Says goodbye unless the server already forgot us: after QUIT
+** (_leftByChoice) or when the window closes (ClientApp's change(nullptr)),
+** but not after SHUTDOWN, KICK or a timeout, which set _serverGone.
+** TODO(RTP-128): stops the music.
+*/
+void GameScene::onExit([[maybe_unused]] FrameContext &context)
+{
+    if (!_serverGone)
+        _adapter.sendDisconnect();
+}
+
 SceneRequest GameScene::leaveFor(LeaveCause cause) const
 {
     switch (cause) {
     case LeaveCause::SHUTDOWN:
-        return showMessage("Server closed", "The server shut down");
+        return showMessage("Server closed", "The server stopped");
     case LeaveCause::KICKED_PROTOCOL:
-        return showMessage("Kicked", "The server got a malformed message");
+        return showMessage("Kicked", "Too many invalid messages");
     case LeaveCause::KICKED_RATE:
-        return showMessage("Kicked", "Too many messages sent to the server");
+        return showMessage("Kicked", "Too many messages");
     case LeaveCause::NO_CAUSE:
         break;
     }
