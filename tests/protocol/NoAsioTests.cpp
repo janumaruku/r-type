@@ -10,8 +10,8 @@
 #include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/Event.hpp"
 #include "rtype/protocol/Header.hpp"
-#include "rtype/protocol/MessageType.hpp"
 #include "rtype/protocol/Messages.hpp"
+#include "rtype/protocol/MessageType.hpp"
 #include "rtype/protocol/ProtocolError.hpp"
 #include "rtype/protocol/Snapshot.hpp"
 
@@ -21,7 +21,7 @@
 ** the list, and this file stops compiling the day one of them pulls Asio in.
 */
 #ifdef ASIO_VERSION
-#error "a protocol header includes Asio"
+    #error "a protocol header includes Asio"
 #endif
 
 TEST(NoAsioTests, TheProtocolHeadersDontIncludeAsio)

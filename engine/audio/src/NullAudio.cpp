@@ -19,7 +19,7 @@ namespace {
 
 constexpr std::size_t MAX_IDS = std::numeric_limits<std::uint16_t>::max();
 
-template<typename Id>
+template <typename Id>
 Id idFor(std::unordered_map<std::filesystem::path, Id> &ids,
     const std::filesystem::path &path)
 {
@@ -28,14 +28,15 @@ Id idFor(std::unordered_map<std::filesystem::path, Id> &ids,
     if (const auto it = ids.find(key); it != ids.end())
         return it->second;
     if (ids.size() >= MAX_IDS)
-        throw core::ResourceError("Too many audio files (max 65535): " + key.string());
+        throw core::ResourceError("Too many audio files (max 65535): " +
+            key.string());
 
     const Id id{static_cast<std::uint16_t>(ids.size())};
     ids.emplace(key, id);
     return id;
 }
 
-}
+} // namespace
 
 SoundId NullAudio::loadSound(const std::filesystem::path &path)
 {
@@ -47,11 +48,14 @@ MusicId NullAudio::loadMusic(const std::filesystem::path &path)
     return idFor(_musics, path);
 }
 
-void NullAudio::playSound(SoundId /*id*/, float /*volume*/) {}
+void NullAudio::playSound(SoundId /*id*/, float /*volume*/)
+{}
 
-void NullAudio::playMusic(MusicId /*id*/, bool /*loop*/) {}
+void NullAudio::playMusic(MusicId /*id*/, bool /*loop*/)
+{}
 
-void NullAudio::stopMusic() {}
+void NullAudio::stopMusic()
+{}
 
 void NullAudio::setMasterVolume(float volume)
 {
@@ -78,6 +82,7 @@ const Volume &NullAudio::volumes() const
     return _volume;
 }
 
-void NullAudio::update() {}
+void NullAudio::update()
+{}
 
-}
+} // namespace engine::audio

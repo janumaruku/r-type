@@ -24,7 +24,7 @@ bool GamePhase::enterGameOver(const float resetDelay)
     if (isOver())
         return false;
 
-    _phase = Phase::GAME_OVER;
+    _phase      = Phase::GAME_OVER;
     _untilReset = resetDelay;
     return true;
 }
@@ -38,8 +38,8 @@ bool GamePhase::update(const float dt)
     if (_untilReset > 0.0F)
         return false;
 
-    _phase = Phase::PLAYING;
+    _phase      = Phase::PLAYING;
     _untilReset = 0.0F;
     return true;
 }
-}
+} // namespace rtype::game

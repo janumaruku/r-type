@@ -1,12 +1,12 @@
+#include "EventRepeater.hpp"
+
 #include <algorithm>
 #include <cstddef>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <sstream>
 #include <string>
 
-#include <gtest/gtest.h>
-
-#include "EventRepeater.hpp"
 #include "engine/core/Logger.hpp"
 
 namespace {
@@ -31,9 +31,9 @@ TEST(EventRepeaterTests, RepeatsEventsAndKeepsEventId)
     repeater.add(event(1), 3);
     repeater.add(event(2), 1);
 
-    const auto first = repeater.takeDue();
+    const auto first  = repeater.takeDue();
     const auto second = repeater.takeDue();
-    const auto third = repeater.takeDue();
+    const auto third  = repeater.takeDue();
     const auto fourth = repeater.takeDue();
 
     ASSERT_EQ(first.size(), 2U);
@@ -107,12 +107,12 @@ protected:
 
     [[nodiscard]] std::size_t warnings() const
     {
-        const std::string text = _output.str();
+        const std::string text   = _output.str();
         const std::string needle = "Event queue full";
-        std::size_t count = 0;
+        std::size_t count        = 0;
 
         for (auto at = text.find(needle); at != std::string::npos;
-            at = text.find(needle, at + needle.size()))
+            at       = text.find(needle, at + needle.size()))
             ++count;
         return count;
     }
@@ -139,4 +139,4 @@ TEST_F(EventRepeaterLog, ThreeHundredEventsInOneTickKeepTheRepeatedOnes)
     EXPECT_EQ(warnings(), 1U);
 }
 
-}
+} // namespace

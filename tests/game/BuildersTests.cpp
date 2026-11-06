@@ -5,9 +5,10 @@
 ** BuildersTests
 */
 
-#include <gtest/gtest.h>
+#include "rtype/game/Builders.hpp"
 
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <set>
 #include <string>
 #include <vector>
@@ -16,7 +17,6 @@
 #include "engine/core/Rng.hpp"
 #include "engine/core/Vec2.hpp"
 #include "engine/ecs/Registry.hpp"
-#include "rtype/game/Builders.hpp"
 #include "rtype/game/Components.hpp"
 #include "rtype/game/NetIdAllocator.hpp"
 #include "rtype/game/Rules.hpp"
@@ -59,7 +59,7 @@ using rtype::game::Weapon;
 namespace {
 
 constexpr std::uint32_t SEED = 42;
-constexpr NetId SHOOTER = 99;
+constexpr NetId SHOOTER      = 99;
 
 void setUpWorld(Registry &registry)
 {
@@ -120,7 +120,7 @@ void expectInRange(const float value, const FloatRange range)
     EXPECT_LT(value, range.max);
 }
 
-}
+} // namespace
 
 class Builders: public testing::Test {
 protected:
@@ -137,8 +137,8 @@ TEST_F(Builders, PlayerShipHasExactlyItsRow)
 {
     const Entity ship = _registry.spawnEntity();
     const NetId netId = makePlayerShip(_registry, ship, 0);
-    const std::vector<std::string> expected{"Transform", "Velocity",
-        "Collider", "Health", "Damage", "Replicated", "PlayerShip", "Weapon",
+    const std::vector<std::string> expected{"Transform", "Velocity", "Collider",
+        "Health", "Damage", "Replicated", "PlayerShip", "Weapon",
         "ConfinedToPlayfield"};
 
     EXPECT_EQ(componentsOf(_registry, ship), expected);
@@ -154,12 +154,11 @@ TEST_F(Builders, PlayerShipHasExactlyItsRow)
 TEST_F(Builders, BydosSlaveHasExactlyItsRow)
 {
     const Entity bydos = _registry.spawnEntity();
-    const NetId netId = makeBydosSlave(_registry, bydos, {1312.0F, 300.0F},
+    const NetId netId  = makeBydosSlave(_registry, bydos, {1312.0F, 300.0F},
         MovePattern::STRAIGHT);
-    const std::vector<std::string> expected{"Transform", "Velocity",
-        "Collider", "Health", "Damage", "Replicated", "Weapon",
-        "StraightMover", "AimedShooter", "DespawnOutsidePlayfield",
-        "ScoreValue"};
+    const std::vector<std::string> expected{"Transform", "Velocity", "Collider",
+        "Health", "Damage", "Replicated", "Weapon", "StraightMover",
+        "AimedShooter", "DespawnOutsidePlayfield", "ScoreValue"};
 
     EXPECT_EQ(componentsOf(_registry, bydos), expected);
     expectVec(_registry.getComponent<Collider>(bydos)->halfSize,
@@ -176,11 +175,11 @@ TEST_F(Builders, BydosSlaveHasExactlyItsRow)
 TEST_F(Builders, PlayerMissileHasExactlyItsRow)
 {
     const Entity missile = _registry.spawnEntity();
-    const NetId netId = makePlayerMissile(_registry, missile, SHOOTER, 2,
-        {136.0F, 144.0F});
-    const std::vector<std::string> expected{"Transform", "Velocity",
-        "Collider", "Health", "Damage", "Replicated", "Projectile",
-        "Lifetime", "DespawnOutsidePlayfield"};
+    const NetId netId =
+        makePlayerMissile(_registry, missile, SHOOTER, 2, {136.0F, 144.0F});
+    const std::vector<std::string> expected{"Transform", "Velocity", "Collider",
+        "Health", "Damage", "Replicated", "Projectile", "Lifetime",
+        "DespawnOutsidePlayfield"};
 
     EXPECT_EQ(componentsOf(_registry, missile), expected);
     expectVec(_registry.getComponent<Collider>(missile)->halfSize,
@@ -201,11 +200,11 @@ TEST_F(Builders, PlayerMissileHasExactlyItsRow)
 TEST_F(Builders, EnemyMissileHasExactlyItsRow)
 {
     const Entity missile = _registry.spawnEntity();
-    const NetId netId = makeEnemyMissile(_registry, missile, SHOOTER,
+    const NetId netId    = makeEnemyMissile(_registry, missile, SHOOTER,
         {600.0F, 300.0F}, {-1.0F, 0.0F});
-    const std::vector<std::string> expected{"Transform", "Velocity",
-        "Collider", "Health", "Damage", "Replicated", "Projectile",
-        "Lifetime", "DespawnOutsidePlayfield"};
+    const std::vector<std::string> expected{"Transform", "Velocity", "Collider",
+        "Health", "Damage", "Replicated", "Projectile", "Lifetime",
+        "DespawnOutsidePlayfield"};
 
     EXPECT_EQ(componentsOf(_registry, missile), expected);
     expectVec(_registry.getComponent<Collider>(missile)->halfSize,
@@ -225,12 +224,11 @@ TEST_F(Builders, EnemyMissileHasExactlyItsRow)
 TEST_F(Builders, BydosSlaveGetsTheMoverOfItsPattern)
 {
     const Entity straight = _registry.spawnEntity();
-    const Entity sine = _registry.spawnEntity();
+    const Entity sine     = _registry.spawnEntity();
 
     (void)makeBydosSlave(_registry, straight, {1312.0F, 200.0F},
         MovePattern::STRAIGHT);
-    (void)makeBydosSlave(_registry, sine, {1312.0F, 450.0F},
-        MovePattern::SINE);
+    (void)makeBydosSlave(_registry, sine, {1312.0F, 450.0F}, MovePattern::SINE);
 
     EXPECT_NE(_registry.getComponent<StraightMover>(straight), nullptr);
     EXPECT_EQ(_registry.getComponent<SineMover>(straight), nullptr);
@@ -257,10 +255,10 @@ TEST_F(Builders, PlayerShipsForEverySlot)
         expectVec(_registry.getComponent<Transform>(ship)->position,
             _rules.playerSpawn[playerId]);
         EXPECT_EQ(_registry.getComponent<Replicated>(ship)->variant, playerId);
-        EXPECT_EQ(_registry.getComponent<PlayerShip>(ship)->playerId,
-            playerId);
-        EXPECT_FLOAT_EQ(
-            _registry.getComponent<PlayerShip>(ship)->invulnerableFor, 2.0F);
+        EXPECT_EQ(_registry.getComponent<PlayerShip>(ship)->playerId, playerId);
+        EXPECT_FLOAT_EQ(_registry.getComponent<PlayerShip>(ship)
+                            ->invulnerableFor,
+            2.0F);
         expectVec(_registry.getComponent<Weapon>(ship)->muzzleOffset,
             {16.0F, 0.0F});
     }
@@ -327,8 +325,7 @@ TEST(BuildersDeterminism, SameSeedSameCallsSameComponents)
         firstEntities.push_back(first.spawnEntity());
         secondEntities.push_back(second.spawnEntity());
         (void)makeBydosSlave(first, firstEntities.back(), position, pattern);
-        (void)makeBydosSlave(second, secondEntities.back(), position,
-            pattern);
+        (void)makeBydosSlave(second, secondEntities.back(), position, pattern);
     }
     for (std::size_t i = 0; i < firstEntities.size(); ++i) {
         SCOPED_TRACE(i);
@@ -369,18 +366,18 @@ TEST_F(Builders, EnemyMissileNormalisesItsDirection)
 
 TEST_F(Builders, EveryReturnedNetIdFindsItsEntity)
 {
-    const Entity ship = _registry.spawnEntity();
-    const Entity bydos = _registry.spawnEntity();
+    const Entity ship          = _registry.spawnEntity();
+    const Entity bydos         = _registry.spawnEntity();
     const Entity playerMissile = _registry.spawnEntity();
-    const Entity enemyMissile = _registry.spawnEntity();
-    const auto &allocator = _registry.getResource<NetIdAllocator>();
+    const Entity enemyMissile  = _registry.spawnEntity();
+    const auto &allocator      = _registry.getResource<NetIdAllocator>();
 
     const NetId shipId = makePlayerShip(_registry, ship, 1);
-    const NetId bydosId = makeBydosSlave(_registry, bydos, {1312.0F, 300.0F},
-        MovePattern::SINE);
+    const NetId bydosId =
+        makeBydosSlave(_registry, bydos, {1312.0F, 300.0F}, MovePattern::SINE);
     const NetId playerMissileId = makePlayerMissile(_registry, playerMissile,
         shipId, 1, {136.0F, 288.0F});
-    const NetId enemyMissileId = makeEnemyMissile(_registry, enemyMissile,
+    const NetId enemyMissileId  = makeEnemyMissile(_registry, enemyMissile,
         bydosId, {1300.0F, 300.0F}, {-1.0F, 0.0F});
 
     EXPECT_EQ(allocator.find(shipId, _registry), ship);

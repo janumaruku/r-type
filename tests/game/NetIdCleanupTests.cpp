@@ -6,7 +6,6 @@
 */
 
 #include <gtest/gtest.h>
-
 #include <vector>
 
 #include "GameSystemsFixture.hpp"
@@ -36,7 +35,8 @@ TEST_F(NetIdCleanup, NetIdsOfEntitiesKilledDuringTheTickAreReleased)
     std::vector<Entity> spawned;
 
     for (int i = 0; i < 5; ++i)
-        spawned.push_back(spawnBydos({600.0F, 100.0F * static_cast<float>(i + 1)}));
+        spawned.push_back(spawnBydos({600.0F,
+            100.0F * static_cast<float>(i + 1)}));
 
     const NetId first = netIdOf(spawned[0]);
     const NetId third = netIdOf(spawned[2]);

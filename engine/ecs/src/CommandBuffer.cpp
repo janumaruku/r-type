@@ -5,18 +5,17 @@
 ** CommandBuffer
 */
 
+#include "engine/ecs/CommandBuffer.hpp"
+
 #include <cstddef>
 #include <utility>
 
-#include "engine/ecs/CommandBuffer.hpp"
 #include "engine/ecs/Registry.hpp"
 
 namespace engine::ecs {
 void CommandBuffer::kill(const Entity &entity)
 {
-    auto func = [entity](Registry &registry) {
-        registry.killEntity(entity);
-    };
+    auto func = [entity](Registry &registry) { registry.killEntity(entity); };
 
     _commands.emplace_back(std::move(func));
 }
@@ -74,4 +73,4 @@ void CommandBuffer::clear() noexcept
 {
     _commands.clear();
 }
-}
+} // namespace engine::ecs

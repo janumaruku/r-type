@@ -11,9 +11,9 @@
 #include <cstdint>
 
 #include "engine/core/Vec2.hpp"
+#include "rtype/game/Types.hpp"
 #include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/Snapshot.hpp"
-#include "rtype/game/Types.hpp"
 
 namespace rtype::client {
 
@@ -35,12 +35,11 @@ struct Replica {
     game::NetId netId;
 };
 
-struct LocalPlayer {};  
+struct LocalPlayer {};
 
 struct PlayerLabel {
     std::uint8_t playerId;
 };
-
 
 } // namespace rtype::client
 

@@ -5,9 +5,10 @@
 ** RegistryResourceTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/Registry.hpp"
 
 #include <cstddef>
+#include <gtest/gtest.h>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
@@ -17,7 +18,6 @@
 #include <utility>
 
 #include "engine/core/Errors.hpp"
-#include "engine/ecs/Registry.hpp"
 #include "engine/ecs/Resources.hpp"
 
 using engine::core::EngineError;
@@ -87,7 +87,7 @@ TEST_F(RegistryResource, GetAfterSetReturnsTheValue)
 TEST_F(RegistryResource, SetReturnsTheStoredResource)
 {
     DeltaTime &stored = _registry.setResource(DeltaTime{0.5F});
-    stored.seconds = 2.0F;
+    stored.seconds    = 2.0F;
 
     EXPECT_EQ(&stored, &_registry.getResource<DeltaTime>());
     EXPECT_EQ(_registry.getResource<DeltaTime>().seconds, 2.0F);

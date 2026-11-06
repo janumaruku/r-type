@@ -32,10 +32,9 @@ std::ostream &operator<<(std::ostream &stream, DecodeError error)
     return stream << "UNKNOWN";
 }
 
-ProtocolError::ProtocolError(DecodeError code,
-    const std::string &message): PacketError(message), _code(code)
-{
-}
+ProtocolError::ProtocolError(DecodeError code, const std::string &message):
+    PacketError(message), _code(code)
+{}
 
 DecodeError ProtocolError::code() const noexcept
 {
@@ -55,4 +54,4 @@ DecodeError classify(const net::PacketError &error) noexcept
         return protocolError->code();
     return DecodeError::TRUNCATED;
 }
-}
+} // namespace rtype::protocol

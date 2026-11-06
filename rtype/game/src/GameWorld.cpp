@@ -32,36 +32,36 @@ GameWorld::GameWorld(Rules rules, std::uint32_t seed)
         "playerInput", playerInputSystem);
     _registry.addSystem<const StraightMover, Velocity>(Stage::SIMULATION,
         "straightMover", straightMoverSystem);
-    _registry.addSystem<SineMover, Velocity>(Stage::SIMULATION,
-        "sineMover", sineMoverSystem);
-    _registry.addSystem<AimedShooter, const Transform, Weapon>(
-        Stage::SIMULATION, "aimedShooter", aimedShooterSystem);
-    _registry.addSystem<Weapon, const Transform, const Replicated>(
-        Stage::SIMULATION, "weapon", weaponSystem);
+    _registry.addSystem<SineMover, Velocity>(Stage::SIMULATION, "sineMover",
+        sineMoverSystem);
+    _registry
+        .addSystem<AimedShooter, const Transform, Weapon>(Stage::SIMULATION,
+            "aimedShooter", aimedShooterSystem);
+    _registry
+        .addSystem<Weapon, const Transform, const Replicated>(Stage::SIMULATION,
+            "weapon", weaponSystem);
     _registry.addSystem<Transform, const Velocity>(Stage::SIMULATION,
         "movement", movementSystem);
     _registry.addSystem<Transform, const Collider>(Stage::SIMULATION,
         "playfield", playfieldSystem);
-    _registry.addSystem<const Collider, const Transform, Health>(
-        Stage::SIMULATION, "collision", collisionSystem);
+    _registry
+        .addSystem<const Collider, const Transform, Health>(Stage::SIMULATION,
+            "collision", collisionSystem);
     _registry.addSystem<const Health, const Replicated>(Stage::SIMULATION,
         "health", healthSystem);
     _registry.addSystem<Lifetime>(Stage::SIMULATION, "lifetime",
         lifetimeSystem);
-    _registry.addSystem<const Replicated>(Stage::SIMULATION,
-        "spawnDirector", spawnDirectorSystem);
+    _registry.addSystem<const Replicated>(Stage::SIMULATION, "spawnDirector",
+        spawnDirectorSystem);
     _registry.addSystem(Stage::SIMULATION, "respawn", respawnSystem);
-    _registry.addSystem<const Replicated>(Stage::SIMULATION,
-        "gameOver", gameOverSystem);
-    _registry.addSystem(Stage::SIMULATION, "netIdCleanup",
-        netIdCleanupSystem);
+    _registry.addSystem<const Replicated>(Stage::SIMULATION, "gameOver",
+        gameOverSystem);
+    _registry.addSystem(Stage::SIMULATION, "netIdCleanup", netIdCleanupSystem);
 }
 
 void GameWorld::apply(const PlayerCommand &command)
 {
-    std::visit([this](const auto &alternative) {
-            handle(alternative);
-        },
+    std::visit([this](const auto &alternative) { handle(alternative); },
         command);
 }
 
@@ -81,19 +81,17 @@ void GameWorld::collectReplicated(std::vector<ReplicatedEntity> &out) const
 {
     out.clear();
     for (auto &&[entity, replicated]:
-         _registry.indexedView<const Replicated>()) {
+        _registry.indexedView<const Replicated>()) {
         const auto *transform = _registry.getComponent<Transform>(entity);
-        const auto *velocity = _registry.getComponent<Velocity>(entity);
+        const auto *velocity  = _registry.getComponent<Velocity>(entity);
 
         out.push_back({.netId = replicated.netId,
-                       .kind = replicated.kind,
-                       .variant = replicated.variant,
-                       .position = transform != nullptr
-                       ? transform->position
-                       : engine::core::Vec2f{},
-                       .velocity = velocity != nullptr
-                       ? velocity->value
-                       : engine::core::Vec2f{}});
+            .kind             = replicated.kind,
+            .variant          = replicated.variant,
+            .position         = transform != nullptr ? transform->position
+                                                     : engine::core::Vec2f{},
+            .velocity =
+                velocity != nullptr ? velocity->value : engine::core::Vec2f{}});
     }
 }
 
@@ -125,16 +123,16 @@ void GameWorld::handle(const JoinPlayer &command)
     const bool joined = gameOver
         ? roster.joinWaiting(command.playerId, command.name)
         : roster.join(command.playerId, command.name,
-            _registry.getResource<Rules>().playerLives);
+              _registry.getResource<Rules>().playerLives);
 
     if (joined)
-        _registry.getResource<EventOutbox>().push(
-            PlayerJoined{.playerId = command.playerId});
+        _registry.getResource<EventOutbox>().push(PlayerJoined{
+            .playerId = command.playerId});
 }
 
 void GameWorld::handle(const LeavePlayer &command)
 {
-    auto &roster = _registry.getResource<PlayerRoster>();
+    auto &roster           = _registry.getResource<PlayerRoster>();
     const PlayerSlot *slot = roster.get(command.playerId);
 
     if (slot == nullptr)
@@ -142,18 +140,18 @@ void GameWorld::handle(const LeavePlayer &command)
 
     std::vector<engine::ecs::Entity> doomed;
 
-    if (const auto ship = _registry.getResource<NetIdAllocator>().find(
-        slot->shipNetId, _registry))
+    if (const auto ship =
+            _registry.getResource<NetIdAllocator>().find(slot->shipNetId,
+                _registry))
         doomed.push_back(*ship);
-    for (auto &&[entity, projectile]:
-         _registry.indexedView<const Projectile>())
+    for (auto &&[entity, projectile]: _registry.indexedView<const Projectile>())
         if (projectile.ownerPlayerId == command.playerId)
             doomed.push_back(entity);
     for (const auto &entity: doomed)
         _registry.killEntity(entity);
     roster.release(command.playerId);
-    _registry.getResource<EventOutbox>().push(
-        PlayerLeft{.playerId = command.playerId, .reason = command.reason});
+    _registry.getResource<EventOutbox>().push(PlayerLeft{
+        .playerId = command.playerId, .reason = command.reason});
 }
 
 void GameWorld::handle(const SetInput &command)
@@ -163,12 +161,13 @@ void GameWorld::handle(const SetInput &command)
     if (!roster.acceptInput(command.playerId, command.inputSequence))
         return;
 
-    const auto ship = _registry.getResource<NetIdAllocator>().find(
-        roster.get(command.playerId)->shipNetId, _registry);
+    const auto ship =
+        _registry.getResource<NetIdAllocator>()
+            .find(roster.get(command.playerId)->shipNetId, _registry);
 
     if (!ship)
         return;
     if (auto *player = _registry.getComponent<PlayerShip>(*ship))
         player->buttons = command.buttons;
 }
-}
+} // namespace rtype::game

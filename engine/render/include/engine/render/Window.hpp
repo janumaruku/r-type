@@ -15,22 +15,21 @@
 #include <vector>
 
 #include "engine/core/Vec2.hpp"
-
 #include "engine/input/InputEvent.hpp"
 
 namespace engine::render {
 
 struct WindowConfig {
     std::string title;
-    core::Vec2u size = {1280, 720};
-    bool fullscreen = false;
-    bool vsync = true;
+    core::Vec2u size        = {1280, 720};
+    bool fullscreen         = false;
+    bool vsync              = true;
     std::uint8_t frameLimit = 0;
 };
 
 class Window {
 public:
-    explicit Window(WindowConfig const& config);
+    explicit Window(WindowConfig const &config);
 
     Window(const Window &) = delete;
 

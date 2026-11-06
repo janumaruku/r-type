@@ -32,8 +32,7 @@ namespace server_test {
 class TestClient {
 public:
     explicit TestClient(std::uint16_t serverPort):
-        _socket(0),
-        _server({asio::ip::address_v4::loopback(), serverPort})
+        _socket(0), _server({asio::ip::address_v4::loopback(), serverPort})
     {
         _socket.start();
     }
@@ -43,7 +42,7 @@ public:
         _socket.stop();
     }
 
-    TestClient(const TestClient &) = delete;
+    TestClient(const TestClient &)            = delete;
     TestClient &operator=(const TestClient &) = delete;
 
     /**
@@ -74,8 +73,8 @@ public:
      * @return std::nullopt on timeout.
      */
     template <typename Message>
-    [[nodiscard]] std::optional<Message> waitFor(
-        rtype::protocol::MessageType type,
+    [[nodiscard]] std::optional<Message> waitFor(rtype::protocol::MessageType
+                                                     type,
         std::chrono::milliseconds timeout = std::chrono::seconds(2))
     {
         const auto deadline = std::chrono::steady_clock::now() + timeout;
@@ -102,8 +101,7 @@ public:
         return _events;
     }
 
-    [[nodiscard]] std::optional<rtype::protocol::Snapshot>
-    lastSnapshot() const
+    [[nodiscard]] std::optional<rtype::protocol::Snapshot> lastSnapshot() const
     {
         pump();
         if (_snapshots.empty())
@@ -115,8 +113,8 @@ public:
      * @brief The types a @ref waitFor skipped, other than SNAPSHOT and
      * EVENT, in arrival order.
      */
-    [[nodiscard]] const std::vector<rtype::protocol::MessageType> &
-    unexpected() const noexcept
+    [[nodiscard]] const std::vector<rtype::protocol::MessageType> &unexpected()
+        const noexcept
     {
         return _unexpected;
     }
@@ -140,13 +138,13 @@ private:
 
     [[nodiscard]] static bool isRecorded(rtype::protocol::MessageType type)
     {
-        return type == rtype::protocol::MessageType::SNAPSHOT
-            || type == rtype::protocol::MessageType::EVENT;
+        return type == rtype::protocol::MessageType::SNAPSHOT ||
+            type == rtype::protocol::MessageType::EVENT;
     }
 
     void pump() const
     {
-        for (const auto &datagram : _socket.receiveAll()) {
+        for (const auto &datagram: _socket.receiveAll()) {
             net::Packet packet(datagram.bytes);
             rtype::protocol::Header header{};
 
@@ -166,11 +164,11 @@ private:
     void record(rtype::protocol::MessageType type, net::Packet body) const
     {
         if (type == rtype::protocol::MessageType::SNAPSHOT)
-            _snapshots.push_back(
-                rtype::protocol::decode<rtype::protocol::Snapshot>(body));
+            _snapshots.push_back(rtype::protocol::decode<
+                rtype::protocol::Snapshot>(body));
         else if (type == rtype::protocol::MessageType::EVENT)
-            _events.push_back(
-                rtype::protocol::decode<rtype::protocol::Event>(body));
+            _events.push_back(rtype::protocol::decode<
+                rtype::protocol::Event>(body));
     }
 
     mutable net::UdpSocket _socket;
@@ -183,6 +181,6 @@ private:
     mutable std::size_t _malformed = 0;
 };
 
-}
+} // namespace server_test
 
 #endif

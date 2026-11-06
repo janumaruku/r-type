@@ -14,4 +14,4 @@ std::filesystem::path cacheKey(const std::filesystem::path &path)
     return path.lexically_normal();
 }
 
-}
+} // namespace engine::core

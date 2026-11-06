@@ -5,12 +5,11 @@
 ** KeyTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/input/Key.hpp"
 
 #include <cstddef>
+#include <gtest/gtest.h>
 #include <optional>
-
-#include "engine/input/Key.hpp"
 
 using engine::input::Key;
 using engine::input::KEY_COUNT;
@@ -22,7 +21,8 @@ TEST(KeyTests, EveryKeyNameReadsBackAsTheSameKey)
     for (std::size_t id = 1; id < KEY_COUNT; ++id) {
         const auto key = static_cast<Key>(id);
 
-        EXPECT_EQ(keyFromString(toString(key)), std::optional<Key>{key}) << toString(key);
+        EXPECT_EQ(keyFromString(toString(key)), std::optional<Key>{key})
+            << toString(key);
     }
 }
 

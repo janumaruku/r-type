@@ -19,8 +19,14 @@
 namespace rtype::client {
 namespace {
 constexpr std::array<std::string_view, 8> KEYS{
-    "masterVolume", "musicVolume", "sfxVolume", "muted",
-    "hudFontSize", "highContrast", "reduceFlashes", "fullscreen",
+    "masterVolume",
+    "musicVolume",
+    "sfxVolume",
+    "muted",
+    "hudFontSize",
+    "highContrast",
+    "reduceFlashes",
+    "fullscreen",
 };
 
 constexpr long long MIN_HUD_FONT_SIZE = 8;
@@ -37,8 +43,7 @@ engine::core::log::Logger &logger()
 ** A number is clamped to [0, 1], with a warning when it had to be. Anything
 ** else, NaN included, keeps the default.
 */
-void readVolume(const nlohmann::json &json, std::string_view key,
-    float &field)
+void readVolume(const nlohmann::json &json, std::string_view key, float &field)
 {
     const auto it = json.find(key);
 
@@ -48,11 +53,10 @@ void readVolume(const nlohmann::json &json, std::string_view key,
         logger().warn("{}: must be a number, keeping {}", key, field);
         return;
     }
-    const auto value = it->get<double>();
+    const auto value   = it->get<double>();
     const auto clamped = std::clamp(value, 0.0, 1.0);
     if (clamped != value)
-        logger().warn("{}: {} is out of [0, 1], using {}", key, value,
-            clamped);
+        logger().warn("{}: {} is out of [0, 1], using {}", key, value, clamped);
     field = static_cast<float>(clamped);
 }
 
@@ -88,7 +92,7 @@ void readFontSize(const nlohmann::json &json, std::string_view key,
     }
     field = static_cast<unsigned>(value);
 }
-}
+} // namespace
 
 ClientSettings ClientSettings::load(const std::filesystem::path &path)
 {
@@ -108,7 +112,8 @@ ClientSettings ClientSettings::load(const std::filesystem::path &path)
     }
     if (!json.is_object()) {
         logger().warn("{}: the top level is not an object, using the "
-            "default settings", path.string());
+                      "default settings",
+            path.string());
         return {};
     }
     return fromJson(json);
@@ -130,9 +135,9 @@ ClientSettings ClientSettings::fromJson(const nlohmann::json &json)
     readBool(json, "highContrast", settings.highContrast);
     readBool(json, "reduceFlashes", settings.reduceFlashes);
     readBool(json, "fullscreen", settings.fullscreen);
-    for (const auto &[key, value] : json.items())
+    for (const auto &[key, value]: json.items())
         if (std::ranges::find(KEYS, key) == KEYS.end())
             logger().warn("{}: unknown setting, ignored", key);
     return settings;
 }
-}
+} // namespace rtype::client

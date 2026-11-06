@@ -6,13 +6,13 @@
 */
 
 #ifndef R_TYPE_SPARSESET_HPP
-#define R_TYPE_SPARSESET_HPP
+    #define R_TYPE_SPARSESET_HPP
 
-#include <span>
-#include <vector>
+    #include <span>
+    #include <vector>
 
-#include "engine/ecs/SparseSetBase.hpp"
-#include "engine/ecs/Component.hpp"
+    #include "engine/ecs/Component.hpp"
+    #include "engine/ecs/SparseSetBase.hpp"
 
 namespace engine::ecs {
 template <ComponentConcept Component>
@@ -33,7 +33,7 @@ public:
     Component &insertAt(const Entity &entity, Component &&value);
 
     template <typename... Args>
-    Component &emplaceAt(const Entity &entity, Args &&... args);
+    Component &emplaceAt(const Entity &entity, Args &&...args);
 
     /*
     ** Swap-and-pop: the last component moves into the erased one's position.
@@ -54,8 +54,8 @@ private:
 
     void exceptionSafeAppend(const Entity &entity);
 };
-}
+} // namespace engine::ecs
 
-#endif //R_TYPE_SPARSESET_HPP
+#endif // R_TYPE_SPARSESET_HPP
 
 #include "engine/ecs/SparseSet.tpp"

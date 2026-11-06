@@ -10,8 +10,8 @@
 
 #include <cstddef>
 #include <deque>
-#include <vector>
 #include <functional>
+#include <vector>
 
 #include "rtype/protocol/Event.hpp"
 

@@ -1,11 +1,11 @@
-#include <gtest/gtest.h>
+#include "ServerApp.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <thread>
 
-#include "ServerApp.hpp"
 #include "engine/core/Errors.hpp"
 
 namespace rtype::server {
@@ -45,7 +45,7 @@ struct ServerAppTestAccess {
         return app._socket.stats();
     }
 };
-}
+} // namespace rtype::server
 
 namespace {
 
@@ -73,7 +73,7 @@ TEST(ServerAppTests, StopsCleanly)
 
     std::this_thread::sleep_for(100ms);
     const auto stopAt = Clock::now();
-    stopRequested = true;
+    stopRequested     = true;
     server.join();
 
     EXPECT_LT(Clock::now() - stopAt, 500ms);
@@ -87,9 +87,9 @@ TEST(ServerAppTests, RejectsBusyPort)
 
     rtype::server::ServerConfig secondConfig;
     secondConfig.port = first.port();
-    EXPECT_THROW({
-        ServerApp second(secondConfig, stopRequested);
-    }, engine::core::NetworkError);
+    EXPECT_THROW(
+        { ServerApp second(secondConfig, stopRequested); },
+        engine::core::NetworkError);
 }
 
 /*
@@ -127,18 +127,18 @@ TEST(ServerAppTests, OneSecondWithoutClientsTicksSixtyTimesAndSendsNothing)
 {
     std::atomic<bool> stopRequested{false};
     ServerApp app(testConfig(), stopRequested);
-    int result = -1;
+    int result       = -1;
     const auto start = Clock::now();
     std::thread server([&] { result = app.run(); });
 
     std::this_thread::sleep_for(1s);
     const auto ran = Clock::now() - start;
-    stopRequested = true;
+    stopRequested  = true;
     server.join();
 
     const auto expected = static_cast<std::int64_t>(ran / PERIOD);
-    const auto ticks = static_cast<std::int64_t>(
-        ServerAppTestAccess::ticks(app));
+    const auto ticks =
+        static_cast<std::int64_t>(ServerAppTestAccess::ticks(app));
     EXPECT_GE(ticks, expected - 3) << "ran " << ran / 1ms << " ms";
     EXPECT_LE(ticks, expected + 2) << "ran " << ran / 1ms << " ms";
     EXPECT_GE(ticks, 55);
@@ -148,4 +148,4 @@ TEST(ServerAppTests, OneSecondWithoutClientsTicksSixtyTimesAndSendsNothing)
     EXPECT_EQ(result, 0);
 }
 
-}
+} // namespace

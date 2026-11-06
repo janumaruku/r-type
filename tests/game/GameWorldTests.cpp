@@ -5,19 +5,19 @@
 ** GameWorldTests
 */
 
-#include <gtest/gtest.h>
+#include "rtype/game/GameWorld.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include "GameWorldTestAccess.hpp"
 #include "engine/ecs/Registry.hpp"
+#include "GameWorldTestAccess.hpp"
 #include "rtype/game/Builders.hpp"
 #include "rtype/game/Components.hpp"
-#include "rtype/game/GameWorld.hpp"
 #include "rtype/game/NetIdAllocator.hpp"
 
 using engine::core::Vec2f;
@@ -43,9 +43,9 @@ using rtype::game::SlotState;
 using rtype::game::Stage;
 
 namespace {
-constexpr float DT = 1.0F / 60.0F;
+constexpr float DT           = 1.0F / 60.0F;
 constexpr std::uint32_t SEED = 7;
-}
+} // namespace
 
 class World: public testing::Test {
 protected:
@@ -77,8 +77,7 @@ protected:
 
     std::optional<Entity> find(const NetId netId)
     {
-        return registry().getResource<NetIdAllocator>().find(netId,
-            registry());
+        return registry().getResource<NetIdAllocator>().find(netId, registry());
     }
 
     Entity missileOf(const std::uint8_t playerId, const Vec2f position)
@@ -92,7 +91,8 @@ protected:
 
     InputButtons buttonsOf(const std::uint8_t playerId)
     {
-        return registry().getComponent<PlayerShip>(*find(shipOf(playerId)))
+        return registry()
+            .getComponent<PlayerShip>(*find(shipOf(playerId)))
             ->buttons;
     }
 
@@ -176,10 +176,10 @@ TEST_F(World, LeaveRemovesTheShipAndOnlyThatPlayersMissiles)
 {
     const std::uint8_t leaver = joinedPlayer("alice");
     const std::uint8_t stayer = joinedPlayer("bob");
-    const Entity ship = *find(shipOf(leaver));
-    const Entity first = missileOf(leaver, {400.0F, 200.0F});
-    const Entity second = missileOf(leaver, {500.0F, 200.0F});
-    const Entity other = missileOf(stayer, {400.0F, 400.0F});
+    const Entity ship         = *find(shipOf(leaver));
+    const Entity first        = missileOf(leaver, {400.0F, 200.0F});
+    const Entity second       = missileOf(leaver, {500.0F, 200.0F});
+    const Entity other        = missileOf(stayer, {400.0F, 400.0F});
 
     _world.apply(LeavePlayer{.playerId = leaver, .reason = LeaveReason::QUIT});
     EXPECT_FALSE(registry().isAlive(ship));
@@ -205,7 +205,7 @@ TEST_F(World, CollectingTwiceIntoTheSameVectorKeepsItsCapacity)
     _world.collectReplicated(out);
 
     const std::vector<ReplicatedEntity> first = out;
-    const std::size_t capacity = out.capacity();
+    const std::size_t capacity                = out.capacity();
 
     ASSERT_FALSE(first.empty());
     _world.collectReplicated(out);

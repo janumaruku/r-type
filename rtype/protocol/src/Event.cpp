@@ -12,11 +12,10 @@
 
 namespace rtype::protocol {
 
-
 void serialize(net::Packet &packet, const Event &message)
 {
     packet << message.eventId << message.type << message.a << message.b
-        << message.x << message.y;
+           << message.x << message.y;
 }
 
 /*
@@ -39,8 +38,8 @@ static bool isKnownLeaveReason(const std::uint32_t reason)
 
 void deserialize(net::Packet &packet, Event &message)
 {
-    packet >> message.eventId >> message.type >> message.a >> message.b
-        >> message.x >> message.y;
+    packet >> message.eventId >> message.type >> message.a >> message.b >>
+        message.x >> message.y;
 
     switch (message.type) {
     case EventType::PLAYER_FIRED:
@@ -64,7 +63,6 @@ void deserialize(net::Packet &packet, Event &message)
                 "EVENT: reason out of range for PLAYER_LEFT");
         return;
     }
-    throw ProtocolError(DecodeError::OUT_OF_RANGE,
-        "EVENT: type out of range");
+    throw ProtocolError(DecodeError::OUT_OF_RANGE, "EVENT: type out of range");
 }
-}
+} // namespace rtype::protocol

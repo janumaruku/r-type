@@ -6,12 +6,12 @@
 */
 
 #ifndef R_TYPE_RESOURCES_HPP
-#define R_TYPE_RESOURCES_HPP
+    #define R_TYPE_RESOURCES_HPP
 
-#include <type_traits>
-#include <utility>
+    #include <type_traits>
+    #include <utility>
 
-#include "engine/ecs/TypeId.hpp"
+    #include "engine/ecs/TypeId.hpp"
 
 namespace engine::ecs {
 struct DeltaTime {
@@ -42,12 +42,12 @@ template <ResourceConcept Resource>
 class ResourceHolder: public ResourceBase {
 public:
     template <class... Args>
-    explicit ResourceHolder(Args &&... args);
+    explicit ResourceHolder(Args &&...args);
 
     Resource value;
 };
-}
-} // ecs
+} // namespace detail
+} // namespace engine::ecs
 // engine
 
 #endif // R_TYPE_RESOURCES_HPP

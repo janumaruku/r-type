@@ -8,8 +8,8 @@
 #ifndef R_TYPE_SYSTEMS_HPP
 #define R_TYPE_SYSTEMS_HPP
 
-#include "rtype/game/Components.hpp"
 #include "engine/ecs/Registry.hpp"
+#include "rtype/game/Components.hpp"
 
 namespace rtype::game {
 void playerInputSystem(engine::ecs::Registry &registry,
@@ -64,6 +64,6 @@ void gameOverSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<Replicated> &replicated);
 
 void netIdCleanupSystem(engine::ecs::Registry &registry);
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_SYSTEMS_HPP
+#endif // R_TYPE_SYSTEMS_HPP

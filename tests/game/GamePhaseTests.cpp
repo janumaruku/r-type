@@ -5,9 +5,9 @@
 ** GamePhaseTests
 */
 
-#include <gtest/gtest.h>
-
 #include "rtype/game/GamePhase.hpp"
+
+#include <gtest/gtest.h>
 
 using rtype::game::GamePhase;
 using rtype::game::Phase;
@@ -25,7 +25,7 @@ TEST(GamePhase, StartsPlaying)
 TEST(GamePhase, EntersGameOverOnceAndRestartsOnceAfterTheDelay)
 {
     GamePhase phase;
-    int restarts = 0;
+    int restarts    = 0;
     int restartCall = 0;
 
     EXPECT_TRUE(phase.enterGameOver(5.0F));

@@ -16,8 +16,8 @@ void EventRepeater::add(protocol::Event event, std::uint8_t copies)
     if (copies == 0)
         return;
     event.eventId = _nextEventId++;
-    _pending.push_back(
-        Pending{.event = event, .copies = copies, .copiesLeft = copies});
+    _pending.push_back(Pending{
+        .event = event, .copies = copies, .copiesLeft = copies});
     while (_pending.size() > MAX_PENDING)
         dropOne();
 }
@@ -45,7 +45,7 @@ std::vector<protocol::Event> EventRepeater::takeDue()
         _dropped = 0;
     }
     due.reserve(_pending.size());
-    for (auto &pending : _pending) {
+    for (auto &pending: _pending) {
         due.push_back(pending.event);
         --pending.copiesLeft;
     }
@@ -58,4 +58,4 @@ std::size_t EventRepeater::pending() const noexcept
 {
     return _pending.size();
 }
-}
+} // namespace rtype::server

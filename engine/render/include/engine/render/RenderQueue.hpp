@@ -30,6 +30,6 @@ private:
     std::vector<DrawCommand> _commands;
 };
 
-}
+} // namespace engine::render
 
 #endif /* !RENDER_QUEUE_HPP */

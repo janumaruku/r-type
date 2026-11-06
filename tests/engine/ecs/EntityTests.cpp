@@ -5,15 +5,14 @@
 ** EtityTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/Entity.hpp"
 
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <gtest/gtest.h>
 #include <type_traits>
 #include <unordered_map>
-
-#include "engine/ecs/Entity.hpp"
 
 using engine::ecs::Entity;
 using engine::ecs::detail::EntityAccess;
@@ -67,7 +66,7 @@ TEST(Entity, NoneDiffersFromFirstEntity)
 TEST(Entity, CopyComparesEqualToOriginal)
 {
     const Entity original = EntityAccess::make(12, 4);
-    const Entity copy = original;
+    const Entity copy     = original;
 
     EXPECT_EQ(copy, original);
 }

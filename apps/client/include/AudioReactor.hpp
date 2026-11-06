@@ -14,12 +14,11 @@
 
 namespace rtype::client {
 
-constexpr float BASE_VOLUME = 1.0F;
+constexpr float BASE_VOLUME       = 1.0F;
 constexpr float OTHER_SHOT_VOLUME = 0.4F;
 
 class AudioReactor {
 public:
-
     explicit AudioReactor(GameEventBus &bus, engine::audio::IAudio &audio,
         const SoundBank &sounds, const ClientWorld &world);
     void onEvent(const protocol::Event &event) const;

@@ -5,13 +5,12 @@
 ** GameEventBusTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "GameEventBus.hpp"
 
+#include <gtest/gtest.h>
 #include <optional>
 #include <utility>
 #include <vector>
-
-#include "GameEventBus.hpp"
 
 namespace rtype::client {
 
@@ -19,8 +18,10 @@ TEST(GameEventBusTests, DispatchCallsEachSubscriberOnceInOrder)
 {
     GameEventBus bus;
     std::vector<int> calls;
-    auto first = bus.subscribe([&](const protocol::Event &) { calls.push_back(1); });
-    auto second = bus.subscribe([&](const protocol::Event &) { calls.push_back(2); });
+    auto first =
+        bus.subscribe([&](const protocol::Event &) { calls.push_back(1); });
+    auto second =
+        bus.subscribe([&](const protocol::Event &) { calls.push_back(2); });
 
     bus.publish(protocol::Event{});
     bus.dispatch();
@@ -32,7 +33,7 @@ TEST(GameEventBusTests, PublishWithoutDispatchCallsNoHandler)
 {
     GameEventBus bus;
     int calls = 0;
-    auto sub = bus.subscribe([&](const protocol::Event &) { ++calls; });
+    auto sub  = bus.subscribe([&](const protocol::Event &) { ++calls; });
 
     bus.publish(protocol::Event{});
 
@@ -42,11 +43,12 @@ TEST(GameEventBusTests, PublishWithoutDispatchCallsNoHandler)
 TEST(GameEventBusTests, DestroyedSubscriptionIsNotCalledAndIsRemoved)
 {
     GameEventBus bus;
-    int keptCalls = 0;
+    int keptCalls    = 0;
     int removedCalls = 0;
     auto kept = bus.subscribe([&](const protocol::Event &) { ++keptCalls; });
     {
-        auto removed = bus.subscribe([&](const protocol::Event &) { ++removedCalls; });
+        auto removed =
+            bus.subscribe([&](const protocol::Event &) { ++removedCalls; });
         EXPECT_EQ(bus.subscribers(), 2u);
     }
 
@@ -64,7 +66,8 @@ TEST(GameEventBusTests, MovedSubscriptionStaysActiveWhenSourceIsDestroyed)
     int calls = 0;
     GameEventBus::Subscription kept;
     {
-        auto original = bus.subscribe([&](const protocol::Event &) { ++calls; });
+        auto original =
+            bus.subscribe([&](const protocol::Event &) { ++calls; });
         kept = std::move(original);
     }
 
@@ -79,7 +82,7 @@ TEST(GameEventBusTests, EventPublishedDuringDispatchIsDeliveredOnNextDispatch)
 {
     GameEventBus bus;
     int calls = 0;
-    auto sub = bus.subscribe([&](const protocol::Event &) {
+    auto sub  = bus.subscribe([&](const protocol::Event &) {
         ++calls;
         if (calls == 1) {
             bus.publish(protocol::Event{});
@@ -99,8 +102,11 @@ TEST(GameEventBusTests, HandlerUnsubscribingAnotherDoesNotCrashOrCallIt)
     GameEventBus bus;
     std::optional<GameEventBus::Subscription> victim;
     int victimCalls = 0;
-    auto remover = bus.subscribe([&](const protocol::Event &) { victim.reset(); });
-    victim.emplace(bus.subscribe([&](const protocol::Event &) { ++victimCalls; }));
+    auto remover =
+        bus.subscribe([&](const protocol::Event &) { victim.reset(); });
+    victim.emplace(bus.subscribe([&](const protocol::Event &) {
+        ++victimCalls;
+    }));
     bus.publish(protocol::Event{});
 
     bus.dispatch();

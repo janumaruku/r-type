@@ -5,27 +5,25 @@
 ** AnimationTests
 */
 
-#include <gtest/gtest.h>
-
-#include <nlohmann/json.hpp>
-
 #include <cmath>
 #include <cstdint>
 #include <filesystem>
+#include <gtest/gtest.h>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <string_view>
 #include <utility>
 
-#include "PresentationComponents.hpp"
-#include "RenderSystems.hpp"
-#include "SpriteCatalog.hpp"
 #include "engine/core/Color.hpp"
 #include "engine/core/Rect2.hpp"
 #include "engine/core/Vec2.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "engine/ecs/Resources.hpp"
 #include "engine/render/TextureCache.hpp"
+#include "PresentationComponents.hpp"
+#include "RenderSystems.hpp"
 #include "rtype/game/Components.hpp"
+#include "SpriteCatalog.hpp"
 
 // raylib defines WHITE, BLANK and friends as macros, so it must come after
 // every engine header.
@@ -72,8 +70,8 @@ std::string catalogText(std::string_view shipStates)
 {
     return std::string(R"({"sprites": [
         {"kind": "PLAYER_SHIP", "variant": "*", "sheet": "sheet.png",
-         "frameTime": 0.1, "states": )")
-        + std::string(shipStates) + R"(},
+         "frameTime": 0.1, "states": )") +
+        std::string(shipStates) + R"(},
         {"kind": "BYDOS_SLAVE", "variant": "*", "sheet": "sheet.png",
          "frameTime": 0.1, "states": {"idle": [[0, 0, 8, 8]]}},
         {"kind": "PLAYER_MISSILE", "variant": "*", "sheet": "sheet.png",
@@ -127,24 +125,26 @@ protected:
 Entity spawnAnimated(Registry &registry, const SpriteCatalog &catalog,
     SpriteKey key)
 {
-    const Entity entity = registry.spawnEntity();
+    const Entity entity   = registry.spawnEntity();
     const SpriteDefId def = catalog.find(key, 0);
     const SpriteDef &spec = catalog.get(def);
 
     registry.addComponent(entity, Animation{.def = def});
-    registry.addComponent(entity, Sprite{
-        .texture = spec.texture,
-        .frame = spec.states.front().frames.front(),
-        .layer = 0,
-        .tint = engine::core::Color(255, 255, 255, 255),
-        .scale = Vec2f(1.0F, 1.0F),
-    });
+    registry.addComponent(entity,
+        Sprite{
+            .texture = spec.texture,
+            .frame   = spec.states.front().frames.front(),
+            .layer   = 0,
+            .tint    = engine::core::Color(255, 255, 255, 255),
+            .scale   = Vec2f(1.0F, 1.0F),
+        });
     return entity;
 }
 
 Entity spawnShip(Registry &registry, const SpriteCatalog &catalog, float y)
 {
-    const Entity ship = spawnAnimated(registry, catalog, SpriteKey::PLAYER_SHIP);
+    const Entity ship =
+        spawnAnimated(registry, catalog, SpriteKey::PLAYER_SHIP);
 
     registry.addComponent(ship, rtype::game::Transform{Vec2f(100.0F, y)});
     registry.addComponent(ship, ShipTilt{.lastY = y});
@@ -172,10 +172,12 @@ bool setState(Animation &animation, const SpriteCatalog &sprites,
     return setAnimationState(animation, sprites.get(animation.def), name);
 }
 
-/** Moves the ship vertically at `speed` u/s for one step, then runs the tilt. */
+/** Moves the ship vertically at `speed` u/s for one step, then runs the tilt.
+ */
 void moveShip(Registry &registry, Entity ship, float speed, float dt)
 {
-    auto &position = registry.getComponent<rtype::game::Transform>(ship)->position;
+    auto &position =
+        registry.getComponent<rtype::game::Transform>(ship)->position;
 
     position = Vec2f(position.x(), position.y() + speed * dt);
     tilt(registry, dt);
@@ -184,7 +186,7 @@ void moveShip(Registry &registry, Entity ship, float speed, float dt)
 std::string stateName(const Registry &registry, Entity ship)
 {
     const auto &animation = *registry.getComponent<Animation>(ship);
-    const auto &catalog = registry.getResource<SpriteCatalog>();
+    const auto &catalog   = registry.getResource<SpriteCatalog>();
 
     return catalog.get(animation.def).states[animation.state].name;
 }
@@ -207,7 +209,8 @@ TEST_F(AnimationFixture, ThreeFramesAt0Point1SecondsReachFrameTwoInOneLongStep)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
+    const Entity ship =
+        spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
 
     tick(registry, 0.25F);
 
@@ -220,7 +223,8 @@ TEST_F(AnimationFixture, TwentyFiveSmallStepsReachTheSameFrame)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
+    const Entity ship =
+        spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
 
     for (int step = 0; step < 25; ++step)
         tick(registry, 0.01F);
@@ -234,8 +238,8 @@ TEST_F(AnimationFixture, ANonLoopingStateStopsOnItsLastFrame)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity explosion = spawnAnimated(registry, sprites,
-        SpriteKey::EXPLOSION);
+    const Entity explosion =
+        spawnAnimated(registry, sprites, SpriteKey::EXPLOSION);
 
     tick(registry, 1.0F);
 
@@ -248,7 +252,8 @@ TEST_F(AnimationFixture, TheSpriteShowsTheFrameOfTheCurrentIndex)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
+    const Entity ship =
+        spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
 
     tick(registry, 0.15F);
 
@@ -262,10 +267,11 @@ TEST_F(AnimationFixture, SettingTheCurrentStateKeepsItsFrameAndTimer)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
+    const Entity ship =
+        spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
     auto &animation = *registry.getComponent<Animation>(ship);
 
-    ASSERT_TRUE(setState(animation, sprites, "top"));  // state index 2
+    ASSERT_TRUE(setState(animation, sprites, "top")); // state index 2
     animation.index = 2;
     animation.timer = 0.03F;
 
@@ -281,7 +287,8 @@ TEST_F(AnimationFixture, AnUnknownStateNameIsRefusedAndChangesNothing)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
+    const Entity ship =
+        spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
     auto &animation = *registry.getComponent<Animation>(ship);
 
     animation.index = 1;
@@ -299,14 +306,15 @@ TEST_F(AnimationFixture, ANewStateStartsAtItsFirstFrameAndIsDrawnThatWay)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
+    const Entity ship =
+        spawnAnimated(registry, sprites, SpriteKey::PLAYER_SHIP);
     auto &animation = *registry.getComponent<Animation>(ship);
 
-    ASSERT_TRUE(setState(animation, sprites, "down"));  // 4 frames, index 3
+    ASSERT_TRUE(setState(animation, sprites, "down")); // 4 frames, index 3
     animation.index = 2;
     animation.timer = 0.05F;
 
-    ASSERT_TRUE(setState(animation, sprites, "up"));  // 1 frame, index 1
+    ASSERT_TRUE(setState(animation, sprites, "up")); // 1 frame, index 1
     tick(registry, 0.01F);
 
     EXPECT_EQ(animation.state, 1);
@@ -323,7 +331,7 @@ TEST_F(AnimationFixture, AShortBurstUpShowsUpAndThenIdleWhenItStops)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnShip(registry, sprites, 300.0F);
+    const Entity ship            = spawnShip(registry, sprites, 300.0F);
 
     moveShip(registry, ship, -300.0F, 0.05F);
     moveShip(registry, ship, -300.0F, 0.05F);
@@ -339,13 +347,13 @@ TEST_F(AnimationFixture, HoldingUpPastTheFullDelayShowsTheFullTilt)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnShip(registry, sprites, 300.0F);
+    const Entity ship            = spawnShip(registry, sprites, 300.0F);
 
     moveShip(registry, ship, -300.0F, 0.05F);
     EXPECT_EQ(stateName(registry, ship), "up");
 
     for (int step = 0; step < 3; ++step)
-        moveShip(registry, ship, -300.0F, 0.05F);  // 0.2 s held in total
+        moveShip(registry, ship, -300.0F, 0.05F); // 0.2 s held in total
     EXPECT_EQ(stateName(registry, ship), "top");
 
     moveShip(registry, ship, 0.0F, 0.05F);
@@ -358,7 +366,7 @@ TEST_F(AnimationFixture, MovingDownAfterUpRestartsTheHeldTime)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnShip(registry, sprites, 300.0F);
+    const Entity ship            = spawnShip(registry, sprites, 300.0F);
 
     moveShip(registry, ship, -300.0F, 0.05F);
     moveShip(registry, ship, -300.0F, 0.05F);
@@ -374,7 +382,7 @@ TEST_F(AnimationFixture, VerticalSpeedUnderTheThresholdStaysIdle)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnShip(registry, sprites, 300.0F);
+    const Entity ship            = spawnShip(registry, sprites, 300.0F);
 
     for (int step = 0; step < 10; ++step) {
         moveShip(registry, ship, 10.0F, 0.05F);
@@ -387,8 +395,8 @@ TEST_F(AnimationFixture, AShipWhoseSpriteHasOnlyIdleStaysIdleWhenMovingUp)
     TextureCache textures;
     Registry registry;
     registerTypes(registry);
-    const SpriteCatalog &sprites = loadCatalog(registry, textures,
-        IDLE_ONLY_SHIP);
+    const SpriteCatalog &sprites =
+        loadCatalog(registry, textures, IDLE_ONLY_SHIP);
     const Entity ship = spawnShip(registry, sprites, 300.0F);
 
     EXPECT_NO_THROW(moveShip(registry, ship, -300.0F, 0.05F));
@@ -402,7 +410,7 @@ TEST_F(AnimationFixture, ZeroDeltaTimeChangesNothingAndLeavesNoNaN)
     Registry registry;
     registerTypes(registry);
     const SpriteCatalog &sprites = loadCatalog(registry, textures, FULL_SHIP);
-    const Entity ship = spawnShip(registry, sprites, 200.0F);
+    const Entity ship            = spawnShip(registry, sprites, 200.0F);
 
     // A 50 unit jump in no time: the speed would be infinite.
     registry.getComponent<rtype::game::Transform>(ship)->position =

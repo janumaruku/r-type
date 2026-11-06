@@ -21,12 +21,13 @@ namespace engine::audio {
 ** doesn't need the window and can be created before or after it. Build it
 ** through makeAudio(), which falls back to NullAudio when it throws.
 */
-class RaylibAudio final : public IAudio {
+class RaylibAudio final: public IAudio {
 public:
     /* ** Throws EngineError when the device can't open or one already exists */
     RaylibAudio();
 
-    /* ** Unloads every alias before its original sound, then closes the device */
+    /* ** Unloads every alias before its original sound, then closes the device
+     */
     ~RaylibAudio() override;
 
     SoundId loadSound(const std::filesystem::path &path) override;
@@ -56,6 +57,6 @@ private:
     std::unique_ptr<Impl> _impl;
 };
 
-}
+} // namespace engine::audio
 
 #endif // !RAYLIB_AUDIO_HPP

@@ -8,14 +8,15 @@
 #ifndef COMPONENT_HPP
 #define COMPONENT_HPP
 
-#include "engine/ecs/TypeId.hpp"
 #include <concepts>
+
+#include "engine/ecs/TypeId.hpp"
 
 namespace engine::ecs {
 template <class T>
-concept ComponentConcept = detail::PlainType<T> && std::is_object_v<T> &&
-    std::move_constructible<T> && std::assignable_from<T &, T> &&
-        std::destructible<T>;
+concept ComponentConcept =
+    detail::PlainType<T> && std::is_object_v<T> && std::move_constructible<T> &&
+    std::assignable_from<T &, T> && std::destructible<T>;
 }
 
 #endif

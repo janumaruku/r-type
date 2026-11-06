@@ -8,11 +8,11 @@
 #ifndef CACHE_ACCESS_HPP
 #define CACHE_ACCESS_HPP
 
+#include <raylib.h>
+
 #include "engine/render/DrawCommand.hpp"
 #include "engine/render/FontCache.hpp"
 #include "engine/render/TextureCache.hpp"
-
-#include <raylib.h>
 
 namespace engine::render::detail {
 
@@ -31,6 +31,6 @@ struct CacheAccess {
     [[nodiscard]] static Font font(const FontCache &cache, FontId id);
 };
 
-}
+} // namespace engine::render::detail
 
 #endif /* !CACHE_ACCESS_HPP */

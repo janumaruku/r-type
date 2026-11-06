@@ -16,13 +16,13 @@
 #include "Actions.hpp"
 #include "ClientConfig.hpp"
 #include "ClientSettings.hpp"
-#include "engine/render/FontCache.hpp"
-#include "engine/render/RenderQueue.hpp"
-#include "SpriteCatalog.hpp"
-#include "engine/render/TextureCache.hpp"
 #include "engine/audio/IAudio.hpp"
 #include "engine/input/ActionMap.hpp"
+#include "engine/render/FontCache.hpp"
+#include "engine/render/RenderQueue.hpp"
+#include "engine/render/TextureCache.hpp"
 #include "engine/runtime/Clock.hpp"
+#include "SpriteCatalog.hpp"
 
 namespace rtype::client {
 class IScene;
@@ -47,8 +47,8 @@ struct SceneRequest {
 
     [[nodiscard]] static SceneRequest stay() noexcept;
 
-    [[nodiscard]] static SceneRequest change(
-        std::unique_ptr<IScene> next) noexcept;
+    [[nodiscard]] static SceneRequest change(std::unique_ptr<IScene> next)
+        noexcept;
 
     [[nodiscard]] static SceneRequest quit() noexcept;
 };
@@ -61,8 +61,8 @@ public:
 
     virtual void onExit(FrameContext &context) = 0;
 
-    [[nodiscard]] virtual SceneRequest update(FrameContext &context, float dt) =
-    0;
+    [[nodiscard]] virtual SceneRequest update(FrameContext &context,
+        float dt) = 0;
 
     virtual void draw(engine::render::RenderQueue &queue,
         const FrameContext &context) = 0;
@@ -95,8 +95,7 @@ public:
 
     void onExit(FrameContext &context) override;
 
-    [[nodiscard]] SceneRequest update(FrameContext &context,
-        float dt) override;
+    [[nodiscard]] SceneRequest update(FrameContext &context, float dt) override;
 
     /**
      * @brief The title, the detail and the key hint on the HUD layer, sized
@@ -116,6 +115,6 @@ private:
     std::string _detail;
     bool _canReconnect;
 };
-}
+} // namespace rtype::client
 
 #endif

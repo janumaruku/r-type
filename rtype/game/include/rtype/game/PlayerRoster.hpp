@@ -22,11 +22,11 @@ namespace rtype::game {
 struct PlayerSlot {
     std::uint8_t playerId = 0;
     std::string name{};
-    std::uint8_t lives = 0;
-    std::uint32_t score = 0;
-    SlotState state = SlotState::EMPTY;
-    float respawnTimer = 0.0F;
-    NetId shipNetId = NO_NET_ID;
+    std::uint8_t lives              = 0;
+    std::uint32_t score             = 0;
+    SlotState state                 = SlotState::EMPTY;
+    float respawnTimer              = 0.0F;
+    NetId shipNetId                 = NO_NET_ID;
     std::uint32_t lastInputSequence = 0;
 };
 
@@ -156,6 +156,6 @@ private:
     std::array<std::optional<PlayerSlot>, 4> _slots;
     engine::core::log::Logger _logger{"game"};
 };
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_PLAYER_ROSTER_HPP
+#endif // R_TYPE_PLAYER_ROSTER_HPP

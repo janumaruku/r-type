@@ -37,8 +37,8 @@ std::optional<ReceivedMessage> checkFromServer(const net::Datagram &datagram,
         return std::nullopt;
     try {
         protocol::checkDatagramSize(datagram.bytes.size());
-        ReceivedMessage message{.header = {},
-            .packet = net::Packet(datagram.bytes)};
+        ReceivedMessage message{
+            .header = {}, .packet = net::Packet(datagram.bytes)};
 
         message.packet >> message.header;
         if (message.header.version != protocol::Header::VERSION)
@@ -48,9 +48,9 @@ std::optional<ReceivedMessage> checkFromServer(const net::Datagram &datagram,
         return message;
     } catch (const net::PacketError &error) {
         if (logs.shouldLog(protocol::classify(error), now))
-            engine::core::log::Logger("client").warn(
-                "Dropped a datagram from the server: {}", error.what());
+            engine::core::log::Logger("client")
+                .warn("Dropped a datagram from the server: {}", error.what());
         return std::nullopt;
     }
 }
-}
+} // namespace rtype::client

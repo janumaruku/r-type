@@ -5,15 +5,14 @@
 ** ClientConfigTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "ClientConfig.hpp"
 
 #include <cstdlib>
+#include <gtest/gtest.h>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-
-#include "ClientConfig.hpp"
 
 namespace rtype::client {
 namespace {
@@ -38,7 +37,7 @@ public:
     ScopedEnv(const char *name, const char *value): _name(name)
     {
 #ifdef _WIN32
-        char *saved = nullptr;
+        char *saved      = nullptr;
         std::size_t size = 0;
 
         if (_dupenv_s(&saved, &size, name) == 0 && saved != nullptr) {
@@ -57,7 +56,7 @@ public:
         set(_saved ? _saved->c_str() : nullptr);
     }
 
-    ScopedEnv(const ScopedEnv &) = delete;
+    ScopedEnv(const ScopedEnv &)            = delete;
     ScopedEnv &operator=(const ScopedEnv &) = delete;
 
 private:
@@ -76,7 +75,7 @@ private:
     const char *_name;
     std::optional<std::string> _saved;
 };
-}
+} // namespace
 
 TEST(ClientConfigTests, NoArgumentGivesTheDefaults)
 {
@@ -91,8 +90,8 @@ TEST(ClientConfigTests, NoArgumentGivesTheDefaults)
 
 TEST(ClientConfigTests, ShortOptionsAreAllApplied)
 {
-    const ClientConfig config = parseArgs(
-        {"-h", "10.0.0.2", "-p", "5000", "-n", "Alice", "--fullscreen", "--log-level", "warn"});
+    const ClientConfig config = parseArgs({"-h", "10.0.0.2", "-p", "5000", "-n",
+        "Alice", "--fullscreen", "--log-level", "warn"});
 
     EXPECT_EQ(config.host, "10.0.0.2");
     EXPECT_EQ(config.port, 5000);
@@ -103,8 +102,8 @@ TEST(ClientConfigTests, ShortOptionsAreAllApplied)
 
 TEST(ClientConfigTests, LongOptionsAreAllApplied)
 {
-    const ClientConfig config = parseArgs(
-        {"--host", "10.0.0.3", "--port", "6000", "--name", "Bob", "--log-level", "debug"});
+    const ClientConfig config = parseArgs({"--host", "10.0.0.3", "--port",
+        "6000", "--name", "Bob", "--log-level", "debug"});
 
     EXPECT_EQ(config.host, "10.0.0.3");
     EXPECT_EQ(config.port, 6000);
@@ -114,7 +113,8 @@ TEST(ClientConfigTests, LongOptionsAreAllApplied)
 
 TEST(ClientConfigTests, LastOccurrenceOfAnOptionWins)
 {
-    const ClientConfig config = parseArgs({"-p", "5000", "-h", "a", "-p", "6000", "-h", "b"});
+    const ClientConfig config =
+        parseArgs({"-p", "5000", "-h", "a", "-p", "6000", "-h", "b"});
 
     EXPECT_EQ(config.port, 6000);
     EXPECT_EQ(config.host, "b");
@@ -151,7 +151,8 @@ TEST(ClientConfigTests, PortThatIsNotAWholeNumberNamesTheOption)
 
 TEST(ClientConfigTests, UnknownOptionNamesTheOption)
 {
-    EXPECT_NE(configErrorFor({"--frobnicate"}).find("frobnicate"), std::string::npos);
+    EXPECT_NE(configErrorFor({"--frobnicate"}).find("frobnicate"),
+        std::string::npos);
 }
 
 TEST(ClientConfigTests, EmptyHostIsRejected)
@@ -161,17 +162,23 @@ TEST(ClientConfigTests, EmptyHostIsRejected)
 
 TEST(ClientConfigTests, UnknownLogLevelNamesTheOption)
 {
-    EXPECT_NE(configErrorFor({"--log-level", "loud"}).find("log-level"), std::string::npos);
+    EXPECT_NE(configErrorFor({"--log-level", "loud"}).find("log-level"),
+        std::string::npos);
 }
 
 TEST(ClientConfigTests, LongNameIsCutTo16Bytes)
 {
-    EXPECT_EQ(parseArgs({"-n", "ABCDEFGHIJKLMNOPQRST"}).name, "ABCDEFGHIJKLMNOP");
+    EXPECT_EQ(parseArgs({"-n", "ABCDEFGHIJKLMNOPQRST"}).name,
+        "ABCDEFGHIJKLMNOP");
 }
 
 TEST(ClientConfigTests, UnprintableBytesInTheNameBecomeQuestionMarks)
 {
-    EXPECT_EQ(parseArgs({"-n", "Al\x01" "ce"}).name, "Al?ce");
+    EXPECT_EQ(parseArgs({"-n",
+                            "Al\x01"
+                            "ce"})
+                  .name,
+        "Al?ce");
 }
 
 TEST(ClientConfigTests, DefaultNameIsEmptyWithoutUserVariables)
@@ -197,8 +204,12 @@ TEST(ClientConfigTests, DefaultNameIsCutTo16Bytes)
 
 TEST(ClientConfigTests, DefaultNameIsMadePrintable)
 {
-    const ScopedEnv user("USER", "Al\x01" "ce");
-    const ScopedEnv username("USERNAME", "Al\x01" "ce");
+    const ScopedEnv user("USER",
+        "Al\x01"
+        "ce");
+    const ScopedEnv username("USERNAME",
+        "Al\x01"
+        "ce");
 
     EXPECT_EQ(ClientConfig::defaultName(), "Al?ce");
 }
@@ -227,4 +238,4 @@ TEST(ClientConfigTests, DefaultNameFallsBackToTheOtherVariable)
 
     EXPECT_EQ(ClientConfig::defaultName(), "fallback");
 }
-}
+} // namespace rtype::client

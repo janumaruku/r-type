@@ -6,15 +6,16 @@
 */
 
 #ifndef RECT2_HPP
-#define RECT2_HPP
+    #define RECT2_HPP
 
-#include <cstdint>
-#include <initializer_list>
-#include "engine/core/Vec2.hpp"
+    #include <cstdint>
+    #include <initializer_list>
+
+    #include "engine/core/Vec2.hpp"
 
 namespace engine::core {
 
-template<typename T>
+template <typename T>
 class Rect2 {
 public:
     Rect2() = default;
@@ -38,10 +39,10 @@ private:
 };
 
 using FloatRect = Rect2<float>;
-using IntRect = Rect2<std::int32_t>;
-using UintRect = Rect2<std::uint32_t>;
+using IntRect   = Rect2<std::int32_t>;
+using UintRect  = Rect2<std::uint32_t>;
 
-}
+} // namespace engine::core
 
 #endif
 #include "engine/core/Rect2.tpp"

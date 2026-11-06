@@ -5,6 +5,6 @@
 ** misc
 */
 
+#include "rtype/game/Components.hpp"
 #include "rtype/game/Rules.hpp"
 #include "rtype/game/Types.hpp"
-#include "rtype/game/Components.hpp"

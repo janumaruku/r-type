@@ -23,14 +23,14 @@ using engine::render::RenderQueue;
 using engine::render::SpriteCmd;
 using engine::render::TextCmd;
 
-constexpr std::int16_t FLOOR_LAYER = 0;
-constexpr std::int16_t PANEL_LAYER = 100;
-constexpr std::int16_t SAME_LAYER = 150;
-constexpr std::int16_t ENEMY_LAYER = 200;
-constexpr std::int16_t LABEL_LAYER = 300;
+constexpr std::int16_t FLOOR_LAYER  = 0;
+constexpr std::int16_t PANEL_LAYER  = 100;
+constexpr std::int16_t SAME_LAYER   = 150;
+constexpr std::int16_t ENEMY_LAYER  = 200;
+constexpr std::int16_t LABEL_LAYER  = 300;
 constexpr std::int16_t BULLET_LAYER = 400;
-constexpr std::int16_t SHIP_LAYER = 500;
-constexpr std::int16_t HUD_LAYER = 1000;
+constexpr std::int16_t SHIP_LAYER   = 500;
+constexpr std::int16_t HUD_LAYER    = 1000;
 
 const Color WHITE{255, 255, 255, 255};
 const Color NO_OUTLINE{0, 0, 0, 0};
@@ -41,15 +41,15 @@ SpriteCmd sprite(const SceneAssets &assets, const Cell cell,
     const int x = static_cast<int>(cell) * CELL;
 
     return SpriteCmd{
-        .texture = assets.sheet,
-        .source = engine::core::IntRect{engine::core::Vec2i{x, 0},
+        .texture     = assets.sheet,
+        .source      = engine::core::IntRect{engine::core::Vec2i{x, 0},
             flipped ? -CELL : CELL, CELL},
-        .position = position,
-        .origin = Vec2f{CELL / 2.0F, CELL / 2.0F},
-        .scale = Vec2f{SPRITE_SCALE, SPRITE_SCALE},
+        .position    = position,
+        .origin      = Vec2f{CELL / 2.0F, CELL / 2.0F},
+        .scale       = Vec2f{SPRITE_SCALE, SPRITE_SCALE},
         .rotationDeg = 0.0F,
-        .tint = WHITE,
-        .layer = layer,
+        .tint        = WHITE,
+        .layer       = layer,
     };
 }
 
@@ -57,11 +57,11 @@ RectCmd rect(const Vec2f &origin, const float width, const float height,
     const Color &fill, const std::int16_t layer)
 {
     return RectCmd{
-        .rect = FloatRect{origin, width, height},
-        .fill = fill,
-        .outline = NO_OUTLINE,
+        .rect             = FloatRect{origin, width, height},
+        .fill             = fill,
+        .outline          = NO_OUTLINE,
         .outlineThickness = 0.0F,
-        .layer = layer,
+        .layer            = layer,
     };
 }
 
@@ -69,12 +69,12 @@ TextCmd text(const engine::render::FontId font, std::string value,
     const Vec2f &position, const std::uint8_t size, const Color &color)
 {
     return TextCmd{
-        .font = font,
-        .text = std::move(value),
+        .font          = font,
+        .text          = std::move(value),
         .characterSize = size,
-        .position = position,
-        .color = color,
-        .layer = HUD_LAYER,
+        .position      = position,
+        .color         = color,
+        .layer         = HUD_LAYER,
     };
 }
 
@@ -95,8 +95,8 @@ void pushFloor(RenderQueue &queue, const SceneAssets &assets)
 */
 void pushLayerChecks(RenderQueue &queue, const SceneAssets &assets)
 {
-    TextCmd label = text(assets.font, "layer 300", Vec2f{120.0F, 150.0F}, 28,
-        WHITE);
+    TextCmd label =
+        text(assets.font, "layer 300", Vec2f{120.0F, 150.0F}, 28, WHITE);
 
     label.layer = LABEL_LAYER;
     queue.push(std::move(label));
@@ -111,8 +111,7 @@ void pushLayerChecks(RenderQueue &queue, const SceneAssets &assets)
         Color{50, 200, 90, 255}, SAME_LAYER));
 }
 
-void pushHud(RenderQueue &queue, const SceneAssets &assets,
-    const Frame &frame)
+void pushHud(RenderQueue &queue, const SceneAssets &assets, const Frame &frame)
 {
     const Color dim{170, 180, 200, 255};
 
@@ -135,7 +134,7 @@ void pushHud(RenderQueue &queue, const SceneAssets &assets,
         "left: 300 over 200 over 100   right: same layer, green pushed last",
         Vec2f{100.0F, 270.0F}, 20, dim));
 }
-}
+} // namespace
 
 void fillQueue(RenderQueue &queue, const SceneAssets &assets,
     const Frame &frame)
@@ -150,4 +149,4 @@ void fillQueue(RenderQueue &queue, const SceneAssets &assets,
     pushFloor(queue, assets);
 }
 
-}
+} // namespace render_demo

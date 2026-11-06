@@ -12,20 +12,20 @@
 #include <optional>
 #include <vector>
 
+#include "engine/core/Vec2.hpp"
+#include "engine/ecs/Registry.hpp"
 #include "rtype/game/Commands.hpp"
 #include "rtype/game/Events.hpp"
 #include "rtype/game/PlayerRoster.hpp"
 #include "rtype/game/Rules.hpp"
 #include "rtype/game/Types.hpp"
-#include "engine/core/Vec2.hpp"
-#include "engine/ecs/Registry.hpp"
 
 namespace rtype::game {
 enum class Stage : std::uint8_t { SIMULATION };
 
 struct ReplicatedEntity {
-    NetId netId = NO_NET_ID;
-    EntityKind kind = EntityKind::PLAYER_SHIP;
+    NetId netId          = NO_NET_ID;
+    EntityKind kind      = EntityKind::PLAYER_SHIP;
     std::uint8_t variant = 0;
     engine::core::Vec2f position{};
     engine::core::Vec2f velocity{};
@@ -79,6 +79,6 @@ private:
     engine::ecs::Registry _registry;
     std::uint32_t _tick = 0;
 };
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_GAME_WORLD_HPP
+#endif // R_TYPE_GAME_WORLD_HPP

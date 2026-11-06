@@ -16,6 +16,7 @@ rtype_add_test(client_tests
         StarfieldTests.cpp
         AudioReactorTests.cpp
         EffectsReactorTests.cpp
+        HudTests.cpp
 )
 
 target_compile_definitions(client_tests PRIVATE

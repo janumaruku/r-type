@@ -6,7 +6,6 @@
 */
 
 #include <gtest/gtest.h>
-
 #include <vector>
 
 #include "rtype/game/Commands.hpp"
@@ -25,10 +24,10 @@ using rtype::game::SetInput;
 TEST(EventOutbox, DrainReturnsTheEventsInPushOrderThenNothing)
 {
     EventOutbox outbox;
-    const std::vector<GameEvent> expected{PlayerJoined{2},
-        PlayerLeft{1, LeaveReason::TIMEOUT}, GameOver{1500}};
+    const std::vector<GameEvent> expected{
+        PlayerJoined{2}, PlayerLeft{1, LeaveReason::TIMEOUT}, GameOver{1500}};
 
-    for (const auto &event : expected)
+    for (const auto &event: expected)
         outbox.push(event);
     EXPECT_EQ(outbox.size(), 3U);
     EXPECT_EQ(outbox.drain(), expected);

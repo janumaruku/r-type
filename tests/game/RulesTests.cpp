@@ -5,13 +5,13 @@
 ** RulesTests
 */
 
-#include <gtest/gtest.h>
-
 #include "rtype/game/Rules.hpp"
 
+#include <gtest/gtest.h>
+
+using engine::core::Vec2f;
 using rtype::game::FloatRange;
 using rtype::game::Rules;
-using engine::core::Vec2f;
 
 namespace {
 
@@ -27,7 +27,7 @@ void expectRange(const FloatRange &actual, float min, float max)
     EXPECT_FLOAT_EQ(actual.max, max);
 }
 
-}
+} // namespace
 
 TEST(Rules, PlayerDefaultsMatchTheSpec)
 {

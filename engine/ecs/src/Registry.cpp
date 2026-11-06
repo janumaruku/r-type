@@ -5,17 +5,17 @@
 ** Registry
 */
 
+#include "engine/ecs/Registry.hpp"
+
 #include <cassert>
 #include <chrono>
 #include <cstddef>
-
-#include "engine/ecs/Registry.hpp"
 
 namespace engine::ecs {
 Entity Registry::spawnEntity()
 {
     if (!_freeIndices.empty()) {
-        const auto id = _freeIndices.back();
+        const auto id         = _freeIndices.back();
         const auto generation = _generations[id];
         const Entity entity{id, generation};
 
@@ -39,14 +39,15 @@ Entity Registry::spawnEntity()
     }
     ++_aliveCount;
 
-    return detail::EntityAccess::make(
-        static_cast<std::uint32_t>(_alive.size() - 1U), 0);
+    return detail::EntityAccess::make(static_cast<std::uint32_t>(_alive.size() -
+                                          1U),
+        0);
 }
 
 bool Registry::isAlive(const Entity &entity) const noexcept
 {
-    return entity.index() < _alive.size() && _alive[entity.index()]
-        && _generations[entity.index()] == entity.generation();
+    return entity.index() < _alive.size() && _alive[entity.index()] &&
+        _generations[entity.index()] == entity.generation();
 }
 
 void Registry::killEntity(const Entity &entity)
@@ -133,8 +134,7 @@ void Registry::runStageAt(const std::uint8_t stage)
     }
 }
 
-std::vector<std::string> Registry::systemNamesAt(
-    const std::uint8_t stage) const
+std::vector<std::string> Registry::systemNamesAt(const std::uint8_t stage) const
 {
     std::vector<std::string> names;
 
@@ -145,4 +145,4 @@ std::vector<std::string> Registry::systemNamesAt(
         names.push_back(entry.name);
     return names;
 }
-}
+} // namespace engine::ecs

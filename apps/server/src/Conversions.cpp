@@ -14,12 +14,11 @@ namespace rtype::server {
 namespace {
 
 OutgoingEvent makeOutgoing(const protocol::EventType type,
-    const std::uint32_t a = 0, const std::uint32_t b = 0,
-    const float x = 0.0F, const float y = 0.0F,
-    const std::uint8_t copies = 3)
+    const std::uint32_t a = 0, const std::uint32_t b = 0, const float x = 0.0F,
+    const float y = 0.0F, const std::uint8_t copies = 3)
 {
     return {
-        .event = {.type = type, .a = a, .b = b, .x = x, .y = y},
+        .event  = {.type = type, .a = a, .b = b, .x = x, .y = y},
         .copies = copies,
     };
 }
@@ -36,9 +35,8 @@ struct EventConverter {
 
     OutgoingEvent operator()(const game::EnemyKilled &value) const
     {
-        return makeOutgoing(protocol::EventType::ENEMY_KILLED,
-            value.killerShip, value.enemy, value.position.x(),
-            value.position.y(), 1);
+        return makeOutgoing(protocol::EventType::ENEMY_KILLED, value.killerShip,
+            value.enemy, value.position.x(), value.position.y(), 1);
     }
 
     OutgoingEvent operator()(const game::PlayerKilled &value) const
@@ -69,7 +67,7 @@ struct EventConverter {
     }
 };
 
-}
+} // namespace
 
 protocol::EntityState toProtocol(const game::ReplicatedEntity &entity) noexcept
 {
@@ -94,7 +92,7 @@ std::array<protocol::PlayerInfo, MAX_PLAYERS> rosterToProtocol(const game::
             protocolRoster[i].playerId = static_cast<std::uint8_t>(i);
             continue;
         }
-        protocolRoster[i]   = {
+        protocolRoster[i] = {
             .playerId  = p->playerId,
             .state     = toProtocol(p->state),
             .lives     = p->lives,
