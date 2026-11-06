@@ -323,10 +323,11 @@ TEST(IntegrationTests, SlowClientTimesOut)
     ASSERT_TRUE(snapshot.has_value());
     ASSERT_FALSE(snapshot->roster.empty());
     for (const auto &player : snapshot->roster) {
-        if (player.playerId == welcome->playerId)
+        if (player.playerId == welcome->playerId) {
             EXPECT_EQ(player.state, PlayerState::EMPTY);
-        else if (player.name == "player")
+        } else if (player.name == "player") {
             EXPECT_NE(player.state, PlayerState::EMPTY);
+        }
     }
 }
 

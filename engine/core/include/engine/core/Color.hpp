@@ -34,6 +34,7 @@ struct Color {
     static const Color GREEN;
     static const Color BLUE;
     static const Color CLEAR;
+    static const Color YELLOW;
     
 };
 
@@ -43,6 +44,7 @@ inline const Color Color::RED = {255, 0, 0, 255};
 inline const Color Color::GREEN = {0, 255, 0, 255};
 inline const Color Color::BLUE = {0, 0, 255, 255};
 inline const Color Color::CLEAR = {0, 0, 0, 0};
+inline const Color Color::YELLOW = {255, 255, 0, 255};
 
 }
 

@@ -35,17 +35,12 @@ struct Replica {
     game::NetId netId;
 };
 
-struct LocalPlayer {};
+struct LocalPlayer {};  
 
 struct PlayerLabel {
     std::uint8_t playerId;
 };
 
-struct HighContrastOutline {};
-
-struct ShipTilt {
-    float lastY = 0.0F;
-};
 
 } // namespace rtype::client
 
