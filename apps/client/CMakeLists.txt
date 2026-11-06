@@ -10,7 +10,7 @@ add_library(client_logic STATIC
         src/GameCommands.cpp
         src/GameEventBus.cpp
         src/GameScene.cpp
-#        src/InterpolationSystem.cpp
+        src/InterpolationSystem.cpp
         src/Scenes.cpp
         src/ServerLink.cpp
         src/SnapshotAssembler.cpp
