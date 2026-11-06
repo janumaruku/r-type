@@ -17,6 +17,7 @@
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
 #include "engine/render/RenderQueue.hpp"
+#include "rtype/game/Motion.hpp"
 
 namespace rtype::client {
 namespace {
@@ -74,7 +75,6 @@ void GameScene::onEnter([[maybe_unused]] FrameContext &context)
 ** 60 Hz, check the connection, then run the UPDATE stage.
 ** TODO(RTP-127): _prediction.record(_inputSequence, buttons, context.now)
 ** after each sendInput.
-** TODO(RTP-126): the local ship's step after each sendInput (subtask 2).
 */
 SceneRequest GameScene::update(FrameContext &context, float dt)
 {
@@ -86,9 +86,13 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
     advanceRenderClock(dt);
     const int steps = _inputStep.advance(dt);
 
-    for (int step = 0; step < steps; ++step)
-        _adapter.sendInput(++_inputSequence,
-            sampleButtons(context.actions, context.input));
+    for (int step = 0; step < steps; ++step) {
+        const std::uint8_t buttons = sampleButtons(context.actions,
+            context.input);
+
+        _adapter.sendInput(++_inputSequence, buttons);
+        stepLocalShip(buttons);
+    }
     if (_adapter.leaveCause() != LeaveCause::NO_CAUSE) {
         _serverGone = true;
         return leaveFor(_adapter.leaveCause());
@@ -138,6 +142,20 @@ SceneRequest GameScene::leaveFor(LeaveCause cause) const
         break;
     }
     return SceneRequest::stay();
+}
+
+void GameScene::stepLocalShip(std::uint8_t buttons)
+{
+    const auto ship = _world.localShip();
+
+    if (!ship)
+        return;
+    auto *transform = _world.registry().getComponent<game::Transform>(*ship);
+
+    if (transform != nullptr)
+        transform->position = game::movePlayer(transform->position,
+            game::InputButtons{.bits = buttons},
+            static_cast<float>(_inputStep.step()), _rules);
 }
 
 void GameScene::receive(TimePoint now)
