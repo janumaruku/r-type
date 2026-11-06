@@ -12,7 +12,6 @@
 #include <variant>
 #include <vector>
 
-#include "ClientComponents.hpp"
 #include "ClientSettings.hpp"
 #include "PresentationComponents.hpp"
 #include "RenderSystems.hpp"
@@ -26,6 +25,14 @@
 
 namespace rtype::client {
 namespace {
+/** Registers the component types the render tests add to entities. */
+void registerTypes(engine::ecs::Registry &registry)
+{
+    registry.registerComponent<rtype::game::Transform>();
+    registry.registerComponent<Sprite>();
+    registry.registerComponent<HighContrastOutline>();
+}
+
 using engine::core::FloatRect;
 using engine::core::IntRect;
 using engine::core::Vec2f;
@@ -50,7 +57,7 @@ Sprite sprite(IntRect rect, std::int16_t layer)
         .texture = SHEET,
         .frame = rect,
         .layer = layer,
-        .tint = engine::core::Color(255, 255, 255, 255),
+        .tint = engine::core::Color::WHITE,
         .scale = Vec2f(1.0F, 1.0F),
     };
 }
@@ -60,17 +67,18 @@ Entity place(Registry &registry, Vec2f at, Sprite drawn)
     const Entity entity = registry.spawnEntity();
 
     registry.addComponent(entity, rtype::game::Transform{at});
-    registry.addComponent(entity, drawn);
+    registry.addComponent(entity, std::move(drawn));
     return entity;
 }
 
-void prepare(Registry &registry, bool highContrast)
+/** Runs the render system once into the registry's RenderQueue resource. */
+void draw(Registry &registry, bool highContrast)
 {
     ClientSettings settings;
 
     settings.highContrast = highContrast;
-    registry.setResource(settings);
-    registry.setResource(RenderQueue{});
+    renderSystem(registry, registry.getComponents<rtype::game::Transform>(),
+        settings);
 }
 
 template <typename Command>
@@ -91,16 +99,23 @@ const SpriteCmd *findAt(const std::vector<SpriteCmd> &cmds, float x, float y)
             return &cmd;
     return nullptr;
 }
+
+bool covers(const FloatRect &box, float x, float y)
+{
+    return x >= box.origin().x() && x <= box.origin().x() + box.width()
+        && y >= box.origin().y() && y <= box.origin().y() + box.height();
+}
 } // namespace
 
 TEST(RenderSystem, EachSpriteBecomesOneSpriteCmdWithItsLayerAndFrameCentreOrigin)
 {
     Registry registry;
-    prepare(registry, false);
+    registerTypes(registry);
+    registry.setResource(RenderQueue{});
     place(registry, Vec2f(10.0F, 20.0F), sprite(frame(0, 0, 8, 8), 1));
     place(registry, Vec2f(30.0F, 40.0F), sprite(frame(8, 0, 8, 16), -2));
 
-    renderSystem(registry, {}, {});
+    draw(registry, false);
 
     const auto cmds = commandsOf<SpriteCmd>(registry.getResource<RenderQueue>());
     ASSERT_EQ(cmds.size(), 2U);
@@ -114,6 +129,8 @@ TEST(RenderSystem, EachSpriteBecomesOneSpriteCmdWithItsLayerAndFrameCentreOrigin
     EXPECT_EQ(first->layer, 1);
     EXPECT_EQ(first->source.origin().x(), 0);
     EXPECT_EQ(first->source.width(), 8);
+    // The renderer draws the frame at position - origin, so the origin must
+    // be the frame centre to draw the sprite centred on its position.
     EXPECT_FLOAT_EQ(first->origin.x(), 4.0F);
     EXPECT_FLOAT_EQ(first->origin.y(), 4.0F);
 
@@ -127,11 +144,12 @@ TEST(RenderSystem, EachSpriteBecomesOneSpriteCmdWithItsLayerAndFrameCentreOrigin
 TEST(RenderSystem, AnEntityWithoutASpriteAddsNoCommand)
 {
     Registry registry;
-    prepare(registry, false);
+    registerTypes(registry);
+    registry.setResource(RenderQueue{});
     const Entity bare = registry.spawnEntity();
 
     registry.addComponent(bare, rtype::game::Transform{Vec2f(5.0F, 5.0F)});
-    renderSystem(registry);
+    draw(registry, false);
 
     EXPECT_TRUE(commandsOf<SpriteCmd>(registry.getResource<RenderQueue>())
         .empty());
@@ -140,34 +158,38 @@ TEST(RenderSystem, AnEntityWithoutASpriteAddsNoCommand)
 TEST(RenderSystem, HighContrastOutlinesOnlyTheMarkedEnemy)
 {
     Registry registry;
-    prepare(registry, true);
+    registerTypes(registry);
+    registry.setResource(RenderQueue{});
     const Entity enemy = place(registry, Vec2f(600.0F, 300.0F),
         sprite(frame(0, 0, 20, 24), 0));
     registry.addComponent(enemy, HighContrastOutline{});
     place(registry, Vec2f(100.0F, 100.0F), sprite(frame(0, 0, 33, 17), 0));
 
-    renderSystem(registry);
+    draw(registry, true);
 
     const auto outlines = commandsOf<RectCmd>(registry.getResource<RenderQueue>());
     ASSERT_EQ(outlines.size(), 1U);
 
+    // The enemy is centred on (600, 300) and 20 x 24, so its box is
+    // x 590..610 and y 288..312.
     const FloatRect &box = outlines[0].rect;
-    EXPECT_LE(box.origin().x(), 600.0F);
-    EXPECT_GE(box.origin().x() + box.width(), 600.0F);
-    EXPECT_LE(box.origin().y(), 300.0F);
-    EXPECT_GE(box.origin().y() + box.height(), 300.0F);
-    EXPECT_GT(box.origin().x(), 100.0F + 33.0F);  // the ship is not boxed
+    EXPECT_LE(box.origin().x(), 590.0F);
+    EXPECT_GE(box.origin().x() + box.width(), 610.0F);
+    EXPECT_LE(box.origin().y(), 288.0F);
+    EXPECT_GE(box.origin().y() + box.height(), 312.0F);
+    EXPECT_FALSE(covers(box, 100.0F, 100.0F)) << "the ship must not be boxed";
 }
 
 TEST(RenderSystem, NoOutlineIsDrawnWhenHighContrastIsOff)
 {
     Registry registry;
-    prepare(registry, false);
+    registerTypes(registry);
+    registry.setResource(RenderQueue{});
     const Entity enemy = place(registry, Vec2f(600.0F, 300.0F),
         sprite(frame(0, 0, 20, 24), 0));
     registry.addComponent(enemy, HighContrastOutline{});
 
-    renderSystem(registry);
+    draw(registry, false);
 
     EXPECT_TRUE(commandsOf<RectCmd>(registry.getResource<RenderQueue>())
         .empty());
