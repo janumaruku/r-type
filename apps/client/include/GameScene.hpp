@@ -22,7 +22,7 @@ public:
 
     void onEnter(FrameContext &context) override;
 
-    void onExit(FrameContext &) override{}
+    void onExit(FrameContext &context) override;
 
     SceneRequest update(FrameContext &context, float dt) override;
 
@@ -43,6 +43,7 @@ private:
     std::uint32_t _inputSequence = 0;
     game::Rules _rules;
     bool _leftByChoice = false;
+    bool _serverGone = false;
     // story 4 adds the reactors and the HUD here, after _events
 };
 }
