@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 #include "ClientComponents.hpp"
 #include "engine/ecs/Component.hpp"
@@ -112,6 +113,7 @@ void ClientWorld::applyEntity(std::uint32_t tick,
         return;
     }
     bindEntityComponents(tick, state, catalog, spriteKey, sample);
+    tagLocalShip();
 }
 
 void ClientWorld::applyRoster(std::span<const protocol::PlayerInfo> roster)
@@ -131,6 +133,21 @@ void ClientWorld::applyRoster(std::span<const protocol::PlayerInfo> roster)
         _roster[_playerId].shipNetId;
     if (hasChanged(roster))
         _rosterChanged = true;
+    tagLocalShip();
+}
+
+void ClientWorld::tagLocalShip()
+{
+    auto &locals = _registry.registerComponent<LocalPlayer>();
+    const auto ship = localShip();
+    const std::vector tagged(locals.entities().begin(),
+        locals.entities().end());
+
+    for (const auto &entity: tagged)
+        if (!ship || entity != *ship)
+            _registry.removeComponent<LocalPlayer>(entity);
+    if (ship && !locals.contains(*ship))
+        _registry.addComponent(*ship, LocalPlayer{});
 }
 
 void ClientWorld::removeNotSeenSince(std::uint32_t tick)
