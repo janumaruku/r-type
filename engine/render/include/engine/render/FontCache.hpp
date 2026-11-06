@@ -8,8 +8,10 @@
 #ifndef FONT_CACHE_HPP
 #define FONT_CACHE_HPP
 
+#include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <string_view>
 
 #include "DrawCommand.hpp"
 
@@ -34,6 +36,14 @@ public:
     FontCache &operator=(FontCache &&) = delete;
 
     FontId load(const std::filesystem::path &path);
+
+    /*
+    ** The size text takes when a TextCmd draws it with this font and
+    ** characterSize, in logical pixels. Throws EngineError before the window
+    ** exists, since Raylib only loads its default font in InitWindow.
+    */
+    [[nodiscard]] core::Vec2f measure(FontId font, std::string_view text,
+        std::uint8_t characterSize) const;
 
 private:
     friend struct detail::CacheAccess;

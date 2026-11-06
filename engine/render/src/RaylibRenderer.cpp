@@ -49,8 +49,8 @@ RenderTexture2D createTarget(const core::Vec2f &size)
 ** scaled the same way so rotation turns around the right point. A negative
 ** source width or height flips the sprite: Raylib reads the sign from the
 ** source, so the destination keeps the absolute size.
-** The default font is 10 px, so it gets DrawText's spacing of size / 10;
-** loaded fonts already space their glyphs.
+** Text goes through FontCache's spacing and measure, so it's drawn exactly
+** as Kollection measured it.
 */
 struct CommandDrawer {
     const TextureCache &textures;
@@ -83,13 +83,13 @@ struct CommandDrawer {
     void operator()(const TextCmd &cmd) const
     {
         const auto size = static_cast<float>(cmd.characterSize);
-        const float spacing = cmd.font.isDefault() ? size / 10.0F : 0.0F;
+        const float spacing = detail::CacheAccess::spacing(cmd.font, size);
         const Font &font = detail::CacheAccess::font(fonts, cmd.font);
         Vector2 position = detail::toRaylib(cmd.position);
 
         if (cmd.align == TextAlign::CENTER)
-            position.x -= MeasureTextEx(font, cmd.text.c_str(), size,
-                spacing).x / 2.0F;
+            position.x -= fonts.measure(cmd.font, cmd.text,
+                cmd.characterSize).x() / 2.0F;
         DrawTextEx(font, cmd.text.c_str(), position, size, spacing,
             detail::toRaylib(cmd.color));
     }

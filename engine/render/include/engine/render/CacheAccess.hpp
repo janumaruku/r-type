@@ -29,6 +29,11 @@ struct CacheAccess {
     ** A default FontId gives Raylib's built-in font.
     */
     [[nodiscard]] static Font font(const FontCache &cache, FontId id);
+
+    /*
+    ** The glyph spacing a TextCmd is drawn and measured with.
+    */
+    [[nodiscard]] static float spacing(FontId id, float size);
 };
 
 }

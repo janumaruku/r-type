@@ -12,6 +12,8 @@
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
+#include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -74,12 +76,38 @@ FontId FontCache::load(const std::filesystem::path &path)
     return id;
 }
 
+/*
+** The string is copied because MeasureTextEx needs a null-terminated one.
+*/
+core::Vec2f FontCache::measure(const FontId font, const std::string_view text,
+    const std::uint8_t characterSize) const
+{
+    if (!IsWindowReady())
+        throw core::EngineError("FontCache::measure called before the window was created");
+
+    const auto size = static_cast<float>(characterSize);
+    const std::string copy(text);
+    const Vector2 measured = MeasureTextEx(detail::CacheAccess::font(*this, font),
+        copy.c_str(), size, detail::CacheAccess::spacing(font, size));
+
+    return {measured.x, measured.y};
+}
+
 Font detail::CacheAccess::font(const FontCache &cache, FontId id)
 {
     if (id.isDefault())
         return GetFontDefault();
     assert(id.value < cache._impl->fonts.size() && "unknown FontId");
     return cache._impl->fonts[id.value];
+}
+
+/*
+** The default font is 10 px, so it gets DrawText's spacing of size / 10;
+** loaded fonts already space their glyphs.
+*/
+float detail::CacheAccess::spacing(const FontId id, const float size)
+{
+    return id.isDefault() ? size / 10.0F : 0.0F;
 }
 
 }

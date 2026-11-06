@@ -44,7 +44,7 @@ The step-by-step plan for building Kollection, the declarative UI framework of t
 
 ## Phase 2 — Paint, then first pixels (§2.2, §4.9, §5.2)
 
-- [ ] **T5.** `paint::` commands (the variant), `PaintList`, `PaintContext`.
+- [x] **T5.** `paint::` commands (the variant), `PaintList`, `PaintContext`.
   
   - Test: the context records the right commands, in order.
 
