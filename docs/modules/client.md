@@ -94,12 +94,20 @@ classDiagram
     class GameScene {
         -std::unique_ptr~ServerLink~ _link
         -uint8_t _playerId
+        -GameEventBus _events
         -ClientWorld _world
         -ClientNetworkAdapter _adapter
         -PredictionState _prediction
         -runtime::FixedTimestep _inputStep
+        -uint32_t _inputSequence
+        -game::Rules _rules
+        -bool _leftByChoice
+        -bool _serverGone
         -Starfield _starfield
         -Hud _hud
+        +GameScene(std::unique_ptr~ServerLink~ link, protocol::Welcome welcome, SpriteCatalog const& sprites)
+        +playerId() uint8_t
+        -leaveFor(LeaveCause cause) SceneRequest
     }
     class MessageScene {
         -std::string _title
@@ -139,8 +147,10 @@ classDiagram
         +applyRoster(std::span~const protocol::PlayerInfo~) void
         +removeNotSeenSince(uint32_t tick) void
         +find(NetId) std::optional~Entity~
-        +localShip(uint8_t playerId) std::optional~Entity~
+        +setLocalPlayer(uint8_t playerId) void
+        +localShip() std::optional~Entity~
         +registry() ecs::Registry&
+        -tagLocalShip() void
     }
     class EventFilter {
         -std::deque~uint32_t~ _recent
@@ -270,11 +280,35 @@ These live in `apps/client/` because they refer to `render::TextureId`, which th
 | `Animation` | `SpriteDefId def`, `uint8_t state`, `size_t index`, `float timer`. The frames, the frame time and `loop` stay in the catalog's `SpriteDef`: the component holds the entry's id and a state index, so it's plain data with no pointers, and spawning an entity copies no vectors |
 | `ShipTilt` | `float lastY`, `int8_t direction`, `float heldTime`. On player ships only: `shipTiltSystem` picks `idle`, `up` then `top`, or `down` then `bottom` from the drawn vertical speed (over 20 u/s, the full tilt after 0.15 s) |
 | `NetSamples` | Ring of the last 3 `{uint32_t tick, Vec2f position, Vec2f velocity}`, plus `uint32_t lastSeenTick` |
-| `LocalPlayer` | Tag on the ship whose NetId equals the roster's `shipNetId` for our `playerId` |
+| `LocalPlayer` | Tag on the ship whose NetId equals the roster's `shipNetId` for our `playerId`. `ClientWorld` moves it after every `applyRoster` and after `applyEntity` creates an entity, since the roster can name the ship before or after its first snapshot, and a respawn gives a new NetId. `interpolationSystem` skips the tagged ship, which `GameScene` moves itself on each input step |
 | `PlayerLabel` | `uint8_t playerId`, drawn as `P1`–`P4` above the ship |
 | `TransientEffect` | `float remaining`: explosions, which are never replicated |
 
-These systems are registered in `ClientWorld`'s registry, in two stages: `UPDATE` (`interpolationSystem` → `predictionSystem` → `shipTiltSystem` → `animationSystem` → `effectSystem` → `starfieldSystem`) and `RENDER` (`renderSystem` → `hudSystem`). The `RenderQueue` and the `SpriteCatalog` are registry resources: the render stage fills the queue, and `animationSystem` and `shipTiltSystem` read the catalog. `renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
+The `GameScene` constructor registers these systems in `ClientWorld`'s registry, in the two `ClientStage`s (`ClientStages.hpp`), and they run in this order:
+
+| Stage | System | Components | Status |
+| --- | --- | --- | --- |
+| `UPDATE` | `interpolationSystem` | `Transform`, `const NetSamples` | Registered (RTP-126) |
+| `UPDATE` | `predictionSystem` | The `LocalPlayer` ship's `Transform`, the `Correction` resource | Registered (RTP-127) |
+| `UPDATE` | `shipTiltSystem` | | RTP-128 |
+| `UPDATE` | `animationSystem` | | RTP-128 |
+| `UPDATE` | `effectSystem` | | RTP-128 |
+| `UPDATE` | `starfieldSystem` | | RTP-128 |
+| `RENDER` | `renderSystem` | | RTP-128 |
+| `RENDER` | `hudSystem` | | RTP-128 |
+
+The registry also holds these resources:
+
+| Resource | Set by | Used for |
+| --- | --- | --- |
+| `SpriteCatalog` | `ClientWorld`'s constructor, a copy of `ClientApp`'s catalog | `animationSystem` and `shipTiltSystem` read it |
+| `RenderQueue` | `GameScene`'s constructor | The `RENDER` stage fills it |
+| `RenderClock` | `GameScene`'s constructor | `latestServerTick` and the time since it give `renderTick()`, the tick `interpolationSystem` draws |
+| `Correction` | `GameScene`'s constructor; `target` set by `GameScene` on each new server sample of our ship | `std::optional<Vec2f> target`, the corrected position *C* that `predictionSystem` eases our ship towards |
+| `engine::ecs::DeltaTime` | `GameScene`'s constructor, then every frame | The frame's `dt` |
+| `engine::core::Rng` | `GameScene`'s constructor, seeded with `Rng::randomSeed()` | Client-side randomness, such as effects |
+
+`renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
 
 ## Frame loop, interpolation and prediction
 
@@ -283,21 +317,25 @@ Each frame of `GameScene`, with `dt = frameClock.restart()` capped at 0.25 s:
 1. `window.pollEvents()` → `input.apply(e)`. `WINDOW_CLOSED` and the QUIT action send DISCONNECT and exit.
 2. `for (auto& d : link.socket.receiveAll()) adapter.handle(d, now)`.
 3. `inputStep.advance(dt)` returns *n*. For each of the *n* steps, sample the buttons from the action map, `sendInput(++sequence, buttons)`, `prediction.record(...)`, and move the local ship with `movePlayer(...)`. INPUT therefore goes out at exactly 60 Hz whatever the frame rate.
-4. If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
+4. If the server sent SHUTDOWN or KICK, switch to the `MessageScene` for that cause ("Server closed" or "Kicked"). If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
 5. Set the `DeltaTime` resource, run the `UPDATE` stage then the `RENDER` stage (which fills the `RenderQueue`), then `renderer.beginFrame / submit / endFrame`, and `audio.update()`.
+
+`GameScene::onExit` sends DISCONNECT (3 times, since UDP can lose it) when the player quits or the window closes. It doesn't after SHUTDOWN, KICK or a timeout: the server has already forgotten us, or can't be reached.
 
 **Interpolation for remote entities.** Everything except the local ship is drawn 100 ms in the past. That is `renderTick = latestServerTick − 6` ticks, so there are normally two snapshots to blend between. The position is a linear interpolation between the two samples on either side of `renderTick`. If the newer sample is missing (packet loss), the entity is extrapolated along its last velocity for at most 100 ms and then held in place. A new entity is drawn at its first sample until a second one arrives.
 
-**Prediction for the local ship.** On each SNAPSHOT that contains the local ship:
+**Prediction for the local ship.** `GameScene` owns a `PredictionState`. On each input step, it records the INPUT it sends (`prediction.record`) and moves our ship by one 1/60 s step with `prediction.step`, which calls the server's `movePlayer`. So the ship moves on the frame the key is pressed. Then, each frame right after receiving, `GameScene::reconcileLocalShip` checks whether the assembler completed a new tick (`lastCompleteTick()`). It waits for a complete tick because `lastProcessedInput` only comes with chunk 0: a chunk holding our ship can arrive before it, with *L* still from the previous snapshot. If the new complete tick has a sample of our ship:
 
-1. Take the server's position *P* for the local ship and the snapshot's `lastProcessedInput` *L*.
-2. Discard pending inputs with a sequence ≤ *L*.
-3. Replay the remaining inputs on *P* with `movePlayer`. That gives the corrected position *C*.
-4. If *C* is more than 64 units away from the drawn position, snap to it. Otherwise close 20% of the gap each frame.
+1. Take the server's position *P* from that sample, and *L* = `world.lastProcessedInput()`, chunk 0's `lastProcessedInput`.
+2. Call `prediction.notePing(L, now)`. This must come before `reconcile`, which drops input *L* and its send time.
+3. Call `prediction.reconcile(P, L, rules)`: it discards pending inputs with a sequence ≤ *L*, and replays the others on *P* with `movePlayer`. That gives the corrected position *C*, stored in the `Correction` resource's `target`.
+4. `predictionSystem`, in `UPDATE` after `interpolationSystem`, moves our ship towards *C* with `PredictionState::smooth`: it snaps if *C* is more than 64 units away, otherwise it closes 20% of the gap each frame. Once the gap is under 0.5 units, it puts the ship on *C* and clears the target.
+
+The input steps that follow a correction also move the target, by the same `step` as the ship. *C* is where the server would put our ship at the moment of the snapshot, while the ship keeps moving after it. Without this, the correction would pull the ship back while a key is held.
 
 On a LAN the correction is invisible. With high latency, the player still sees their ship react immediately. The server remains the only judge of collisions (requirement F-14).
 
-**Ping.** `prediction.sentAt(L)` gives the time INPUT *L* was sent. `now − sentAt(L)` is an upper estimate of the round trip, off by at most one snapshot interval (33 ms). The HUD shows its average over the last second.
+**Ping.** `prediction.sentAt(L)` gives the time INPUT *L* was sent. `notePing` stores `now − sentAt(L)` as a sample, once per new *L*. It's an upper estimate of the round trip, off by at most one snapshot interval (33 ms). `prediction.averagePing(now)` gives the average over the last second, which the HUD shows, or nothing if no sample arrived in that second.
 
 ## Presentation
 
