@@ -36,6 +36,7 @@ private:
     void receive(TimePoint now);
     void advanceRenderClock(float dt);
     void stepLocalShip(std::uint8_t buttons);
+    void reconcileLocalShip(TimePoint now);
 
     std::unique_ptr<ServerLink> _link;
     std::uint8_t _playerId;
@@ -48,6 +49,7 @@ private:
     game::Rules _rules;
     bool _leftByChoice = false;
     bool _serverGone = false;
+    std::uint32_t _reconciledTick = 0;
     // story 4 adds the reactors and the HUD here, after _events
 };
 }
