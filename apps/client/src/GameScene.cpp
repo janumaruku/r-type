@@ -129,6 +129,11 @@ void GameScene::onExit([[maybe_unused]] FrameContext &context)
         _adapter.sendDisconnect();
 }
 
+std::uint8_t GameScene::playerId() const noexcept
+{
+    return _playerId;
+}
+
 SceneRequest GameScene::leaveFor(LeaveCause cause) const
 {
     switch (cause) {

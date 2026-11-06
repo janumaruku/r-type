@@ -44,10 +44,12 @@ constexpr float TICK_RATE = 60.0F;
 {
     const NetSample *before = nullptr;
     const NetSample *after = nullptr;
+    std::size_t filled = 0;
 
     for (const auto &sample: net.ring) {
         if (!isFilled(sample))
             continue;
+        ++filled;
         if (static_cast<float>(sample.tick) <= renderTick) {
             if (before == nullptr || sample.tick > before->tick)
                 before = &sample;
@@ -57,6 +59,8 @@ constexpr float TICK_RATE = 60.0F;
     }
     if (before != nullptr && after != nullptr)
         return lerp(*before, *after, renderTick);
+    if (before != nullptr && filled == 1)
+        return before->position;
     if (before != nullptr)
         return extrapolate(*before, renderTick);
     if (after != nullptr)
