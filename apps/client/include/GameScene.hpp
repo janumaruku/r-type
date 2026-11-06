@@ -28,6 +28,8 @@ public:
 
     void draw(engine::render::RenderQueue &queue,
         const FrameContext &context) override;
+
+    [[nodiscard]] std::uint8_t playerId() const noexcept;
 private:
     [[nodiscard]] SceneRequest leaveFor(LeaveCause cause) const;
     void receive(TimePoint now);
