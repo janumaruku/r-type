@@ -9,20 +9,22 @@
 #define EFFECTS_REACTOR_HPP
 
 #include "ClientSettings.hpp"
-#include "GameEventBus.hpp"
 #include "engine/core/Vec2.hpp"
 #include "engine/ecs/Registry.hpp"
+#include "GameEventBus.hpp"
 
 namespace rtype::client {
 
-struct TransientEffect { float remaining; };
+struct TransientEffect {
+    float remaining;
+};
 
 class EffectsReactor {
 public:
     static constexpr float SMALL_EXPLOSION_SCALE = 1.0F;
-    static constexpr float BIG_EXPLOSION_SCALE = 2.0F;
+    static constexpr float BIG_EXPLOSION_SCALE   = 2.0F;
 
-    EffectsReactor(GameEventBus &bus, engine::ecs::Registry &registry,
+    explicit EffectsReactor(GameEventBus &bus, engine::ecs::Registry &registry,
         const ClientSettings &settings);
     void onEvent(const protocol::Event &event);
 

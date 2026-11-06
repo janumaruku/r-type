@@ -7,9 +7,6 @@
 
 #include "AudioReactor.hpp"
 
-#include "ClientComponents.hpp"
-#include "rtype/protocol/Snapshot.hpp"
-
 namespace rtype::client {
 
 AudioReactor::AudioReactor(GameEventBus &bus, engine::audio::IAudio &audio,

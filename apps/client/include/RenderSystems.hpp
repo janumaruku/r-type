@@ -11,6 +11,7 @@
 #include <string_view>
 
 #include "ClientSettings.hpp"
+#include "EffectsReactor.hpp"
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/CommandBuffer.hpp"
 #include "engine/ecs/IndexedView.hpp"
@@ -39,6 +40,9 @@ void shipTiltSystem(engine::ecs::Registry &registry,
 void renderSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<game::Transform> &transforms,
     const ClientSettings &settings);
+
+void effectSystem(engine::ecs::Registry &registry,
+    engine::ecs::SparseSet<TransientEffect> &effects);
 
 void spawnStarfield(engine::ecs::Registry &registry, engine::core::Rng &rng,
     engine::render::TextureId whitePixel);
