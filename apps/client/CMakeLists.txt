@@ -13,6 +13,7 @@ add_library(client_logic STATIC
         src/Scenes.cpp
         src/ClientApp.cpp
         src/Actions.cpp
+        src/PredictionState.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)
