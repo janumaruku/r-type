@@ -94,12 +94,20 @@ classDiagram
     class GameScene {
         -std::unique_ptr~ServerLink~ _link
         -uint8_t _playerId
+        -GameEventBus _events
         -ClientWorld _world
         -ClientNetworkAdapter _adapter
         -PredictionState _prediction
         -runtime::FixedTimestep _inputStep
+        -uint32_t _inputSequence
+        -game::Rules _rules
+        -bool _leftByChoice
+        -bool _serverGone
         -Starfield _starfield
         -Hud _hud
+        +GameScene(std::unique_ptr~ServerLink~ link, protocol::Welcome welcome, SpriteCatalog const& sprites)
+        +playerId() uint8_t
+        -leaveFor(LeaveCause cause) SceneRequest
     }
     class MessageScene {
         -std::string _title
@@ -139,8 +147,10 @@ classDiagram
         +applyRoster(std::span~const protocol::PlayerInfo~) void
         +removeNotSeenSince(uint32_t tick) void
         +find(NetId) std::optional~Entity~
-        +localShip(uint8_t playerId) std::optional~Entity~
+        +setLocalPlayer(uint8_t playerId) void
+        +localShip() std::optional~Entity~
         +registry() ecs::Registry&
+        -tagLocalShip() void
     }
     class EventFilter {
         -std::deque~uint32_t~ _recent
@@ -270,11 +280,34 @@ These live in `apps/client/` because they refer to `render::TextureId`, which th
 | `Animation` | `SpriteDefId def`, `uint8_t state`, `size_t index`, `float timer`. The frames, the frame time and `loop` stay in the catalog's `SpriteDef`: the component holds the entry's id and a state index, so it's plain data with no pointers, and spawning an entity copies no vectors |
 | `ShipTilt` | `float lastY`, `int8_t direction`, `float heldTime`. On player ships only: `shipTiltSystem` picks `idle`, `up` then `top`, or `down` then `bottom` from the drawn vertical speed (over 20 u/s, the full tilt after 0.15 s) |
 | `NetSamples` | Ring of the last 3 `{uint32_t tick, Vec2f position, Vec2f velocity}`, plus `uint32_t lastSeenTick` |
-| `LocalPlayer` | Tag on the ship whose NetId equals the roster's `shipNetId` for our `playerId` |
+| `LocalPlayer` | Tag on the ship whose NetId equals the roster's `shipNetId` for our `playerId`. `ClientWorld` moves it after every `applyRoster` and after `applyEntity` creates an entity, since the roster can name the ship before or after its first snapshot, and a respawn gives a new NetId. `interpolationSystem` skips the tagged ship, which `GameScene` moves itself on each input step |
 | `PlayerLabel` | `uint8_t playerId`, drawn as `P1`–`P4` above the ship |
 | `TransientEffect` | `float remaining`: explosions, which are never replicated |
 
-These systems are registered in `ClientWorld`'s registry, in two stages: `UPDATE` (`interpolationSystem` → `predictionSystem` → `shipTiltSystem` → `animationSystem` → `effectSystem` → `starfieldSystem`) and `RENDER` (`renderSystem` → `hudSystem`). The `RenderQueue` and the `SpriteCatalog` are registry resources: the render stage fills the queue, and `animationSystem` and `shipTiltSystem` read the catalog. `renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
+The `GameScene` constructor registers these systems in `ClientWorld`'s registry, in the two `ClientStage`s (`ClientStages.hpp`), and they run in this order:
+
+| Stage | System | Components | Status |
+| --- | --- | --- | --- |
+| `UPDATE` | `interpolationSystem` | `Transform`, `const NetSamples` | Registered (RTP-126) |
+| `UPDATE` | `predictionSystem` | | RTP-127 |
+| `UPDATE` | `shipTiltSystem` | | RTP-128 |
+| `UPDATE` | `animationSystem` | | RTP-128 |
+| `UPDATE` | `effectSystem` | | RTP-128 |
+| `UPDATE` | `starfieldSystem` | | RTP-128 |
+| `RENDER` | `renderSystem` | | RTP-128 |
+| `RENDER` | `hudSystem` | | RTP-128 |
+
+The registry also holds these resources:
+
+| Resource | Set by | Used for |
+| --- | --- | --- |
+| `SpriteCatalog` | `ClientWorld`'s constructor, a copy of `ClientApp`'s catalog | `animationSystem` and `shipTiltSystem` read it |
+| `RenderQueue` | `GameScene`'s constructor | The `RENDER` stage fills it |
+| `RenderClock` | `GameScene`'s constructor | `latestServerTick` and the time since it give `renderTick()`, the tick `interpolationSystem` draws |
+| `engine::ecs::DeltaTime` | `GameScene`'s constructor, then every frame | The frame's `dt` |
+| `engine::core::Rng` | `GameScene`'s constructor, seeded with `Rng::randomSeed()` | Client-side randomness, such as effects |
+
+`renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
 
 ## Frame loop, interpolation and prediction
 
@@ -283,8 +316,10 @@ Each frame of `GameScene`, with `dt = frameClock.restart()` capped at 0.25 s:
 1. `window.pollEvents()` → `input.apply(e)`. `WINDOW_CLOSED` and the QUIT action send DISCONNECT and exit.
 2. `for (auto& d : link.socket.receiveAll()) adapter.handle(d, now)`.
 3. `inputStep.advance(dt)` returns *n*. For each of the *n* steps, sample the buttons from the action map, `sendInput(++sequence, buttons)`, `prediction.record(...)`, and move the local ship with `movePlayer(...)`. INPUT therefore goes out at exactly 60 Hz whatever the frame rate.
-4. If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
+4. If the server sent SHUTDOWN or KICK, switch to the `MessageScene` for that cause ("Server closed" or "Kicked"). If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
 5. Set the `DeltaTime` resource, run the `UPDATE` stage then the `RENDER` stage (which fills the `RenderQueue`), then `renderer.beginFrame / submit / endFrame`, and `audio.update()`.
+
+`GameScene::onExit` sends DISCONNECT (3 times, since UDP can lose it) when the player quits or the window closes. It doesn't after SHUTDOWN, KICK or a timeout: the server has already forgotten us, or can't be reached.
 
 **Interpolation for remote entities.** Everything except the local ship is drawn 100 ms in the past. That is `renderTick = latestServerTick − 6` ticks, so there are normally two snapshots to blend between. The position is a linear interpolation between the two samples on either side of `renderTick`. If the newer sample is missing (packet loss), the entity is extrapolated along its last velocity for at most 100 ms and then held in place. A new entity is drawn at its first sample until a second one arrives.
 
