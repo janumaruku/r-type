@@ -13,6 +13,7 @@ rtype_add_test(client_tests
         KeybindingsFileTests.cpp
         AnimationTests.cpp
         RenderSystemTests.cpp
+        StarfieldTests.cpp
 )
 
 target_compile_definitions(client_tests PRIVATE
