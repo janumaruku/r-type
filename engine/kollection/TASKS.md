@@ -48,7 +48,7 @@ The step-by-step plan for building Kollection, the declarative UI framework of t
   
   - Test: the context records the right commands, in order.
 
-- [ ] **T6. ⚙ engine: text measurement.** Add `FontCache::measure(FontId, std::string_view, size) → Vec2f`, built on `MeasureTextEx`.
+- [x] **T6. ⚙ engine: text measurement.** Add `FontCache::measure(FontId, std::string_view, size) → Vec2f`, built on `MeasureTextEx`.
   
   - Its font size and spacing must match what `RaylibRenderer` uses to draw a `TextCmd`, or text is measured at one size and drawn at another.
 
