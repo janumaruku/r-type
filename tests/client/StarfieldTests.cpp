@@ -107,6 +107,22 @@ TEST(Starfield, SpawnsOneHundredThirtyStarsInThreeSpeedLayers)
     EXPECT_EQ(layers.onScreen, 130);
 }
 
+TEST(Starfield, NearStarsAreDrawnTwiceAsBigAsFarOnes)
+{
+    Registry registry;
+    registerTypes(registry);
+    Rng rng{1U};
+
+    spawnStarfield(registry, rng, WHITE_PIXEL);
+
+    for (auto &&[star, sprite]: registry.view<Star, Sprite>()) {
+        const float expected =
+            sprite.layer == layers::NEAR_STARS ? 2.0F : 1.0F;
+        EXPECT_FLOAT_EQ(sprite.scale.x(), expected);
+        EXPECT_FLOAT_EQ(sprite.scale.y(), expected);
+    }
+}
+
 TEST(Starfield, ScrollingCoversTheSameDistanceAt30AndAt144FramesPerSecond)
 {
     Registry slow;
