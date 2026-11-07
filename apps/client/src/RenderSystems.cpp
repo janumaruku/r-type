@@ -103,10 +103,8 @@ void shipTiltSystem(engine::ecs::Registry &registry,
         else if (vy > TILT_SPEED_THRESHOLD)
             direction = 1;
 
-        if (direction == 0)
+        if (direction != tilt.direction)
             tilt.heldTime = 0.0F;
-        else if (direction != tilt.direction)
-            tilt.heldTime = dt;
         else
             tilt.heldTime += dt;
         tilt.direction = static_cast<std::int8_t>(direction);
