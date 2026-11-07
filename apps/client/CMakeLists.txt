@@ -1,22 +1,26 @@
 add_library(client_logic STATIC
-        src/ServerLink.cpp
-        src/ClientDispatch.cpp
-        src/ConnectingScene.cpp
-        src/GameEventBus.cpp
-        src/GameCommands.cpp
-        src/SnapshotAssembler.cpp
-        src/ClientNetworkAdapter.cpp
-        src/ClientWorld.cpp
-        src/SpriteCatalog.cpp
-        src/ClientConfig.cpp
-        src/ClientSettings.cpp
-        src/Scenes.cpp
-        src/ClientApp.cpp
         src/Actions.cpp
-        src/RenderSystems.cpp
         src/AudioReactor.cpp
+        src/ClientApp.cpp
+        src/ClientConfig.cpp
+        src/ClientDispatch.cpp
+        src/ClientNetworkAdapter.cpp
+        src/ClientSettings.cpp
+        src/ClientWorld.cpp
+        src/ConnectingScene.cpp
         src/EffectsReactor.cpp
+        src/GameCommands.cpp
+        src/GameEventBus.cpp
+        src/GameScene.cpp
         src/Hud.cpp
+        src/InterpolationSystem.cpp
+        src/PredictionState.cpp
+        src/PredictionSystem.cpp
+        src/RenderSystems.cpp
+        src/Scenes.cpp
+        src/ServerLink.cpp
+        src/SnapshotAssembler.cpp
+        src/SpriteCatalog.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)
