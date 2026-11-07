@@ -39,7 +39,7 @@ void shipTiltSystem(engine::ecs::Registry &registry,
 
 void renderSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<game::Transform> &transforms,
-    const ClientSettings &settings);
+    const engine::ecs::SparseSet<Sprite> &sprites);
 
 void effectSystem(engine::ecs::Registry &registry,
     engine::ecs::SparseSet<TransientEffect> &effects);
@@ -49,8 +49,8 @@ void spawnStarfield(engine::ecs::Registry &registry, engine::core::Rng &rng,
 
 void starfieldSystem(engine::ecs::Registry &registry,
     engine::ecs::SparseSet<game::Transform> &transforms,
-    const engine::ecs::SparseSet<Star> &stars, engine::core::Rng &rng);
-} // namespace rtype::client
+    const engine::ecs::SparseSet<Star> &stars);
+}
 
 void hudSystem(engine::ecs::Registry &registry);
 

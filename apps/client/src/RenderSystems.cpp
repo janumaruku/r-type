@@ -111,8 +111,8 @@ void shipTiltSystem(engine::ecs::Registry &registry,
             tilt.heldTime += dt;
         tilt.direction = static_cast<std::int8_t>(direction);
 
-        bool full        = tilt.heldTime >= TILT_FULL_DELAY;
-        std::string name = "idle";
+        const bool full       = tilt.heldTime >= TILT_FULL_DELAY;
+        std::string_view name = "idle";
         if (direction == -1)
             name = full ? "top" : "up";
         else if (direction == 1)
@@ -125,9 +125,10 @@ void shipTiltSystem(engine::ecs::Registry &registry,
 
 void renderSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<game::Transform> &,
-    const ClientSettings &settings)
+    const engine::ecs::SparseSet<Sprite> &)
 {
-    auto &queue = registry.getResource<engine::render::RenderQueue>();
+    auto &queue           = registry.getResource<engine::render::RenderQueue>();
+    const auto &settings  = registry.getResource<ClientSettings>();
 
     for (auto &&[transform, sprite]: registry.view<game::Transform, Sprite>()) {
         const auto width  = static_cast<float>(sprite.frame.width());
@@ -217,13 +218,14 @@ void spawnStarfield(engine::ecs::Registry &registry, engine::core::Rng &rng,
 
 void starfieldSystem(engine::ecs::Registry &registry,
     engine::ecs::SparseSet<game::Transform> &,
-    const engine::ecs::SparseSet<Star> &, engine::core::Rng &rng)
+    const engine::ecs::SparseSet<Star> &)
 {
-    auto dt = registry.getResource<engine::ecs::DeltaTime>().seconds;
+    const auto dt = registry.getResource<engine::ecs::DeltaTime>().seconds;
+    auto &rng     = registry.getResource<engine::core::Rng>();
 
     for (auto &&[transform, star]: registry.view<game::Transform, Star>()) {
         transform.position.x() -= star.speed * dt;
-        if (transform.position.x() < -1.0F) {
+        if (transform.position.x() < 0.0F) {
             transform.position.x() += PLAYFIELD_WIDTH;
             transform.position.y() = rng.uniformFloat(0.0F, PLAYFIELD_HEIGHT);
         }

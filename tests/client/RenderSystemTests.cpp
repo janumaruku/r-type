@@ -76,8 +76,9 @@ void draw(Registry &registry, bool highContrast)
     ClientSettings settings;
 
     settings.highContrast = highContrast;
+    registry.setResource(settings);
     renderSystem(registry, registry.getComponents<rtype::game::Transform>(),
-        settings);
+        registry.getComponents<Sprite>());
 }
 
 template <typename Command>
