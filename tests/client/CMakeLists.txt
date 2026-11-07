@@ -1,5 +1,5 @@
 rtype_add_test(client_tests
-    LIBS client_logic
+    LIBS client_logic raylib
     SOURCES
         ClientDispatchTests.cpp
         ConnectingSceneTests.cpp

@@ -61,15 +61,16 @@ bool setAnimationState(Animation &animation, const SpriteDef &def,
 void animationSystem(engine::ecs::Registry &registry,
     engine::ecs::SparseSet<Animation> &, engine::ecs::SparseSet<Sprite> &)
 {
+    const auto dt       = registry.getResource<engine::ecs::DeltaTime>().seconds;
+    const auto &catalog = registry.getResource<SpriteCatalog>();
+
     for (auto &&[animation, sprite]: registry.view<Animation, Sprite>()) {
-        const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
-        auto &catalog     = registry.getResource<SpriteCatalog>();
-        auto def          = catalog.get(animation.def);
-        auto frames       = def.states[animation.state].frames;
+        const auto &def    = catalog.get(animation.def);
+        const auto &frames = def.states[animation.state].frames;
+
         if (animation.index >= frames.size())
-            animation.index = std::clamp(animation.index, 0UL,
-                static_cast<std::size_t>(frames.size()) - 1);
-        animation.timer += delta.seconds;
+            animation.index = frames.size() - 1;
+        animation.timer += dt;
         if (def.frameTime > 0 && animation.timer >= def.frameTime) {
             auto steps =
                 static_cast<std::size_t>(animation.timer / def.frameTime);
@@ -206,7 +207,9 @@ void spawnStarfield(engine::ecs::Registry &registry, engine::core::Rng &rng,
             sprite.tint    = {
                 star.brightness, star.brightness, star.brightness, 255};
             sprite.layer = star.layer;
-            sprite.scale = {1.0F, 1.0F};
+            sprite.scale = star.layer == layers::NEAR_STARS
+                ? engine::core::Vec2f{2.0F, 2.0F}
+                : engine::core::Vec2f{1.0F, 1.0F};
             registry.addComponent(entity, sprite);
         }
     }

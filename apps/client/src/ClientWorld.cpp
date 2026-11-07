@@ -14,6 +14,7 @@
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/Entity.hpp"
 #include "PresentationComponents.hpp"
+#include "RenderSystems.hpp"
 #include "rtype/game/Components.hpp"
 #include "rtype/game/GameWorld.hpp"
 #include "rtype/protocol/Snapshot.hpp"
@@ -31,7 +32,8 @@ void ClientWorld::bindEntityComponents(std::uint32_t tick,
     SpriteKey spriteKey, const NetSample &sample)
 {
     const auto entity = _registry.spawnEntity();
-    const auto &def   = catalog.find(spriteKey, state.variant);
+    const auto defId  = catalog.find(spriteKey, state.variant);
+    const auto &def   = catalog.get(defId);
     _registry.addComponent(entity, rtype::game::Transform{{state.x, state.y}});
     _registry.addComponent(entity, rtype::game::Velocity{{state.vx, state.vy}});
     _registry.addComponent(entity,
@@ -40,13 +42,12 @@ void ClientWorld::bindEntityComponents(std::uint32_t tick,
             .netId    = state.netId});
     _registry.addComponent(entity,
         NetSamples{.ring{sample}, .lastSeenTick = tick});
-    _registry.addComponent(entity, Animation{.def = def});
+    _registry.addComponent(entity, Animation{.def = defId});
     _registry.addComponent(entity,
-        SpriteDef{
-            .texture   = catalog.get(def).texture,
-            .states    = catalog.get(def).states,
-            .frameTime = catalog.get(def).frameTime,
-            .loop      = catalog.get(def).loop,
+        Sprite{
+            .texture = def.texture,
+            .frame   = def.states.front().frames.front(),
+            .layer   = layerFor(state.kind),
         });
 
     if (state.kind == protocol::EntityKind::BYDOS_SLAVE ||
