@@ -81,12 +81,12 @@ std::vector<float> xPositions(Registry &registry)
     return xs;
 }
 
-void scrollFor(Registry &registry, Rng &rng, int frames, float dt)
+void scrollFor(Registry &registry, int frames, float dt)
 {
     for (int frame = 0; frame < frames; ++frame) {
         registry.setResource(DeltaTime{dt});
         starfieldSystem(registry, registry.getComponents<Transform>(),
-            registry.getComponents<Star>(), rng);
+            registry.getComponents<Star>());
     }
 }
 } // namespace
@@ -95,7 +95,7 @@ TEST(Starfield, SpawnsOneHundredThirtyStarsInThreeSpeedLayers)
 {
     Registry registry;
     registerTypes(registry);
-    Rng rng{1U};
+    Rng &rng = registry.emplaceResource<Rng>(1U);
 
     spawnStarfield(registry, rng, WHITE_PIXEL);
 
@@ -111,7 +111,7 @@ TEST(Starfield, NearStarsAreDrawnTwiceAsBigAsFarOnes)
 {
     Registry registry;
     registerTypes(registry);
-    Rng rng{1U};
+    Rng &rng = registry.emplaceResource<Rng>(1U);
 
     spawnStarfield(registry, rng, WHITE_PIXEL);
 
@@ -129,14 +129,14 @@ TEST(Starfield, ScrollingCoversTheSameDistanceAt30AndAt144FramesPerSecond)
     registerTypes(slow);
     Registry fast;
     registerTypes(fast);
-    Rng slowRng{42U};
-    Rng fastRng{42U};
+    Rng &slowRng = slow.emplaceResource<Rng>(42U);
+    Rng &fastRng = fast.emplaceResource<Rng>(42U);
     spawnStarfield(slow, slowRng, WHITE_PIXEL);
     spawnStarfield(fast, fastRng, WHITE_PIXEL);
     ASSERT_EQ(xPositions(slow), xPositions(fast));
 
-    scrollFor(slow, slowRng, 30, 1.0F / 30.0F);   // one second at 30 FPS
-    scrollFor(fast, fastRng, 144, 1.0F / 144.0F); // one second at 144 FPS
+    scrollFor(slow, 30, 1.0F / 30.0F);   // one second at 30 FPS
+    scrollFor(fast, 144, 1.0F / 144.0F); // one second at 144 FPS
 
     const std::vector<float> slowXs = xPositions(slow);
     const std::vector<float> fastXs = xPositions(fast);
@@ -150,7 +150,7 @@ TEST(Starfield, AStarMovesLeftBySpeedTimesTheElapsedTime)
 {
     Registry registry;
     registerTypes(registry);
-    Rng rng{1U};
+    registry.emplaceResource<Rng>(1U);
     const Entity star = registry.spawnEntity();
 
     registry.addComponent(star, Transform{Vec2f(500.0F, 40.0F)});
@@ -158,7 +158,7 @@ TEST(Starfield, AStarMovesLeftBySpeedTimesTheElapsedTime)
     registry.setResource(DeltaTime{1.0F});
 
     starfieldSystem(registry, registry.getComponents<Transform>(),
-        registry.getComponents<Star>(), rng);
+        registry.getComponents<Star>());
 
     const Vec2f position = registry.getComponent<Transform>(star)->position;
     EXPECT_NEAR(position.x(), 500.0F - STAR_LAYERS[1].speed, 1e-3F);
@@ -169,7 +169,7 @@ TEST(Starfield, AStarCrossingTheLeftEdgeReappearsNearTheRightEdge)
 {
     Registry registry;
     registerTypes(registry);
-    Rng rng{1U};
+    registry.emplaceResource<Rng>(1U);
     const Entity star = registry.spawnEntity();
 
     // 2 - 120 * 0.05 = -4: the star has crossed x = 0.
@@ -178,7 +178,7 @@ TEST(Starfield, AStarCrossingTheLeftEdgeReappearsNearTheRightEdge)
     registry.setResource(DeltaTime{0.05F});
 
     starfieldSystem(registry, registry.getComponents<Transform>(),
-        registry.getComponents<Star>(), rng);
+        registry.getComponents<Star>());
 
     const Vec2f position = registry.getComponent<Transform>(star)->position;
     EXPECT_NEAR(position.x(), PLAYFIELD_WIDTH, 10.0F);
