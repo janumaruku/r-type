@@ -41,6 +41,7 @@ private:
     engine::render::TextureCache _textures;
     engine::render::FontCache _fonts;
     SpriteCatalog _sprites;
+    engine::render::TextureId _whitePixel;
     engine::render::RaylibRenderer _renderer;
     std::unique_ptr<engine::audio::IAudio> _audio;
     engine::input::InputState _input;

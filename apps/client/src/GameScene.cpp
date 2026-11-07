@@ -16,6 +16,7 @@
 #include "ClientStages.hpp"
 #include "InterpolationSystem.hpp"
 #include "PredictionSystem.hpp"
+#include "RenderSystems.hpp"
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
 #include "engine/render/RenderQueue.hpp"
@@ -32,20 +33,29 @@ constexpr auto SERVER_TIMEOUT = std::chrono::seconds(5);
 
 /*
 ** Adds the systems in client.md's order.
-** TODO(RTP-128): shipTiltSystem, animationSystem, effectSystem and
-** starfieldSystem after it in UPDATE, then renderSystem and hudSystem in
-** RENDER.
+** TODO(RTP-130): hudSystem after renderSystem in RENDER.
 */
 void addSystems(engine::ecs::Registry &registry)
 {
     registry.addSystem<game::Transform, const NetSamples>(ClientStage::UPDATE,
         "interpolation", interpolationSystem);
     registry.addSystem<>(ClientStage::UPDATE, "prediction", predictionSystem);
+    registry.addSystem<ShipTilt, const game::Transform, Animation>(
+        ClientStage::UPDATE, "shipTilt", shipTiltSystem);
+    registry.addSystem<Animation, Sprite>(ClientStage::UPDATE, "animation",
+        animationSystem);
+    registry.addSystem<TransientEffect>(ClientStage::UPDATE, "effects",
+        effectSystem);
+    registry.addSystem<game::Transform, const Star>(ClientStage::UPDATE,
+        "starfield", starfieldSystem);
+    registry.addSystem<const game::Transform, const Sprite>(
+        ClientStage::RENDER, "render", renderSystem);
 }
 
 void setResources(engine::ecs::Registry &registry)
 {
     registry.emplaceResource<engine::render::RenderQueue>();
+    registry.emplaceResource<ClientSettings>();
     registry.emplaceResource<RenderClock>();
     registry.emplaceResource<Correction>();
     registry.emplaceResource<engine::ecs::DeltaTime>();
@@ -65,11 +75,14 @@ GameScene::GameScene(std::unique_ptr<ServerLink> link,
 }
 
 /*
-** TODO(RTP-128): spawns the starfield and starts the looping stage1.ogg
-** music.
+** TODO(RTP-129): starts the looping stage1.ogg music.
 */
-void GameScene::onEnter([[maybe_unused]] FrameContext &context)
+void GameScene::onEnter(FrameContext &context)
 {
+    auto &registry = _world.registry();
+
+    spawnStarfield(registry, registry.getResource<engine::core::Rng>(),
+        context.whitePixel);
 }
 
 /*
@@ -108,12 +121,17 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
     return SceneRequest::stay();
 }
 
+/*
+** The settings are copied every frame, so a change to highContrast shows
+** at once.
+*/
 void GameScene::draw(engine::render::RenderQueue &queue,
-    [[maybe_unused]] const FrameContext &context)
+    const FrameContext &context)
 {
     auto &stageQueue = _world.registry().getResource<
         engine::render::RenderQueue>();
 
+    _world.registry().setResource(context.settings);
     std::swap(stageQueue, queue);
     _world.registry().runStage(ClientStage::RENDER);
     std::swap(stageQueue, queue);
@@ -123,7 +141,7 @@ void GameScene::draw(engine::render::RenderQueue &queue,
 ** Says goodbye unless the server already forgot us: after QUIT
 ** (_leftByChoice) or when the window closes (ClientApp's change(nullptr)),
 ** but not after SHUTDOWN, KICK or a timeout, which set _serverGone.
-** TODO(RTP-128): stops the music.
+** TODO(RTP-129): stops the music.
 */
 void GameScene::onExit([[maybe_unused]] FrameContext &context)
 {

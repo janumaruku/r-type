@@ -30,6 +30,7 @@ classDiagram
         -render::TextureCache _textures
         -render::FontCache _fonts
         -SpriteCatalog _sprites
+        -render::TextureId _whitePixel
         -render::RaylibRenderer _renderer
         -std::unique_ptr~audio::IAudio~ _audio
         -input::InputState _input
@@ -68,6 +69,7 @@ classDiagram
         +render::TextureCache& textures
         +render::FontCache& fonts
         +SpriteCatalog const& sprites
+        +render::TextureId whitePixel
         +ClientConfig const& config
         +ClientSettings const& settings
         +runtime::TimePoint now
@@ -214,7 +216,7 @@ classDiagram
 
 - **`SceneManager`** holds the current scene. `change` calls `onExit` on the old scene, if there is one, then `onEnter` on the new one. `change(nullptr)` only exits the current scene, which `ClientApp::run` does on the way out so the last scene's `onExit` runs. `update` runs the current scene's `update` and applies the `SceneRequest` it returns: `STAY` keeps the scene, `CHANGE` switches to `next` once the scene's `update` has returned, and `QUIT` makes `update` return `false` so the client loop stops. It also returns `false` when there is no scene. `draw` draws the current scene, if there is one.
 - **`SceneRequest`** is built with `stay()`, `change(next)` or `quit()`. `change(nullptr)` gives `stay()`, so a scene can't switch to nothing.
-- **`FrameContext`** is what a scene gets each frame: the input state and action map, audio, the texture and font caches, the sprite catalog, the command-line config, the settings, and the frame's time.
+- **`FrameContext`** is what a scene gets each frame: the input state and action map, audio, the texture and font caches, the sprite catalog, the starfield's white pixel (loaded by `ClientApp` next to the catalog, since loading a texture needs the window), the command-line config, the settings, and the frame's time.
 - **`ConnectingScene`** opens its link in `onEnter`, not in its constructor, so building the scene never throws: `resolveServer` resolves `-h`/`-p` to an IPv4 endpoint with `asio::ip::udp::resolver`, then it starts a `ServerLink` on a free local port and sends HELLO, again every 0.5 s. An unknown host or an unavailable port (`NetworkError`) is kept and shown by the first `update` as "Can't reach the server". Its `WelcomeCommand` and `RejectCommand` call back into it; only the first WELCOME counts, since every HELLO gets one. On WELCOME it moves the `ServerLink` into a new `GameScene`, so the socket is never recreated. On REJECT, or after 5 s with no answer, it switches to a `MessageScene` with the reason. Meanwhile it draws "Connecting to host:port..." with the seconds waited.
 - **`GameScene`** is the game itself (next sections). It switches to a `MessageScene` when the server sends SHUTDOWN or stays silent for 5 s.
 - **`MessageScene`** shows a title and a detail line ("Server full", "Connection lost", "Server closed"), sized from the `hudFontSize` setting (the title at twice the size), with a hint for the keys. CONFIRM (ENTER) reconnects through a new `ConnectingScene` when the message allows it, which a version mismatch does not. QUIT (ESCAPE) quits.
@@ -290,12 +292,12 @@ The `GameScene` constructor registers these systems in `ClientWorld`'s registry,
 | --- | --- | --- | --- |
 | `UPDATE` | `interpolationSystem` | `Transform`, `const NetSamples` | Registered (RTP-126) |
 | `UPDATE` | `predictionSystem` | The `LocalPlayer` ship's `Transform`, the `Correction` resource | Registered (RTP-127) |
-| `UPDATE` | `shipTiltSystem` | | RTP-128 |
-| `UPDATE` | `animationSystem` | | RTP-128 |
-| `UPDATE` | `effectSystem` | | RTP-128 |
-| `UPDATE` | `starfieldSystem` | | RTP-128 |
-| `RENDER` | `renderSystem` | | RTP-128 |
-| `RENDER` | `hudSystem` | | RTP-128 |
+| `UPDATE` | `shipTiltSystem` | `ShipTilt`, `const Transform`, `Animation` | Registered (RTP-128) |
+| `UPDATE` | `animationSystem` | `Animation`, `Sprite` | Registered (RTP-128) |
+| `UPDATE` | `effectSystem` | `TransientEffect` | Registered (RTP-128) |
+| `UPDATE` | `starfieldSystem` | `Transform`, `const Star`, the `Rng` resource | Registered (RTP-128) |
+| `RENDER` | `renderSystem` | `const Transform`, `const Sprite`, the `ClientSettings` resource | Registered (RTP-128) |
+| `RENDER` | `hudSystem` | | RTP-130 |
 
 The registry also holds these resources:
 
@@ -306,7 +308,8 @@ The registry also holds these resources:
 | `RenderClock` | `GameScene`'s constructor | `latestServerTick` and the time since it give `renderTick()`, the tick `interpolationSystem` draws |
 | `Correction` | `GameScene`'s constructor; `target` set by `GameScene` on each new server sample of our ship | `std::optional<Vec2f> target`, the corrected position *C* that `predictionSystem` eases our ship towards |
 | `engine::ecs::DeltaTime` | `GameScene`'s constructor, then every frame | The frame's `dt` |
-| `engine::core::Rng` | `GameScene`'s constructor, seeded with `Rng::randomSeed()` | Client-side randomness, such as effects |
+| `engine::core::Rng` | `GameScene`'s constructor, seeded with `Rng::randomSeed()` | Client-side randomness: `spawnStarfield` and `starfieldSystem` place the stars with it |
+| `ClientSettings` | `GameScene`'s constructor, then copied from the `FrameContext` before each `RENDER` stage | `renderSystem` reads `highContrast` |
 
 `renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
 
@@ -339,7 +342,7 @@ On a LAN the correction is invisible. With high latency, the player still sees t
 
 ## Presentation
 
-**Starfield (F-02, F-08).** There are 3 parallax layers of procedurally placed stars: 70 far stars at 20 u/s, 40 mid stars at 55 u/s and 20 near stars at 120 u/s. A star that leaves the left edge wraps to the right at a new random y. The starfield runs entirely on the client and is driven by `dt`, so its speed doesn't depend on frame rate, and it needs no network traffic.
+**Starfield (F-02, F-08).** There are 3 parallax layers of procedurally placed stars: 70 far stars at 20 u/s, 40 mid stars at 55 u/s and 20 near stars at 120 u/s. A star that leaves the left edge wraps to the right at a new random y. The starfield runs entirely on the client and is driven by `dt`, so its speed doesn't depend on frame rate, and it needs no network traffic. `GameScene::onEnter` spawns it with `spawnStarfield`. Each star is the 1 × 1 `assets/sprites/white.png`, tinted grey for its brightness, and near stars are drawn at scale 2.
 
 **Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.json`, which maps each `(EntityKind, variant)` to a sheet, named states of frame rectangles, and a frame time. The sheets and the starting rectangles come from [ManuelR-T/R-Type](https://github.com/ManuelR-T/R-Type) (MIT licence), and each entry's `source` field names the original sheet and frames. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`, and its 5 columns are the states `top`, `up`, `idle`, `down` and `bottom`.
 

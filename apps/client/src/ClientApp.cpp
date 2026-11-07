@@ -23,6 +23,7 @@ namespace {
 const engine::core::Vec2u WINDOW_SIZE{1280, 720};
 const engine::core::Vec2f LOGICAL_SIZE{1280.0F, 720.0F};
 constexpr const char *CATALOG_FILE     = "sprites/catalog.json";
+constexpr const char *WHITE_PIXEL_FILE = "sprites/white.png";
 constexpr const char *KEYBINDINGS_FILE = "config/keybindings.json";
 constexpr double MAX_FRAME_TIME        = 0.25;
 
@@ -52,6 +53,18 @@ engine::core::log::Logger &logger()
 
     sprites.load(assets.resolve(CATALOG_FILE), textures);
     return sprites;
+}
+
+/*
+** The starfield draws each star as this pixel. It's loaded here, with the
+** catalog, because textures need the window, which scenes can't rely on.
+*/
+[[nodiscard]] engine::render::TextureId loadWhitePixel(
+    engine::render::TextureCache &textures)
+{
+    const engine::core::AssetLocator assets;
+
+    return textures.load(assets.resolve(WHITE_PIXEL_FILE));
 }
 
 [[nodiscard]] std::unique_ptr<engine::audio::IAudio> startAudio(
@@ -100,6 +113,7 @@ engine::core::log::Logger &logger()
 ClientApp::ClientApp(ClientConfig config, ClientSettings settings):
     _config(std::move(config)), _settings(settings),
     _window(windowConfig(_settings)), _sprites(loadSprites(_textures)),
+    _whitePixel(loadWhitePixel(_textures)),
     _renderer(_window, _textures, _fonts, LOGICAL_SIZE),
     _audio(startAudio(_settings)), _actions(loadBindings())
 {
@@ -136,15 +150,16 @@ int ClientApp::run()
 FrameContext ClientApp::frameContext()
 {
     return {
-        .input    = _input,
-        .actions  = _actions,
-        .audio    = *_audio,
-        .textures = _textures,
-        .fonts    = _fonts,
-        .sprites  = _sprites,
-        .config   = _config,
-        .settings = _settings,
-        .now      = engine::runtime::Clock::now(),
+        .input      = _input,
+        .actions    = _actions,
+        .audio      = *_audio,
+        .textures   = _textures,
+        .fonts      = _fonts,
+        .sprites    = _sprites,
+        .whitePixel = _whitePixel,
+        .config     = _config,
+        .settings   = _settings,
+        .now        = engine::runtime::Clock::now(),
     };
 }
 } // namespace rtype::client
