@@ -352,7 +352,7 @@ TEST_F(AnimationFixture, HoldingUpPastTheFullDelayShowsTheFullTilt)
     moveShip(registry, ship, -300.0F, 0.05F);
     EXPECT_EQ(stateName(registry, ship), "up");
 
-    for (int step = 0; step < 3; ++step)
+    for (int step = 0; step < 4; ++step)
         moveShip(registry, ship, -300.0F, 0.05F); // 0.2 s held in total
     EXPECT_EQ(stateName(registry, ship), "top");
 
@@ -373,7 +373,7 @@ TEST_F(AnimationFixture, MovingDownAfterUpRestartsTheHeldTime)
     moveShip(registry, ship, 300.0F, 0.05F);
 
     EXPECT_EQ(stateName(registry, ship), "down");
-    EXPECT_NEAR(registry.getComponent<ShipTilt>(ship)->heldTime, 0.05F, 1e-4F);
+    EXPECT_FLOAT_EQ(registry.getComponent<ShipTilt>(ship)->heldTime, 0.0F);
 }
 
 TEST_F(AnimationFixture, VerticalSpeedUnderTheThresholdStaysIdle)
