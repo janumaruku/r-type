@@ -21,6 +21,7 @@
 #include "engine/render/FontCache.hpp"
 #include "engine/render/RenderQueue.hpp"
 #include "engine/render/TextureCache.hpp"
+#include "engine/render/DrawCommand.hpp"
 #include "engine/runtime/Clock.hpp"
 #include "SpriteCatalog.hpp"
 
@@ -34,6 +35,7 @@ struct FrameContext {
     engine::render::TextureCache &textures;
     engine::render::FontCache &fonts;
     const SpriteCatalog &sprites;
+    engine::render::TextureId whitePixel;
     const ClientConfig &config;
     const ClientSettings &settings;
     engine::runtime::TimePoint now;

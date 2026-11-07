@@ -153,6 +153,7 @@ protected:
         .textures                               = _textures,
         .fonts                                  = _fonts,
         .sprites                                = _sprites,
+        .whitePixel                             = {},
         .config                                 = _config,
         .settings                               = _settings,
         .now                                    = Clock::now()};
