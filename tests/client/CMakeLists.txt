@@ -17,6 +17,9 @@ rtype_add_test(client_tests
         AudioReactorTests.cpp
         EffectsReactorTests.cpp
         HudTests.cpp
+        InputSamplingTests.cpp
+        InterpolationTests.cpp
+        GameSceneTests.cpp
 )
 
 target_compile_definitions(client_tests PRIVATE

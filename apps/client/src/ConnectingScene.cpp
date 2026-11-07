@@ -7,11 +7,13 @@
 
 #include "ConnectingScene.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <format>
 #include <memory>
 
+#include "GameScene.hpp"
 #include "engine/core/Errors.hpp"
 #include "engine/core/Logger.hpp"
 #include "rtype/protocol/Decode.hpp"
@@ -23,7 +25,7 @@ namespace {
 constexpr float HELLO_INTERVAL   = 0.5F;
 constexpr float CONNECT_TIMEOUT  = 5.0F;
 constexpr std::int16_t HUD_LAYER = 1000;
-constexpr std::uint8_t TEXT_SIZE = 20;
+constexpr unsigned TEXT_SIZE     = 20;
 constexpr float TEXT_X           = 40.0F;
 constexpr float TEXT_Y           = 340.0F;
 
@@ -71,8 +73,9 @@ SceneRequest ConnectingScene::update(FrameContext &context, float dt)
         return showMessage("Can't reach the server", *_startError, true);
     receive(context);
     if (_welcome)
-        return SceneRequest::change(std::make_unique<
-            GameScene>(std::move(_link), *_welcome));
+        return SceneRequest::change(
+            std::make_unique<GameScene>(std::move(_link), *_welcome,
+                context.sprites));
     if (_rejected)
         return showRejection(*_rejected);
     _elapsed += dt;
@@ -91,20 +94,19 @@ SceneRequest ConnectingScene::update(FrameContext &context, float dt)
     return SceneRequest::stay();
 }
 
-/*
-** TODO(RTP-120): TEXT_SIZE becomes context.settings.hudFontSize, like
-** MessageScene, once ClientSettings is in FrameContext.
-*/
 void ConnectingScene::draw(engine::render::RenderQueue &queue,
     const FrameContext &context)
 {
-    queue.push(engine::render::TextCmd{.font = {},
-        .text          = std::format("Connecting to {}:{}... {:.0f} s",
+    queue.push(engine::render::TextCmd{
+        .font = {},
+        .text = std::format("Connecting to {}:{}... {:.0f} s",
             context.config.host, context.config.port, _elapsed),
-        .characterSize = TEXT_SIZE,
-        .position      = {TEXT_X, TEXT_Y},
-        .color         = engine::core::Color::WHITE,
-        .layer         = HUD_LAYER});
+        .characterSize = static_cast<std::uint8_t>(
+            std::min(context.settings.hudFontSize, TEXT_SIZE)),
+        .position = {TEXT_X, TEXT_Y},
+        .color = engine::core::Color::WHITE,
+        .layer = HUD_LAYER,
+    });
 }
 
 /*
@@ -120,7 +122,7 @@ void ConnectingScene::receive(const FrameContext &context)
             continue;
         try {
             _commands.create(message->header.type)
-                ->execute(*this, message->packet);
+                     ->execute(*this, message->packet);
             _link->lastHeard = context.now;
         } catch (const net::PacketError &error) {
             if (_logs.shouldLog(protocol::classify(error), context.now))
