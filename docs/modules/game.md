@@ -37,7 +37,7 @@ Every component is a plain aggregate with no methods and no pointers. Entities a
 | PLAYER_SHIP | yes | yes | PLAYER, 32 × 14 | `playerHealth` (100) | 1 | yes | `PlayerShip`, `Weapon`, `ConfinedToPlayfield` |
 | BYDOS_SLAVE | yes | yes | ENEMY, 21 × 24 | 1 | `enemyCollisionDamage` (20) | yes | `StraightMover` or `SineMover`, `AimedShooter`, `Weapon`, `DespawnOutsidePlayfield`, `ScoreValue(100)` |
 | PLAYER_MISSILE | yes | yes | PLAYER_SHOT, 12 × 4 | 1 | 1 | yes | `Projectile`, `Lifetime(2 s)`, `DespawnOutsidePlayfield` |
-| ENEMY_MISSILE | yes | yes | ENEMY_SHOT, 7 × 6 | 1 | `enemyMissileDamage` (5) | yes | `Projectile`, `Lifetime(4 s)`, `DespawnOutsidePlayfield` |
+| ENEMY_MISSILE | yes | yes | ENEMY_SHOT, 7 × 6 | 1 | `enemyMissileDamage` (5) | yes | `Projectile`, `Lifetime(6 s)`, `DespawnOutsidePlayfield` |
 
 **Which layers collide** (anything not listed never collides):
 
@@ -392,11 +392,11 @@ Every gameplay number lives in `struct Rules` with these defaults. Nothing in a 
 | `respawnDelay` / `respawnInvulnerability` | 2 s / 2 s |  |
 | `playerFireCooldown` | 0.20 s | 5 shots per second while held |
 | `playerMissileSpeed` / `playerMissileLifetime` | 900 u/s / 2 s | Fired straight right |
-| `enemySpeed` | random 160–240 u/s |  |
-| `sineAmplitude` / `sineFrequency` | random 40–120 u / 0.5–1.2 Hz |  |
+| `enemySpeed` | random 60–100 u/s | A Bydos crosses the 1280-wide playfield in 13 to 21 s |
+| `sineAmplitude` / `sineFrequency` | random 15–40 u / 0.2–0.5 Hz | A gentle wave, one cycle every 2 to 5 s |
 | `sineChance` | 0.5 | Half of the spawned Bydos get `SineMover` |
-| `enemyFireInterval` | random 1.5–3.0 s | Aimed at the nearest ship |
-| `enemyMissileSpeed` / `enemyMissileLifetime` | 420 u/s / 4 s |  |
+| `enemyFireInterval` | random 2.5–5.0 s | Aimed at the nearest ship. A Bydos fires about 3 to 8 shots while it crosses the playfield |
+| `enemyMissileSpeed` / `enemyMissileLifetime` | 240 u/s / 6 s | 1440 u of range: a shot from the right edge still reaches a ship on the left |
 | `enemyMissileDamage` / `enemyCollisionDamage` | 5 / 20 | Health a ship loses to an enemy missile / to running into a Bydos (which dies). A ship survives 20 missiles or 5 collisions |
 | `spawnIntervalStart` / `spawnIntervalStep` / `spawnIntervalStepEvery` / `spawnIntervalMin` | 1.6 s / 0.05 s / 10 s / 0.5 s | Starts at 1.6 s, 0.05 s shorter every 10 s, never below 0.5 s |
 | `enemySpawnX` / `enemySpawnY` | 1312 / random 40–680 | Just off the right edge |
@@ -419,7 +419,7 @@ Each default is checked by `RulesTests.cpp`, so changing a number is a deliberat
 {
   "playerSpeed": 400,
   "playerHalfSize": [16, 7],
-  "enemySpeed": {"min": 160, "max": 240},
+  "enemySpeed": {"min": 60, "max": 100},
   "playerSpawn": [[120, 144], [120, 288], [120, 432], [120, 576]]
 }
 ```

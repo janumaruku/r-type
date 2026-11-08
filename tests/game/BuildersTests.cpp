@@ -361,7 +361,7 @@ TEST_F(Builders, EnemyMissileNormalisesItsDirection)
     (void)makeEnemyMissile(_registry, missile, SHOOTER, {600.0F, 300.0F},
         {3.0F, 4.0F});
     expectVec(_registry.getComponent<Velocity>(missile)->value,
-        {252.0F, 336.0F});
+        {144.0F, 192.0F});
 }
 
 TEST_F(Builders, EveryReturnedNetIdFindsItsEntity)

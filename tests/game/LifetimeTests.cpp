@@ -33,11 +33,11 @@ TEST_F(Lifetimes, TwoSecondMissileDiesOnTick120)
     EXPECT_FALSE(_registry.isAlive(missile));
 }
 
-TEST_F(Lifetimes, FourSecondEnemyMissileDiesOnTick240)
+TEST_F(Lifetimes, SixSecondEnemyMissileDiesOnTick360)
 {
     const Entity missile = spawnEnemyMissile(NO_NET_ID, {640.0F, 360.0F});
 
-    tick(239);
+    tick(359);
     EXPECT_TRUE(_registry.isAlive(missile));
     tick();
     EXPECT_FALSE(_registry.isAlive(missile));
