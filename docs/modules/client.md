@@ -402,4 +402,4 @@ The catalog must have an entry, exact or `"*"`, for every key the server sends: 
 
 `GameScene` owns a copy of the `SoundBank` and two subscribers of its `GameEventBus`: `AudioReactor` plays the sounds of this table and `EffectsReactor` spawns the explosions. Both are declared after `_events` and `_world`, so they unsubscribe before the bus is destroyed. `onEnter` starts `stage1.ogg` looping and `onExit` stops it, even when the server is gone. The files and their licences are listed in `assets/LICENSES.md`.
 
-**HUD.** Each slot shows `P1`–`P4`, the player's name, lives and score (all from the roster), plus the team score, the ping, and transient banners such as "P3 lost connection" or "GAME OVER – restarting in 5". All HUD text uses the font size from `client.json` (default 20 px at 720p).
+**HUD.** Each slot shows `P1`–`P4`, the player's name, lives and score (all from the roster), plus the team score, the ping, and transient banners such as "P3 lost connection" or "GAME OVER - restarting in 5". All HUD text uses the font size from `client.json` (default 20 px at 720p).

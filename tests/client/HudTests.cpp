@@ -185,7 +185,7 @@ TEST(HudTests, SlotLineFormatsEmptySlot)
 {
     PlayerInfo slot{.playerId = 1, .state = PlayerState::EMPTY};
 
-    EXPECT_EQ(slotLine(slot), "P2 —");
+    EXPECT_EQ(slotLine(slot), "P2 -");
 }
 
 // -----------------------------------------------------------------------------
@@ -352,7 +352,7 @@ TEST(HudReactorTests, GameOverStartsFiveSecondCountdown)
     EXPECT_FLOAT_EQ(*reactor.gameOverCountdown(), 5.0F);
 
     ASSERT_EQ(reactor.banners().size(), 1U);
-    EXPECT_EQ(reactor.banners().back().text, "GAME OVER – team score 4200");
+    EXPECT_EQ(reactor.banners().back().text, "GAME OVER - team score 4200");
 }
 
 TEST(HudReactorTests, GameOverCountdownDecreasesWithDeltaTime)
@@ -459,9 +459,39 @@ TEST(HudSystemTests, DisplaysUnknownPingWithoutASample)
         textCommands(registry.getResource<engine::render::RenderQueue>());
 
     const auto found = std::ranges::find_if(texts,
-        [](const auto &text) { return text.text == "ping —"; });
+        [](const auto &text) { return text.text == "ping -"; });
 
     EXPECT_NE(found, texts.end());
+}
+
+/*
+** Raylib's default font draws '?' for any codepoint it lacks, such as the
+** em and en dashes: every HUD text must stay printable ASCII. The frame has
+** empty slots, no ping, a game over and the help, so every string is used.
+*/
+TEST(HudSystemTests, EveryTextIsPrintableAscii)
+{
+    GameEventBus bus;
+    ClientWorld world{SpriteCatalog{}};
+    Registry registry;
+
+    setupHudRegistry(registry, bus, world, true);
+    registry.getResource<HudState>().ping.reset();
+    emit(bus, makeEvent(EventType::GAME_OVER));
+
+    hudSystem(registry);
+
+    const auto texts =
+        textCommands(registry.getResource<engine::render::RenderQueue>());
+
+    ASSERT_FALSE(texts.empty());
+    for (const auto &text: texts) {
+        const bool ascii = std::ranges::all_of(text.text, [](char character) {
+            return character >= ' ' && character <= '~';
+        });
+
+        EXPECT_TRUE(ascii) << "Not printable ASCII: " << text.text;
+    }
 }
 
 TEST(HudSystemTests, ShowHelpDisplaysEveryActionAndItsKeys)

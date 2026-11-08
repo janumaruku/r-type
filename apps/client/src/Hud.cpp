@@ -62,7 +62,7 @@ void HudReactor::onEvent(const protocol::Event &event)
     }
 
     case protocol::EventType::GAME_OVER:
-        addBanner("GAME OVER – team score " +
+        addBanner("GAME OVER - team score " +
             std::to_string(teamScore(_world.roster())));
         _gameOverIn = GAME_OVER_SECONDS;
         break;
@@ -116,7 +116,7 @@ std::string slotLine(const protocol::PlayerInfo &slot)
     const std::string player = playerLabel(slot.playerId);
 
     if (slot.state == protocol::PlayerState::EMPTY)
-        return player + " —";
+        return player + " -";
 
     const std::string name  = player + " " + slot.name;
     const std::string score = std::to_string(slot.score);
@@ -135,7 +135,7 @@ std::string slotLine(const protocol::PlayerInfo &slot)
         break;
     }
 
-    return player + " —";
+    return player + " -";
 }
 
 std::uint32_t teamScore(const std::array<protocol::PlayerInfo, 4> &roster)
@@ -201,7 +201,7 @@ void hudSystem(engine::ecs::Registry &registry)
         {RIGHT_COLUMN_X, MARGIN}, engine::render::TextAlign::LEFT));
     const std::string ping = state.ping
         ? std::format("ping {} ms", state.ping->count())
-        : std::string{"ping —"};
+        : std::string{"ping -"};
     queue.push(text(ping, size, {RIGHT_COLUMN_X, MARGIN + lineHeight},
         engine::render::TextAlign::LEFT));
 
@@ -214,7 +214,7 @@ void hudSystem(engine::ecs::Registry &registry)
     }
 
     if (const auto countdown = reactor.gameOverCountdown()) {
-        queue.push(text(std::format("GAME OVER – restarting in {}",
+        queue.push(text(std::format("GAME OVER - restarting in {}",
                             static_cast<int>(std::ceil(*countdown))),
             size, {SCREEN_WIDTH / 2.0F, SCREEN_HEIGHT / 2.0F},
             engine::render::TextAlign::CENTER));
