@@ -5,12 +5,12 @@
 ** FixedTimestepTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/runtime/FixedTimestep.hpp"
 
+#include <gtest/gtest.h>
 #include <random>
 
 #include "engine/core/Errors.hpp"
-#include "engine/runtime/FixedTimestep.hpp"
 
 using engine::runtime::FixedTimestep;
 
@@ -19,8 +19,8 @@ using engine::runtime::FixedTimestep;
 */
 namespace {
 constexpr double STEP = 1.0 / 64;
-constexpr int CAP = 5;
-}
+constexpr int CAP     = 5;
+} // namespace
 
 TEST(FixedTimestepTests, ExactlyOneStepRunsOnceWithNoRemainder)
 {
@@ -72,7 +72,7 @@ TEST(FixedTimestepTests, RandomFramesKeepAlphaInRangeAndTheStepCountExact)
     FixedTimestep timestep(STEP, 1000);
     std::mt19937 rng(42);
     std::uniform_real_distribution<double> frames(0.0, 0.1);
-    double elapsed = 0.0;
+    double elapsed  = 0.0;
     long totalSteps = 0;
 
     for (int i = 0; i < 1000; ++i) {

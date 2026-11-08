@@ -17,8 +17,7 @@
 
 namespace designPattern {
 template <typename BaseClass, typename ConcreteClass, typename... Args>
-concept HasCreateMethod = requires(Args... args)
-{
+concept HasCreateMethod = requires(Args... args) {
     {
         ConcreteClass::create(args...)
     } -> std::same_as<std::unique_ptr<BaseClass>>;
@@ -55,7 +54,7 @@ public:
         _creators.erase(key);
     }
 
-    std::unique_ptr<BaseClass> create(const KeyType &key, Args... args)
+    std::unique_ptr<BaseClass> create(const KeyType &key, Args &&...args)
     {
         const auto itt = _creators.find(key);
 

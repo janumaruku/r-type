@@ -18,6 +18,6 @@ namespace engine::core {
 */
 [[nodiscard]] std::filesystem::path cacheKey(const std::filesystem::path &path);
 
-}
+} // namespace engine::core
 
 #endif /* !RESOURCE_PATH_HPP */

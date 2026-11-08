@@ -5,11 +5,11 @@
 ** ComponentTests
 */
 
+#include "engine/ecs/Component.hpp"
+
 #include <concepts>
 #include <memory>
 #include <string>
-
-#include "engine/ecs/Component.hpp"
 
 using engine::ecs::ComponentConcept;
 
@@ -30,13 +30,13 @@ struct MoveOnly {
 };
 
 struct NoMoveAssignment {
-    NoMoveAssignment() = default;
-    NoMoveAssignment(NoMoveAssignment &&) = default;
+    NoMoveAssignment()                               = default;
+    NoMoveAssignment(NoMoveAssignment &&)            = default;
     NoMoveAssignment &operator=(NoMoveAssignment &&) = delete;
 };
 
 struct Abstract {
-    virtual ~Abstract() = default;
+    virtual ~Abstract()   = default;
     virtual void update() = 0;
 };
 } // namespace

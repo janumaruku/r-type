@@ -5,29 +5,29 @@
 ** FactoryTemplateTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "engine/core/FactoryTemplate.hpp"
 
+#include <gtest/gtest.h>
 #include <memory>
 #include <string>
-
-#include "engine/core/FactoryTemplate.hpp"
 
 namespace {
 
 class Command {
 public:
-    virtual ~Command() = default;
+    virtual ~Command()                   = default;
     virtual int execute(int value) const = 0;
 };
 
-class AddCommand : public Command {
+class AddCommand: public Command {
 public:
     static std::unique_ptr<Command> create(int amount)
     {
         return std::make_unique<AddCommand>(amount);
     }
 
-    explicit AddCommand(int amount) : _amount(amount) {}
+    explicit AddCommand(int amount): _amount(amount)
+    {}
 
     int execute(int value) const override
     {
@@ -43,14 +43,15 @@ private:
     int _amount;
 };
 
-class MultiplyCommand : public Command {
+class MultiplyCommand: public Command {
 public:
     static std::unique_ptr<Command> create(int factor)
     {
         return std::make_unique<MultiplyCommand>(factor);
     }
 
-    explicit MultiplyCommand(int factor) : _factor(factor) {}
+    explicit MultiplyCommand(int factor): _factor(factor)
+    {}
 
     int execute(int value) const override
     {
@@ -66,15 +67,15 @@ private:
     int _factor;
 };
 
-class InvalidCommand {
-};
+class InvalidCommand {};
 
-using CommandFactory = designPattern::FactoryTemplate<Command, std::string, int>;
+using CommandFactory =
+    designPattern::FactoryTemplate<Command, std::string, int>;
 
 static_assert(designPattern::HasCreateMethod<Command, AddCommand, int>);
 static_assert(!designPattern::HasCreateMethod<Command, InvalidCommand, int>);
 
-}
+} // namespace
 
 TEST(FactoryTemplate, RegisterAndCreateReturnsConcreteType)
 {

@@ -25,4 +25,4 @@ void deserialize(net::Packet &packet, Header &header)
     packet >> header.type;
     packet >> header.sequence;
 }
-}
+} // namespace rtype::protocol

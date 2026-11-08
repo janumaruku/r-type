@@ -6,21 +6,21 @@
 */
 
 #ifndef R_TYPE_HEADER_HPP
-#define R_TYPE_HEADER_HPP
+    #define R_TYPE_HEADER_HPP
 
-#include <cstddef>
-#include <cstdint>
+    #include <cstddef>
+    #include <cstdint>
 
-#include "rtype/protocol/MessageType.hpp"
-#include "network/Packet.hpp"
+    #include "network/Packet.hpp"
+    #include "rtype/protocol/MessageType.hpp"
 
 namespace rtype::protocol {
 struct Header {
-    static constexpr std::uint16_t MAGIC = 0x5254;
-    static constexpr std::uint8_t VERSION = 1;
-    static constexpr std::size_t SIZE = 8;
+    static constexpr std::uint16_t MAGIC  = 0x5254;
+    static constexpr std::uint8_t VERSION = 2;
+    static constexpr std::size_t SIZE     = 8;
 
-    std::uint16_t magic = MAGIC;
+    std::uint16_t magic  = MAGIC;
     std::uint8_t version = VERSION;
     MessageType type{};
     std::uint32_t sequence = 0;
@@ -33,8 +33,8 @@ void deserialize(net::Packet &packet, Header &header);
 template <class Message>
 [[nodiscard]] net::Packet makePacket(MessageType type, std::uint32_t sequence,
     const Message &message);
-}
+} // namespace rtype::protocol
 
-#endif //R_TYPE_HEADER_HPP
+#endif // R_TYPE_HEADER_HPP
 
 #include "rtype/protocol/Header.tpp"

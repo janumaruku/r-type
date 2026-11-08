@@ -6,7 +6,6 @@
 */
 
 #include <benchmark/benchmark.h>
-
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -20,8 +19,7 @@ using engine::ecs::Registry;
 // The registry holds one storage per type, so the second set of the join needs
 // a type of its own, with T's layout.
 template <class T>
-struct Second: T {
-};
+struct Second: T {};
 
 // The same data as BM_Join_SparseSetManual<T>: the same ids, values and
 // sizes, so the two benchmarks can be compared case by case.
@@ -53,14 +51,22 @@ static void BM_Join_View(benchmark::State &state) // NOLINT
         benchmark::DoNotOptimize(sum);
     }
 
-    state.SetItemsProcessed(state.iterations()
-        * static_cast<std::int64_t>(registry.getComponents<T>().size()));
+    state.SetItemsProcessed(state.iterations() *
+        static_cast<std::int64_t>(registry.getComponents<T>().size()));
 }
 
 BENCHMARK_TEMPLATE(BM_Join_View, Small)
-    ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
+    ->Arg(1)
+    ->Arg(10)
+    ->Arg(100)
+    ->Arg(500)
+    ->Arg(1000);
 BENCHMARK_TEMPLATE(BM_Join_View, Big)
-    ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
+    ->Arg(1)
+    ->Arg(10)
+    ->Arg(100)
+    ->Arg(500)
+    ->Arg(1000);
 
 // The same join, also yielding each entity. The indices are summed so the
 // compiler can't drop the entity read.
@@ -71,7 +77,7 @@ static void BM_Join_IndexedView(benchmark::State &state) // NOLINT
     fillJoin<T>(registry, densityOf(state));
 
     for (auto _: state) {
-        float sum = 0.0F;
+        float sum             = 0.0F;
         std::uint64_t indices = 0;
         for (auto &&[entity, first, second]:
             registry.indexedView<T, Second<T>>()) {
@@ -82,11 +88,19 @@ static void BM_Join_IndexedView(benchmark::State &state) // NOLINT
         benchmark::DoNotOptimize(indices);
     }
 
-    state.SetItemsProcessed(state.iterations()
-        * static_cast<std::int64_t>(registry.getComponents<T>().size()));
+    state.SetItemsProcessed(state.iterations() *
+        static_cast<std::int64_t>(registry.getComponents<T>().size()));
 }
 
 BENCHMARK_TEMPLATE(BM_Join_IndexedView, Small)
-    ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
+    ->Arg(1)
+    ->Arg(10)
+    ->Arg(100)
+    ->Arg(500)
+    ->Arg(1000);
 BENCHMARK_TEMPLATE(BM_Join_IndexedView, Big)
-    ->Arg(1)->Arg(10)->Arg(100)->Arg(500)->Arg(1000);
+    ->Arg(1)
+    ->Arg(10)
+    ->Arg(100)
+    ->Arg(500)
+    ->Arg(1000);

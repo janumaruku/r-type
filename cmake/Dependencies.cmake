@@ -62,6 +62,15 @@ if (RTYPE_BUILD_BENCHMARKS)
 endif ()
 
 CPMAddPackage(
+        NAME nlohmann_json
+        VERSION 3.12.0
+        URL https://github.com/nlohmann/json/releases/download/v3.12.0/json.tar.xz
+        DOWNLOAD_ONLY YES)
+
+add_library(nlohmann_json INTERFACE)
+target_include_directories(nlohmann_json SYSTEM INTERFACE "${nlohmann_json_SOURCE_DIR}/include")
+
+CPMAddPackage(
         NAME asio
         GITHUB_REPOSITORY chriskohlhoff/asio
         GIT_TAG asio-1-30-2
@@ -70,6 +79,13 @@ CPMAddPackage(
 add_library(asio INTERFACE)
 target_include_directories(asio SYSTEM INTERFACE "${asio_SOURCE_DIR}/asio/include")
 target_compile_definitions(asio INTERFACE ASIO_STANDALONE ASIO_NO_DEPRECATED)
+
+CPMAddPackage(
+    NAME CLI11
+    GITHUB_REPOSITORY CLIUtils/CLI11
+    GIT_TAG v2.5.0
+    SYSTEM YES
+)
 
 if (WIN32)
     target_compile_definitions(asio INTERFACE _WIN32_WINNT=0x0A00)

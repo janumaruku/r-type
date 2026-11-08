@@ -5,18 +5,17 @@
 ** ActionMapTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/input/ActionMap.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 #include <string>
 #include <string_view>
 #include <vector>
-
-#include "engine/input/ActionMap.hpp"
 
 using engine::input::ActionMap;
 using engine::input::InputEvent;
@@ -29,8 +28,8 @@ using engine::input::NamedAction;
 namespace game {
 enum class Action { MOVE_UP, MOVE_DOWN, FIRE, QUIT };
 
-constexpr std::array<std::string_view, 4> NAMES{"MOVE_UP", "MOVE_DOWN", "FIRE",
-    "QUIT"};
+constexpr std::array<std::string_view, 4> NAMES{
+    "MOVE_UP", "MOVE_DOWN", "FIRE", "QUIT"};
 
 std::string_view toString(Action action)
 {
@@ -69,7 +68,7 @@ InputEvent pressed(Key key)
 {
     InputEvent event;
     event.type = InputEvent::Type::KEY_PRESSED;
-    event.key = key;
+    event.key  = key;
     return event;
 }
 
@@ -82,13 +81,14 @@ ActionMap<Action> defaults()
     return map;
 }
 
-class ActionMapFile : public testing::Test {
+class ActionMapFile: public testing::Test {
 protected:
     void SetUp() override
     {
-        const auto *info = testing::UnitTest::GetInstance()->current_test_info();
-        _dir = std::filesystem::temp_directory_path() / "rtype-actionmap-tests"
-            / info->name();
+        const auto *info =
+            testing::UnitTest::GetInstance()->current_test_info();
+        _dir = std::filesystem::temp_directory_path() /
+            "rtype-actionmap-tests" / info->name();
         std::filesystem::remove_all(_dir);
         std::filesystem::create_directories(_dir);
     }
@@ -197,7 +197,7 @@ TEST_F(ActionMapFile, SaveThenLoadGivesTheSameBindings)
 
 TEST_F(ActionMapFile, SaveCreatesTheParentFolder)
 {
-    const auto map = defaults();
+    const auto map    = defaults();
     const auto nested = _dir / "a" / "b" / "keybindings.cfg";
 
     ASSERT_TRUE(map.save(nested));

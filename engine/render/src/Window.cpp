@@ -5,29 +5,33 @@
 ** Window.cpp
 */
 
+#include "../include/engine/render/Window.hpp"
 
 #include <array>
-#include <raylib.h>
 #include <cassert>
 #include <cstdarg>
 #include <cstdio>
+#include <raylib.h>
 #include <string>
 
-#include "Window.hpp"
+#include "../include/engine/render/KeyTable.hpp"
 #include "engine/core/Errors.hpp"
-#include "KeyTable.hpp"
 #include "engine/core/Logger.hpp"
 
 namespace engine::render {
 
 struct Window::Impl {
     core::Vec2u size{};
-    bool shouldClose = false;     // set by close()
-    bool closeReported = false;   // WINDOW_CLOSED is sent once
-    bool focused = true;          // Raylib sends no focus events, so we compare
+    bool shouldClose   = false; // set by close()
+    bool closeReported = false; // WINDOW_CLOSED is sent once
+    bool focused       = true;  // Raylib sends no focus events, so we compare
 };
 
 namespace {
+constexpr std::array<int, input::MOUSE_BUTTON_COUNT> MOUSE_BUTTON_TABLE{
+    MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE,
+    MOUSE_BUTTON_SIDE, MOUSE_BUTTON_EXTRA, MOUSE_BUTTON_FORWARD,
+    MOUSE_BUTTON_BACK};
 
 void raylibTraceCallback(int logLevel, const char *text, va_list args)
 {
@@ -38,20 +42,29 @@ void raylibTraceCallback(int logLevel, const char *text, va_list args)
     const std::string message{buffer.data()};
 
     switch (logLevel) {
-        case LOG_TRACE:   raylibLog.trace() << message; break;
-        case LOG_DEBUG:   raylibLog.debug() << message; break;
-        case LOG_WARNING: raylibLog.warn()  << message; break;
-        case LOG_ERROR:
-        case LOG_FATAL:   raylibLog.error() << message; break;
-        case LOG_INFO:
-        default:          raylibLog.info()  << message; break;
+    case LOG_TRACE:
+        raylibLog.trace() << message;
+        break;
+    case LOG_DEBUG:
+        raylibLog.debug() << message;
+        break;
+    case LOG_WARNING:
+        raylibLog.warn() << message;
+        break;
+    case LOG_ERROR:
+    case LOG_FATAL:
+        raylibLog.error() << message;
+        break;
+    case LOG_INFO:
+    default:
+        raylibLog.info() << message;
+        break;
     }
 }
 
-}  // namespace
+} // namespace
 
-Window::Window(WindowConfig const& config)
-    : _impl(std::make_unique<Impl>())
+Window::Window(WindowConfig const &config): _impl(std::make_unique<Impl>())
 {
     assert(!IsWindowReady() && "only one render::Window can exist at a time");
 
@@ -64,8 +77,8 @@ Window::Window(WindowConfig const& config)
         flags |= FLAG_FULLSCREEN_MODE;
     SetConfigFlags(flags);
 
-    InitWindow(static_cast<int>(config.size.x()), static_cast<int>(config.size.y()),
-               config.title.c_str());
+    InitWindow(static_cast<int>(config.size.x()),
+        static_cast<int>(config.size.y()), config.title.c_str());
 
     if (!IsWindowReady())
         throw core::EngineError("cannot open the window: no display, or no "
@@ -75,7 +88,7 @@ Window::Window(WindowConfig const& config)
         SetTargetFPS(static_cast<int>(config.frameLimit));
 
     _impl->size = {static_cast<unsigned>(GetScreenWidth()),
-                   static_cast<unsigned>(GetScreenHeight())};
+        static_cast<unsigned>(GetScreenHeight())};
 }
 
 Window::~Window()
@@ -114,35 +127,56 @@ std::vector<input::InputEvent> Window::pollEvents()
     using input::InputEvent;
     std::vector<InputEvent> events;
 
-    for (std::size_t i = detail::keyIndex(input::Key::UNKNOWN) + 1; i < input::KEY_COUNT; ++i) {
-        const auto key = static_cast<input::Key>(i);
+    for (std::size_t i = detail::keyIndex(input::Key::UNKNOWN) + 1;
+        i < input::KEY_COUNT; ++i) {
+        const auto key      = static_cast<input::Key>(i);
         const int raylibKey = detail::KEY_TABLE[i];
         if (IsKeyPressed(raylibKey))
-            events.push_back({.type=InputEvent::Type::KEY_PRESSED, .key=key, .size={}});
+            events.push_back({.type = InputEvent::Type::KEY_PRESSED,
+                .key                = key,
+                .size               = {}});
         if (IsKeyReleased(raylibKey))
-            events.push_back({.type=InputEvent::Type::KEY_RELEASED, .key=key, .size={}});
+            events.push_back({.type = InputEvent::Type::KEY_RELEASED,
+                .key                = key,
+                .size               = {}});
+    }
+
+    for (std::size_t i = 0; i < input::MOUSE_BUTTON_COUNT; ++i) {
+        const auto button      = static_cast<input::MouseButton>(i);
+        const int raylibButton = MOUSE_BUTTON_TABLE[i];
+        if (IsMouseButtonPressed(raylibButton))
+            events.push_back({.type = InputEvent::Type::MOUSE_BUTTON_PRESSED,
+                .mouseButton        = button});
+        if (IsMouseButtonReleased(raylibButton))
+            events.push_back({.type = InputEvent::Type::MOUSE_BUTTON_RELEASED,
+                .mouseButton        = button});
     }
 
     // Window close button
     if (WindowShouldClose() && !_impl->closeReported) {
         _impl->closeReported = true;
-        events.push_back({.type=InputEvent::Type::WINDOW_CLOSED, .key=input::Key::UNKNOWN, .size={}});
+        events.push_back({.type = InputEvent::Type::WINDOW_CLOSED,
+            .key                = input::Key::UNKNOWN,
+            .size               = {}});
     }
 
     // Focus
     bool focused = IsWindowFocused();
     if (focused != _impl->focused) {
         _impl->focused = focused;
-        events.push_back({.type=focused ? InputEvent::Type::FOCUS_GAINED
-                                  : InputEvent::Type::FOCUS_LOST,
-                          .key=input::Key::UNKNOWN, .size={}});
+        events.push_back({.type = focused ? InputEvent::Type::FOCUS_GAINED
+                                          : InputEvent::Type::FOCUS_LOST,
+            .key                = input::Key::UNKNOWN,
+            .size               = {}});
     }
 
     // Resize
     if (IsWindowResized()) {
         _impl->size = {static_cast<unsigned>(GetScreenWidth()),
-                       static_cast<unsigned>(GetScreenHeight())};
-        events.push_back({.type=InputEvent::Type::RESIZED, .key=input::Key::UNKNOWN, .size=_impl->size});
+            static_cast<unsigned>(GetScreenHeight())};
+        events.push_back({.type = InputEvent::Type::RESIZED,
+            .key                = input::Key::UNKNOWN,
+            .size               = _impl->size});
     }
     return events;
 }

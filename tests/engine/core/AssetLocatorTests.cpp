@@ -5,15 +5,15 @@
 ** AssetLocatorTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "engine/core/AssetLocator.hpp"
 
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 #include <optional>
 #include <string>
 
-#include "engine/core/AssetLocator.hpp"
 #include "engine/core/Errors.hpp"
 
 namespace {
@@ -23,7 +23,7 @@ public:
     explicit AssetsEnvironmentGuard(const std::filesystem::path &value)
     {
 #ifdef _WIN32
-        char *previousValue = nullptr;
+        char *previousValue      = nullptr;
         std::size_t previousSize = 0;
         _dupenv_s(&previousValue, &previousSize, "RTYPE_ASSETS_DIR");
         if (previousValue != nullptr) {
@@ -58,7 +58,7 @@ private:
     std::optional<std::string> _previous;
 };
 
-class AssetLocatorTest : public testing::Test {
+class AssetLocatorTest: public testing::Test {
 protected:
     void SetUp() override
     {
@@ -75,17 +75,17 @@ protected:
     }
 
     const std::filesystem::path _temporaryRoot =
-        std::filesystem::temp_directory_path()
-        / (std::string("rtype_asset_locator_")
-            + testing::UnitTest::GetInstance()->current_test_info()->name());
+        std::filesystem::temp_directory_path() /
+        (std::string("rtype_asset_locator_") +
+            testing::UnitTest::GetInstance()->current_test_info()->name());
     std::filesystem::path _previousWorkingDirectory;
 };
 
-}
+} // namespace
 
 TEST_F(AssetLocatorTest, ExistingOverrideWinsOverEnvironment)
 {
-    const auto overrideRoot = _temporaryRoot / "override";
+    const auto overrideRoot    = _temporaryRoot / "override";
     const auto environmentRoot = _temporaryRoot / "environment";
     std::filesystem::create_directory(overrideRoot);
     std::filesystem::create_directory(environmentRoot);
@@ -110,7 +110,7 @@ TEST_F(AssetLocatorTest, MissingOverrideFallsThroughToEnvironment)
 
 TEST_F(AssetLocatorTest, MissingCandidatesAreListedInException)
 {
-    const auto missingOverride = _temporaryRoot / "missing-override";
+    const auto missingOverride    = _temporaryRoot / "missing-override";
     const auto missingEnvironment = _temporaryRoot / "missing-environment";
     AssetsEnvironmentGuard environment(missingEnvironment);
 
@@ -121,7 +121,8 @@ TEST_F(AssetLocatorTest, MissingCandidatesAreListedInException)
         const std::string message = error.what();
         EXPECT_NE(message.find(missingOverride.string()), std::string::npos);
         EXPECT_NE(message.find(missingEnvironment.string()), std::string::npos);
-        EXPECT_NE(message.find((_temporaryRoot / "assets").string()), std::string::npos);
+        EXPECT_NE(message.find((_temporaryRoot / "assets").string()),
+            std::string::npos);
     }
 }
 
@@ -143,7 +144,8 @@ TEST_F(AssetLocatorTest, ResolveThrowsForMissingFile)
     std::filesystem::create_directory(assetRoot);
     const engine::core::AssetLocator locator(assetRoot);
 
-    EXPECT_THROW((void)locator.resolve("missing.json"), engine::core::ResourceError);
+    EXPECT_THROW((void)locator.resolve("missing.json"),
+        engine::core::ResourceError);
 }
 
 TEST_F(AssetLocatorTest, ResolveAcceptsAnEmptyFile)

@@ -6,6 +6,7 @@
 */
 
 #include <gtest/gtest.h>
+
 #include "engine/core/Rect2.hpp"
 
 TEST(Rect2, constuct)
@@ -65,7 +66,8 @@ TEST(Rect2, fromCenter)
 {
     engine::core::Vec2f center{2.5, 4};
     engine::core::Vec2f halfsize{1.5, 2};
-    engine::core::FloatRect r = engine::core::FloatRect::fromCenter(center, halfsize);
+    engine::core::FloatRect r =
+        engine::core::FloatRect::fromCenter(center, halfsize);
 
     EXPECT_FLOAT_EQ(r.origin().x(), 1);
     EXPECT_FLOAT_EQ(r.origin().y(), 2);

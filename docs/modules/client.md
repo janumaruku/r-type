@@ -8,7 +8,7 @@ The client displays the server's world and sends the player's buttons back. It k
 r-type_client [-h HOST] [-p PORT] [-n NAME] [--fullscreen] [--log-level LEVEL] [--help]
 ```
 
-The defaults are `-h 127.0.0.1`, `-p 4242`, and `-n` set to the OS user name, cut to 16 characters. Bad arguments exit with 84. Key bindings and volumes are read from `config/client.cfg` and `config/keybindings.cfg` if those files exist.
+The defaults are `-h 127.0.0.1`, `-p 4242`, and `-n` set to the OS user name, cut to 16 characters. Bad arguments exit with 84. Key bindings start from the defaults in `bindDefaults` (arrows and WASD to move, SPACE and LCTRL to fire, F1 for the controls overlay, ESCAPE to quit, ENTER to confirm), then `config/keybindings.json` overrides the actions it lists. Volumes and the other settings are read from `config/client.json`, if it exists. `--fullscreen` overrides `fullscreen` from `client.json`.
 
 ## Threads
 
@@ -25,59 +25,106 @@ Raylib requires window, input, rendering and texture calls to stay on the thread
 classDiagram
     class ClientApp {
         -ClientConfig _config
+        -ClientSettings _settings
         -render::Window _window
         -render::TextureCache _textures
         -render::FontCache _fonts
+        -SpriteCatalog _sprites
+        -render::TextureId _whitePixel
         -render::RaylibRenderer _renderer
         -std::unique_ptr~audio::IAudio~ _audio
+        -SoundBank _sounds
         -input::InputState _input
         -input::ActionMap~Action~ _actions
+        -render::RenderQueue _queue
         -SceneManager _scenes
         -runtime::Stopwatch _frameClock
-        +ClientApp(ClientConfig)
+        +ClientApp(ClientConfig, ClientSettings)
         +run() int
     }
     class IScene {
         <<interface>>
-        +onEnter()* void
-        +onExit()* void
+        +onEnter(FrameContext&)* void
+        +onExit(FrameContext&)* void
         +update(FrameContext&, float dt)* SceneRequest
-        +draw(render::RenderQueue&)* void
+        +draw(render::RenderQueue&, FrameContext const&)* void
     }
     class SceneManager {
         -std::unique_ptr~IScene~ _current
-        +change(std::unique_ptr~IScene~) void
-        +update(FrameContext&, float dt) void
-        +draw(render::RenderQueue&) void
+        +change(std::unique_ptr~IScene~, FrameContext&) void
+        +update(FrameContext&, float dt) bool
+        +draw(render::RenderQueue&, FrameContext const&) void
+        +current() IScene*
+    }
+    class SceneRequest {
+        +Kind kind
+        +std::unique_ptr~IScene~ next
+        +stay()$ SceneRequest
+        +change(std::unique_ptr~IScene~)$ SceneRequest
+        +quit()$ SceneRequest
+    }
+    class FrameContext {
+        +input::InputState& input
+        +input::ActionMap~Action~& actions
+        +audio::IAudio& audio
+        +render::TextureCache& textures
+        +render::FontCache& fonts
+        +SpriteCatalog const& sprites
+        +render::TextureId whitePixel
+        +SoundBank sounds
+        +ClientConfig const& config
+        +ClientSettings const& settings
+        +runtime::TimePoint now
     }
     class ServerLink {
         +net::UdpSocket socket
         +asio::ip::udp::endpoint server
         +uint32_t sendSequence
         +TimePoint lastHeard
-        +send(net::Packet const&) void
+        +send~Message~(protocol::MessageType, Message const&) void
     }
     class ConnectingScene {
         -std::unique_ptr~ServerLink~ _link
         -ConnectCommandFactory _commands
         -float _sinceHello
         -float _elapsed
+        -std::optional~protocol::Welcome~ _welcome
+        -std::optional~protocol::RejectReason~ _rejected
+        -std::optional~std::string~ _startError
+        -ClientLogLimiter _logs
         +onWelcome(protocol::Welcome const&) void
-        +onReject(protocol::Reject const&) void
+        +onReject(protocol::RejectReason) void
     }
     class GameScene {
         -std::unique_ptr~ServerLink~ _link
         -uint8_t _playerId
+        -GameEventBus _events
         -ClientWorld _world
         -ClientNetworkAdapter _adapter
+        -SoundBank _sounds
+        -AudioReactor _audioReactor
+        -EffectsReactor _effectsReactor
         -PredictionState _prediction
         -runtime::FixedTimestep _inputStep
+        -uint32_t _inputSequence
+        -game::Rules _rules
+        -bool _leftByChoice
+        -bool _serverGone
         -Starfield _starfield
-        -Hud _hud
+        +GameScene(std::unique_ptr~ServerLink~ link, protocol::Welcome welcome, FrameContext const& context)
+        +playerId() uint8_t
+        -leaveFor(LeaveCause cause) SceneRequest
+        -setHudResources(FrameContext const& context) void
+        -updateHudState(FrameContext const& context) void
     }
     class MessageScene {
         -std::string _title
         -std::string _detail
+        -bool _canReconnect
+        +MessageScene(std::string title, std::string detail, bool canReconnect)
+        +title() std::string const&
+        +detail() std::string const&
+        +canReconnect() bool
     }
     class ClientNetworkAdapter {
         -ServerLink& _link
@@ -104,12 +151,18 @@ classDiagram
         -std::unordered_map~NetId, Entity~ _byNetId
         -std::array~protocol::PlayerInfo, 4~ _roster
         -uint32_t _latestServerTick
+        -protocol::GamePhase _phase = WAITING
         +applyEntity(uint32_t tick, protocol::EntityState const&) void
         +applyRoster(std::span~const protocol::PlayerInfo~) void
         +removeNotSeenSince(uint32_t tick) void
+        +setPhase(protocol::GamePhase) void
+        +phase() protocol::GamePhase
+        +joinedPlayers() size_t
         +find(NetId) std::optional~Entity~
-        +localShip(uint8_t playerId) std::optional~Entity~
+        +setLocalPlayer(uint8_t playerId) void
+        +localShip() std::optional~Entity~
         +registry() ecs::Registry&
+        -tagLocalShip() void
     }
     class EventFilter {
         -std::deque~uint32_t~ _recent
@@ -122,14 +175,31 @@ classDiagram
         +sentAt(uint32_t sequence) std::optional~TimePoint~
     }
     class SpriteCatalog {
+        -std::vector~SpriteDef~ _defs
+        -std::map~std::pair, SpriteDefId~ _exact
+        -std::map~SpriteKey, SpriteDefId~ _anyVariant
         +load(path, TextureCache&) void
-        +lookup(EntityKind, uint8_t variant) SpriteDef const&
+        +loadJson(json const&, path sheetsDir, TextureCache&) void
+        +find(SpriteKey, uint8_t variant) SpriteDefId
+        +get(SpriteDefId) SpriteDef const&
+        +contains(SpriteKey, uint8_t variant) bool
+    }
+    class SpriteDef {
+        +render::TextureId texture
+        +std::vector~AnimationState~ states
+        +float frameTime
+        +bool loop
+        +stateIndex(std::string_view name) std::optional~uint8_t~
     }
     IScene <|.. ConnectingScene
     IScene <|.. GameScene
     IScene <|.. MessageScene
     ClientApp *-- SceneManager
+    ClientApp *-- SpriteCatalog
+    SpriteCatalog *-- SpriteDef
     SceneManager o-- IScene
+    IScene ..> SceneRequest : returns from update
+    IScene ..> FrameContext : uses
     ConnectingScene *-- ServerLink
     GameScene *-- ServerLink
     GameScene *-- ClientWorld
@@ -154,9 +224,12 @@ classDiagram
 
 ### Scenes
 
-- **`ConnectingScene`** resolves `-h`/`-p` with `asio::ip::udp::resolver`, starts a `ServerLink` on a free local port, and sends HELLO every 0.5 s. Its `WelcomeCommand` and `RejectCommand` call back into it. On WELCOME it moves the `ServerLink` into a new `GameScene`, so the socket is never recreated. On REJECT, or after 5 s with no answer, it switches to a `MessageScene` with the reason.
-- **`GameScene`** is the game itself (next sections). It switches to a `MessageScene` when the server sends SHUTDOWN or stays silent for 5 s.
-- **`MessageScene`** shows a title and a detail line ("Server full", "Connection lost", "Server closed"). ENTER reconnects through a new `ConnectingScene`, ESCAPE quits.
+- **`SceneManager`** holds the current scene. `change` calls `onExit` on the old scene, if there is one, then `onEnter` on the new one. `change(nullptr)` only exits the current scene, which `ClientApp::run` does on the way out so the last scene's `onExit` runs. `update` runs the current scene's `update` and applies the `SceneRequest` it returns: `STAY` keeps the scene, `CHANGE` switches to `next` once the scene's `update` has returned, and `QUIT` makes `update` return `false` so the client loop stops. It also returns `false` when there is no scene. `draw` draws the current scene, if there is one.
+- **`SceneRequest`** is built with `stay()`, `change(next)` or `quit()`. `change(nullptr)` gives `stay()`, so a scene can't switch to nothing.
+- **`FrameContext`** is what a scene gets each frame: the input state and action map, audio, the texture and font caches, the sprite catalog, the starfield's white pixel (loaded by `ClientApp` next to the catalog, since loading a texture needs the window), the `SoundBank` (loaded by `ClientApp` right after audio starts, so a missing sound file stops the client at start-up), the command-line config, the settings, and the frame's time.
+- **`ConnectingScene`** opens its link in `onEnter`, not in its constructor, so building the scene never throws: `resolveServer` resolves `-h`/`-p` to an IPv4 endpoint with `asio::ip::udp::resolver`, then it starts a `ServerLink` on a free local port and sends HELLO, again every 0.5 s. An unknown host or an unavailable port (`NetworkError`) is kept and shown by the first `update` as "Can't reach the server". Its `WelcomeCommand` and `RejectCommand` call back into it; only the first WELCOME counts, since every HELLO gets one. On WELCOME it moves the `ServerLink` into a new `GameScene`, so the socket is never recreated. On REJECT, or after 5 s with no answer, it switches to a `MessageScene` with the reason. Meanwhile it draws "Connecting to host:port..." with the seconds waited.
+- **`GameScene`** is the game itself (next sections). While the server's phase is WAITING (from the last SNAPSHOT, and before the first one), it draws only a message, through the same `pushMessage` layout as `MessageScene`: "Waiting for players", "*n* / *playersToStart* connected", where *n* counts the roster's slots that aren't EMPTY and *playersToStart* comes from WELCOME, and "ESC: quit". The game is drawn as soon as a SNAPSHOT says PLAYING. It switches to a `MessageScene` when the server sends SHUTDOWN or stays silent for 5 s.
+- **`MessageScene`** shows a title and a detail line ("Server full", "Connection lost", "Server closed"), sized from the `hudFontSize` setting (the title at twice the size), with a hint for the keys. CONFIRM (ENTER) reconnects through a new `ConnectingScene` when the message allows it, which a version mismatch does not. QUIT (ESCAPE) quits.
 
 ## Message commands
 
@@ -165,11 +238,11 @@ The client uses the same Command + Factory pattern as the server ([ADR 0003](../
 ```cpp
 namespace rtype::client {
 
-using IConnectCommand = engine::core::ICommand<ConnectingScene&, net::Packet&>;
-using ConnectCommandFactory = engine::core::FactoryTemplate<IConnectCommand, protocol::MessageType>;
+using IConnectCommand = designPattern::ICommand<ConnectingScene&, net::Packet&>;
+using ConnectCommandFactory = designPattern::FactoryTemplate<IConnectCommand, protocol::MessageType>;
 
-using IGameCommand = engine::core::ICommand<ClientNetworkAdapter&, net::Packet&>;
-using GameCommandFactory = engine::core::FactoryTemplate<IGameCommand, protocol::MessageType>;
+using IGameCommand = designPattern::ICommand<ClientNetworkAdapter&, net::Packet&>;
+using GameCommandFactory = designPattern::FactoryTemplate<IGameCommand, protocol::MessageType>;
 
 void ConnectingScene::registerCommands() noexcept
 {
@@ -187,13 +260,23 @@ void ClientNetworkAdapter::registerCommands() noexcept
 }
 ```
 
-Each scene's `handle()` decodes the header inside a `try`/`catch (const net::PacketError&)`, exactly as the server does. It drops datagrams that are malformed, that don't come from the server's endpoint, or whose type has no registered command (`hasKey`). A late repeat of WELCOME in game is dropped that way. A valid datagram from the server sets `link.lastHeard`.
+Both scenes check each datagram with the same function, `checkFromServer(datagram, link, logs, now)` (`ClientDispatch.hpp`), in the order of the [RFC's error handling](../protocol/RFC-rtype.md#10-error-handling):
+
+1. **Not from the server:** dropped silently if `datagram.from != link.server`. Anyone can send to the client's port, so logging these would let a stranger fill the log.
+2. **Size:** `protocol::checkDatagramSize`.
+3. **Header:** the `net::Packet` is built from the bytes and the `Header` read from it (a bad magic throws).
+4. **Version:** dropped silently if it isn't 1.
+5. **Direction:** `protocol::checkType(type, Direction::SERVER_TO_CLIENT)`, so an unknown type, or a HELLO sent back to the client, is rejected.
+
+On success it returns the header and the packet positioned right after it, ready for the command's `decode`. A `net::PacketError` is caught, logged as `classify(error)` if `ClientLogLimiter::shouldLog` allows it (at most one line per second per `DecodeError`, so a flood of bad datagrams can't flood the log), and the datagram is dropped. Unlike the server, the client counts no offences: it can't kick the server.
+
+The scene then runs the command only if its type has one (`hasKey`), so a message meant for the other scene is dropped: a SNAPSHOT that overtakes the WELCOME while connecting, or a late repeat of WELCOME in game. The command runs inside its own `try`/`catch (const net::PacketError&)`, logged through the same limiter, since `decode` throws for a truncated body or trailing bytes. A message that decodes sets `link.lastHeard`.
 
 ## Applying snapshots
 
 | Command | Message | Handling |
 | --- | --- |
-| `SnapshotCommand` | SNAPSHOT | Ignored if older than the assembler's last complete tick. Otherwise each `EntityState` goes to `world.applyEntity(tick, state)`: it creates the entity if the NetId is new (with components from the `SpriteCatalog` for its kind and variant) and adds a sample. Chunk 0's roster goes to `world.applyRoster()`. If `assembler.add(chunk)` reports tick T complete, `world.removeNotSeenSince(T)` deletes vanished entities. |
+| `SnapshotCommand` | SNAPSHOT | Ignored if older than the assembler's last complete tick. Otherwise each `EntityState` goes to `world.applyEntity(tick, state)`: it creates the entity if the NetId is new (with components from the `SpriteCatalog` for its kind and variant) and adds a sample. Chunk 0's roster goes to `world.applyRoster()`, and its phase to `world.setPhase()`. If `assembler.add(chunk)` reports tick T complete, `world.removeNotSeenSince(T)` deletes vanished entities. |
 | `EventCommand` | EVENT | Ignored if `seenEvents.firstTime(eventId)` is false. Otherwise pushed to the effect queue: sounds, explosions at (x, y), HUD banners. |
 | `ShutdownCommand` | SHUTDOWN | Switch to `MessageScene("Server closed")`. |
 
@@ -206,13 +289,43 @@ These live in `apps/client/` because they refer to `render::TextureId`, which th
 | Component | Fields |
 | --- | --- |
 | `Sprite` | `TextureId texture`, `IntRect frame`, `int16_t layer`, `Color tint`, `Vec2f scale` |
-| `Animation` | `std::vector<IntRect> frames`, `float frameTime`, `float timer`, `size_t index`, `bool loop` |
+| `Animation` | `SpriteDefId def`, `uint8_t state`, `size_t index`, `float timer`. The frames, the frame time and `loop` stay in the catalog's `SpriteDef`: the component holds the entry's id and a state index, so it's plain data with no pointers, and spawning an entity copies no vectors |
+| `ShipTilt` | `float lastY`, `int8_t direction`, `float heldTime`. On player ships only: `shipTiltSystem` picks `idle`, `up` then `top`, or `down` then `bottom` from the drawn vertical speed (over 20 u/s, the full tilt after 0.15 s) |
 | `NetSamples` | Ring of the last 3 `{uint32_t tick, Vec2f position, Vec2f velocity}`, plus `uint32_t lastSeenTick` |
-| `LocalPlayer` | Tag on the ship whose NetId equals the roster's `shipNetId` for our `playerId` |
+| `LocalPlayer` | Tag on the ship whose NetId equals the roster's `shipNetId` for our `playerId`. `ClientWorld` moves it after every `applyRoster` and after `applyEntity` creates an entity, since the roster can name the ship before or after its first snapshot, and a respawn gives a new NetId. `interpolationSystem` skips the tagged ship, which `GameScene` moves itself on each input step |
 | `PlayerLabel` | `uint8_t playerId`, drawn as `P1`–`P4` above the ship |
 | `TransientEffect` | `float remaining`: explosions, which are never replicated |
 
-These systems are registered in `ClientWorld`'s registry, in two stages: `UPDATE` (`interpolationSystem` → `predictionSystem` → `animationSystem` → `effectSystem` → `starfieldSystem`) and `RENDER` (`renderSystem` → `hudSystem`). The `RenderQueue` is a registry resource that the render stage fills. `renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
+The `GameScene` constructor registers these systems in `ClientWorld`'s registry, in the two `ClientStage`s (`ClientStages.hpp`), and they run in this order:
+
+| Stage | System | Components | Status |
+| --- | --- | --- | --- |
+| `UPDATE` | `interpolationSystem` | `Transform`, `const NetSamples` | Registered (RTP-126) |
+| `UPDATE` | `predictionSystem` | The `LocalPlayer` ship's `Transform`, the `Correction` resource | Registered (RTP-127) |
+| `UPDATE` | `shipTiltSystem` | `ShipTilt`, `const Transform`, `Animation` | Registered (RTP-128) |
+| `UPDATE` | `animationSystem` | `Animation`, `Sprite` | Registered (RTP-128) |
+| `UPDATE` | `effectSystem` | `TransientEffect` | Registered (RTP-128) |
+| `UPDATE` | `starfieldSystem` | `Transform`, `const Star`, the `Rng` resource | Registered (RTP-128) |
+| `RENDER` | `renderSystem` | `const Transform`, `const Sprite`, the `ClientSettings` resource | Registered (RTP-128) |
+| `RENDER` | `hudSystem` | `PlayerLabel` and `Transform` through a view, the HUD resources below | Registered last, so the HUD draws over the sprites (RTP-130) |
+
+The registry also holds these resources:
+
+| Resource | Set by | Used for |
+| --- | --- | --- |
+| `SpriteCatalog` | `ClientWorld`'s constructor, a copy of `ClientApp`'s catalog | `animationSystem` and `shipTiltSystem` read it |
+| `RenderQueue` | `GameScene`'s constructor | The `RENDER` stage fills it |
+| `RenderClock` | `GameScene`'s constructor | `latestServerTick` and the time since it give `renderTick()`, the tick `interpolationSystem` draws |
+| `Correction` | `GameScene`'s constructor; `target` set by `GameScene` on each new server sample of our ship | `std::optional<Vec2f> target`, the corrected position *C* that `predictionSystem` eases our ship towards |
+| `engine::ecs::DeltaTime` | `GameScene`'s constructor, then every frame | The frame's `dt` |
+| `engine::core::Rng` | `GameScene`'s constructor, seeded with `Rng::randomSeed()` | Client-side randomness: `spawnStarfield` and `starfieldSystem` place the stars with it |
+| `ClientSettings` | `GameScene`'s constructor, then copied from the `FrameContext` before each `RENDER` stage | `renderSystem` reads `highContrast`, `hudSystem` reads `hudFontSize` |
+| `HudReactor` | `GameScene`'s constructor, subscribed to `_events` | The banners and the GAME OVER countdown that `hudSystem` draws and advances by `dt` |
+| `HudState` | `GameScene`'s constructor, then every frame before `UPDATE` | `showHelp`, flipped when TOGGLE_HUD_HELP (F1) `wasTriggered`, and `ping`, from `prediction.averagePing(now)` |
+| `ActionMap<Action>` | `GameScene`'s constructor, a copy of the `FrameContext`'s map | The keys the F1 help lists for each action. The bindings don't change during a game |
+| `const ClientWorld *` | `GameScene`'s constructor | The roster, for the slot lines and the team score |
+
+`renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
 
 ## Frame loop, interpolation and prediction
 
@@ -221,27 +334,70 @@ Each frame of `GameScene`, with `dt = frameClock.restart()` capped at 0.25 s:
 1. `window.pollEvents()` → `input.apply(e)`. `WINDOW_CLOSED` and the QUIT action send DISCONNECT and exit.
 2. `for (auto& d : link.socket.receiveAll()) adapter.handle(d, now)`.
 3. `inputStep.advance(dt)` returns *n*. For each of the *n* steps, sample the buttons from the action map, `sendInput(++sequence, buttons)`, `prediction.record(...)`, and move the local ship with `movePlayer(...)`. INPUT therefore goes out at exactly 60 Hz whatever the frame rate.
-4. If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
-5. Set the `DeltaTime` resource, run the `UPDATE` stage then the `RENDER` stage (which fills the `RenderQueue`), then `renderer.beginFrame / submit / endFrame`, and `audio.update()`.
+4. If the server sent SHUTDOWN or KICK, switch to the `MessageScene` for that cause ("Server closed" or "Kicked"). If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
+5. Update `HudState`: flip `showHelp` if TOGGLE_HUD_HELP was triggered, and set `ping` from `prediction.averagePing(now)`.
+6. Set the `DeltaTime` resource, run the `UPDATE` stage then the `RENDER` stage (which fills the `RenderQueue`; while WAITING, the waiting message replaces it), then `renderer.beginFrame / submit / endFrame`, and `audio.update()`.
+
+`GameScene::onExit` sends DISCONNECT (3 times, since UDP can lose it) when the player quits or the window closes. It doesn't after SHUTDOWN, KICK or a timeout: the server has already forgotten us, or can't be reached.
 
 **Interpolation for remote entities.** Everything except the local ship is drawn 100 ms in the past. That is `renderTick = latestServerTick − 6` ticks, so there are normally two snapshots to blend between. The position is a linear interpolation between the two samples on either side of `renderTick`. If the newer sample is missing (packet loss), the entity is extrapolated along its last velocity for at most 100 ms and then held in place. A new entity is drawn at its first sample until a second one arrives.
 
-**Prediction for the local ship.** On each SNAPSHOT that contains the local ship:
+**Prediction for the local ship.** `GameScene` owns a `PredictionState`, and a `game::Rules` built by `predictionRules(welcome)`: the server's `playerSpeed` and `playerHalfSize` from WELCOME, with the fixed 1280 × 720 playfield, so the client moves its ship exactly as the server does even when the server's rules file changes them. On each input step, it records the INPUT it sends (`prediction.record`) and moves our ship by one 1/60 s step with `prediction.step`, which calls the server's `movePlayer`. So the ship moves on the frame the key is pressed. Then, each frame right after receiving, `GameScene::reconcileLocalShip` checks whether the assembler completed a new tick (`lastCompleteTick()`). It waits for a complete tick because `lastProcessedInput` only comes with chunk 0: a chunk holding our ship can arrive before it, with *L* still from the previous snapshot. If the new complete tick has a sample of our ship:
 
-1. Take the server's position *P* for the local ship and the snapshot's `lastProcessedInput` *L*.
-2. Discard pending inputs with a sequence ≤ *L*.
-3. Replay the remaining inputs on *P* with `movePlayer`. That gives the corrected position *C*.
-4. If *C* is more than 64 units away from the drawn position, snap to it. Otherwise close 20% of the gap each frame.
+1. Take the server's position *P* from that sample, and *L* = `world.lastProcessedInput()`, chunk 0's `lastProcessedInput`.
+2. Call `prediction.notePing(L, now)`. This must come before `reconcile`, which drops input *L* and its send time.
+3. Call `prediction.reconcile(P, L, rules)`: it discards pending inputs with a sequence ≤ *L*, and replays the others on *P* with `movePlayer`. That gives the corrected position *C*, stored in the `Correction` resource's `target`.
+4. `predictionSystem`, in `UPDATE` after `interpolationSystem`, moves our ship towards *C* with `PredictionState::smooth`: it snaps if *C* is more than 64 units away, otherwise it closes 20% of the gap each frame. Once the gap is under 0.5 units, it puts the ship on *C* and clears the target.
+
+The input steps that follow a correction also move the target, by the same `step` as the ship. *C* is where the server would put our ship at the moment of the snapshot, while the ship keeps moving after it. Without this, the correction would pull the ship back while a key is held.
 
 On a LAN the correction is invisible. With high latency, the player still sees their ship react immediately. The server remains the only judge of collisions (requirement F-14).
 
-**Ping.** `prediction.sentAt(L)` gives the time INPUT *L* was sent. `now − sentAt(L)` is an upper estimate of the round trip, off by at most one snapshot interval (33 ms). The HUD shows its average over the last second.
+**Ping.** `prediction.sentAt(L)` gives the time INPUT *L* was sent. `notePing` stores `now − sentAt(L)` as a sample, once per new *L*. It's an upper estimate of the round trip, off by at most one snapshot interval (33 ms). `prediction.averagePing(now)` gives the average over the last second, which the HUD shows, or nothing if no sample arrived in that second.
 
 ## Presentation
 
-**Starfield (F-02, F-08).** There are 3 parallax layers of procedurally placed stars: 70 far stars at 20 u/s, 40 mid stars at 55 u/s and 20 near stars at 120 u/s. A star that leaves the left edge wraps to the right at a new random y. The starfield runs entirely on the client and is driven by `dt`, so its speed doesn't depend on frame rate, and it needs no network traffic.
+**Starfield (F-02, F-08).** There are 3 parallax layers of procedurally placed stars: 70 far stars at 20 u/s, 40 mid stars at 55 u/s and 20 near stars at 120 u/s. A star that leaves the left edge wraps to the right at a new random y. The starfield runs entirely on the client and is driven by `dt`, so its speed doesn't depend on frame rate, and it needs no network traffic. `GameScene::onEnter` spawns it with `spawnStarfield`. Each star is the 1 × 1 `assets/sprites/white.png`, tinted grey for its brightness, and near stars are drawn at scale 2.
 
-**Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.cfg`, which maps each `(EntityKind, variant)` to a sheet, frame rectangles and a frame time. The rectangles are measured from the sprite sheets provided with the subject. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`.
+**Sprites.** `SpriteCatalog` reads `assets/sprites/catalog.json`, which maps each `(EntityKind, variant)` to a sheet, named states of frame rectangles, and a frame time. The sheets and the starting rectangles come from [ManuelR-T/R-Type](https://github.com/ManuelR-T/R-Type) (MIT licence), and each entry's `source` field names the original sheet and frames. Keeping them in data rather than code lets the art change without recompiling. Each player's colour row (cyan, magenta, green, red) is picked by `variant = playerId`, and its 5 columns are the states `top`, `up`, `idle`, `down` and `bottom`.
+
+**`catalog.json`.** `ClientApp` loads it once at start-up, with the path found by `engine::core::AssetLocator`. Every problem in it is fatal and stops the client with exit code 84 before the first frame, since the game can't be drawn without its sprites: a missing file, invalid JSON (with nlohmann's position), any field that breaks the table below, a rectangle outside its sheet, a missing sheet, the same `(kind, variant)` twice, or a missing server key. The message names the entry, the field and the state, such as `sprites[2].states.up[1]: expected [x, y, w, h], whole numbers with w and h > 0`. An entry that still has the old `frames` field is rejected with `sprites[i].frames: replaced by states, see client.md`.
+
+```json
+{
+  "sprites": [
+    {
+      "kind": "PLAYER_SHIP",
+      "variant": 0,
+      "sheet": "player_ships.gif",
+      "frameTime": 0.0,
+      "loop": true,
+      "states": {
+        "top": [[0, 0, 33, 17]],
+        "up": [[33, 0, 33, 17]],
+        "idle": [[66, 0, 33, 17]],
+        "down": [[99, 0, 33, 17]],
+        "bottom": [[132, 0, 33, 17]]
+      },
+      "source": "ManuelR-T/R-Type, r-typesheet42.gif, row 0 (cyan), 33 x 17 grid"
+    }
+  ]
+}
+```
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `kind` | string | `PLAYER_SHIP`, `BYDOS_SLAVE`, `PLAYER_MISSILE`, `ENEMY_MISSILE` (the RFC entity kinds), or `EXPLOSION` for the client-only effect. Any case |
+| `variant` | integer 0–255, or `"*"` | `"*"` covers every variant of the kind. `find` prefers an exact entry over `"*"` |
+| `sheet` | string | A path relative to `assets/sprites/` |
+| `frameTime` | number ≥ 0 | Seconds per frame, shared by every state of the entry. 0 means a still image |
+| `loop` | boolean, optional, default `true` | Whether a state starts again after its last frame. `false` for `EXPLOSION` |
+| `states` | object, at least one key | Each key is a state name (non-empty, case-sensitive), each value a non-empty array of `[x, y, w, h]`, whole numbers in pixels of the sheet, with `w` and `h` > 0. `idle` is required: every entity starts in it. It's stored at index 0, then the other states in file order |
+| `source` | string, optional | Where the rectangles were measured, for whoever edits the file next. Ignored by the code |
+
+The catalog must have an entry, exact or `"*"`, for every key the server sends: PLAYER_SHIP variants 0 to 3, BYDOS_SLAVE variants 0 and 1, both missiles, plus EXPLOSION. The current file has one PLAYER_SHIP entry per colour row and `"*"` entries for the rest.
+
+**Sprites and hitboxes stay in step.** Sprites are drawn at scale 1 and one game unit is one pixel, so each entity's largest visible frame is its hitbox in `Rules` ([game.md](game.md)): the ship 32 × 14, the Bydos slave 21 × 24, the player missile 12 × 4 and the enemy missile 7 × 6. The ship uses full 33 × 17 grid cells and the explosion full 32 × 32 frames, so their centre stays still while they tilt or grow. Re-measuring a frame means changing `Rules` too.
 
 **Sound (F-13).**
 
@@ -254,4 +410,6 @@ On a LAN the correction is invisible. With high latency, the player still sees t
 | EVENT PLAYER_JOINED / PLAYER_LEFT | `ui_join.wav` / `ui_leave.wav` |
 | In game | `stage1.ogg` looping music |
 
-**HUD.** Each slot shows `P1`–`P4`, the player's name, lives and score (all from the roster), plus the team score, the ping, and transient banners such as "P3 lost connection" or "GAME OVER – restarting in 5". All HUD text uses the font size from `client.cfg` (default 20 px at 720p).
+`GameScene` owns a copy of the `SoundBank` and two subscribers of its `GameEventBus`: `AudioReactor` plays the sounds of this table and `EffectsReactor` spawns the explosions. Both are declared after `_events` and `_world`, so they unsubscribe before the bus is destroyed. `onEnter` starts `stage1.ogg` looping and `onExit` stops it, even when the server is gone. The files and their licences are listed in `assets/LICENSES.md`.
+
+**HUD.** Each slot shows a health bar, then `P1`–`P4`, the player's name, lives and score (all from the roster). The bar, 4 font sizes wide, is filled to `health / maxHealth` from the roster: green, red at 25% or below. A player waiting to respawn or out shows an empty frame, an EMPTY slot no bar; the text always starts right of the bar (`slotTextX`), so the lines stay aligned. The HUD also shows the team score, the ping, and transient banners such as "P3 lost connection" or "GAME OVER - restarting in 5". All HUD text uses the font size from `client.json` (default 20 px at 720p).

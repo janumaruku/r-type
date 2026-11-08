@@ -29,6 +29,6 @@ struct Voice {
 */
 [[nodiscard]] std::size_t chooseVoice(std::span<const Voice> voices);
 
-}
+} // namespace engine::audio
 
 #endif // !VOICES_HPP

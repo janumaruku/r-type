@@ -5,12 +5,11 @@
 ** RenderSystems
 */
 
+#include <raylib.h>
 #include <string>
 
-#include <raylib.h>
-
-#include "World.hpp"
 #include "engine/ecs/SparseSet.hpp"
+#include "World.hpp"
 
 namespace ecs_example {
 namespace {
@@ -33,31 +32,35 @@ void addStarsSystem(Registry &registry)
 {
     registry.addSystem<const Star, const Position>(Stage::RENDER, "stars",
         [](Registry &registry, const SparseSet<Star> &,
-        const SparseSet<Position> &) {
+            const SparseSet<Position> &) {
             for (auto &&[star, position]:
-                 registry.view<const Star, const Position>())
-                DrawPixelV(toScreen(position.value), Color{.r = star.brightness,
-                    .g = star.brightness, .b = star.brightness, .a = 255,});
+                registry.view<const Star, const Position>())
+                DrawPixelV(toScreen(position.value),
+                    Color{
+                        .r = star.brightness,
+                        .g = star.brightness,
+                        .b = star.brightness,
+                        .a = 255,
+                    });
         });
 }
 
 void addShapesSystems(Registry &registry)
 {
-    registry.addSystem<const Position, const Radius, const Tint>(
-        Stage::RENDER, "circles",
+    registry.addSystem<const Position, const Radius, const Tint>(Stage::RENDER,
+        "circles",
         [](Registry &registry, const SparseSet<Position> &,
-        const SparseSet<Radius> &, const SparseSet<Tint> &) {
-            for (auto &&[position, radius, tint]: registry.view<
-                     const Position, const Radius, const Tint>())
-                DrawCircleV(toScreen(position.value), radius.value,
-                    tint.color);
+            const SparseSet<Radius> &, const SparseSet<Tint> &) {
+            for (auto &&[position, radius, tint]:
+                registry.view<const Position, const Radius, const Tint>())
+                DrawCircleV(toScreen(position.value), radius.value, tint.color);
         });
-    registry.addSystem<const Player, const Position, const Radius>(
-        Stage::RENDER, "ship",
+    registry.addSystem<const Player, const Position,
+        const Radius>(Stage::RENDER, "ship",
         [](Registry &registry, const SparseSet<Player> &,
-        const SparseSet<Position> &, const SparseSet<Radius> &) {
-            for (auto &&[player, position, radius]: registry.view<
-                     const Player, const Position, const Radius>()) {
+            const SparseSet<Position> &, const SparseSet<Radius> &) {
+            for (auto &&[player, position, radius]:
+                registry.view<const Player, const Position, const Radius>()) {
                 const float x = position.value.x();
                 const float y = position.value.y();
                 const float r = radius.value;
@@ -87,7 +90,7 @@ void addHudSystem(Registry &registry)
         drawCentered("Press R to restart", (HEIGHT / 2) + 10, FONT_SIZE);
     });
 }
-}
+} // namespace
 
 void addRenderSystems(Registry &registry)
 {
@@ -95,4 +98,4 @@ void addRenderSystems(Registry &registry)
     addShapesSystems(registry);
     addHudSystem(registry);
 }
-}
+} // namespace ecs_example

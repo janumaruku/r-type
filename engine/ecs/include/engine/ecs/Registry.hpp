@@ -6,23 +6,23 @@
 */
 
 #ifndef R_TYPE_REGISTRY_HPP
-#define R_TYPE_REGISTRY_HPP
+    #define R_TYPE_REGISTRY_HPP
 
-#include <cstdint>
-#include <functional>
-#include <memory>
-#include <string>
-#include <type_traits>
-#include <vector>
+    #include <cstdint>
+    #include <functional>
+    #include <memory>
+    #include <string>
+    #include <type_traits>
+    #include <vector>
 
-#include "engine/core/Logger.hpp"
-#include "engine/ecs/CommandBuffer.hpp"
-#include "engine/ecs/Component.hpp"
-#include "engine/ecs/IndexedView.hpp"
-#include "engine/ecs/Resources.hpp"
-#include "engine/ecs/SparseSet.hpp"
-#include "engine/ecs/SparseSetBase.hpp"
-#include "engine/ecs/View.hpp"
+    #include "engine/core/Logger.hpp"
+    #include "engine/ecs/CommandBuffer.hpp"
+    #include "engine/ecs/Component.hpp"
+    #include "engine/ecs/IndexedView.hpp"
+    #include "engine/ecs/Resources.hpp"
+    #include "engine/ecs/SparseSet.hpp"
+    #include "engine/ecs/SparseSetBase.hpp"
+    #include "engine/ecs/View.hpp"
 
 namespace engine::ecs {
 template <class Stage>
@@ -71,7 +71,7 @@ public:
         Component &&component);
 
     template <ComponentConcept Component, typename... Args>
-    Component &emplaceComponent(const Entity &entity, Args &&... args);
+    Component &emplaceComponent(const Entity &entity, Args &&...args);
 
     template <ComponentConcept Component>
     void removeComponent(const Entity &entity);
@@ -116,7 +116,7 @@ public:
     */
     template <ResourceConcept Resource, class... Args>
         requires std::constructible_from<Resource, Args...>
-    Resource &emplaceResource(Args &&... args);
+    Resource &emplaceResource(Args &&...args);
 
     template <ViewComponentConcept... Components, StageConcept Stage,
         class System>
@@ -124,6 +124,13 @@ public:
 
     template <StageConcept Stage>
     void runStage(Stage stage);
+
+    /**
+     * @brief The names of `stage`'s systems, in the order they run. A stage
+     * with no systems gives an empty vector.
+     */
+    template <StageConcept Stage>
+    [[nodiscard]] std::vector<std::string> systemNames(Stage stage) const;
 
     [[nodiscard]] CommandBuffer &commands() noexcept;
 
@@ -154,10 +161,13 @@ private:
     };
 
     void runStageAt(std::uint8_t stage);
+
+    [[nodiscard]] std::vector<std::string> systemNamesAt(std::uint8_t stage)
+        const;
 };
-}
+} // namespace engine::ecs
 
-#endif //R_TYPE_REGISTRY_HPP
+#endif // R_TYPE_REGISTRY_HPP
 
-#include "engine/ecs/Registry.tpp"
 #include "engine/ecs/CommandBuffer.tpp"
+#include "engine/ecs/Registry.tpp"

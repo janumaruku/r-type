@@ -24,7 +24,7 @@ float clampVolume(float volume) noexcept
     return std::clamp(volume, 0.0F, 1.0F);
 }
 
-}
+} // namespace
 
 void Volume::setMaster(float volume) noexcept
 {
@@ -80,4 +80,4 @@ float Volume::effectiveMusic() const noexcept
     return _master * _music;
 }
 
-}
+} // namespace engine::audio

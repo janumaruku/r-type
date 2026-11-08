@@ -20,7 +20,7 @@ class Registry;
 
 class CommandBuffer {
 public:
-    using Command = std::function<void(Registry &)>;
+    using Command   = std::function<void(Registry &)>;
     using SpawnInit = std::function<void(Registry &, const Entity &)>;
 
     /*
@@ -66,6 +66,6 @@ public:
 private:
     std::vector<Command> _commands;
 };
-}
+} // namespace engine::ecs
 
-#endif //R_TYPE_COMMANDBUFFER_HPP
+#endif // R_TYPE_COMMANDBUFFER_HPP

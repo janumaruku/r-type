@@ -21,6 +21,6 @@ public:
 private:
     TimePoint _start;
 };
-}
+} // namespace engine::runtime
 
 #endif

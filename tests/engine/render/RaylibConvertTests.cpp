@@ -5,9 +5,9 @@
 ** RaylibConvertTests
 */
 
-#include <gtest/gtest.h>
+#include "../../../engine/render/include/engine/render/RaylibConvert.hpp"
 
-#include "RaylibConvert.hpp"
+#include <gtest/gtest.h>
 
 using engine::core::FloatRect;
 using engine::core::IntRect;

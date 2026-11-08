@@ -5,16 +5,16 @@
 ** RaylibAudioTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/audio/RaylibAudio.hpp"
 
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 #include <memory>
 #include <random>
 #include <string>
 
-#include "engine/audio/RaylibAudio.hpp"
 #include "engine/core/Errors.hpp"
 
 using engine::audio::MusicId;
@@ -32,9 +32,9 @@ void writeLittleEndian(std::ofstream &out, std::uint32_t value, int bytes)
 /* ** A tenth of a second of silence, 16-bit mono PCM at 22050 Hz */
 void writeSilentWav(const std::filesystem::path &path)
 {
-    constexpr std::uint32_t SAMPLE_RATE = 22050;
-    constexpr std::uint32_t SAMPLES = SAMPLE_RATE / 10;
-    constexpr std::uint32_t DATA_SIZE = SAMPLES * 2;
+    constexpr std::uint32_t SAMPLE_RATE = 22050;            // NOLINT
+    constexpr std::uint32_t SAMPLES     = SAMPLE_RATE / 10; // NOLINT
+    constexpr std::uint32_t DATA_SIZE   = SAMPLES * 2;      // NOLINT
     std::ofstream out(path, std::ios::binary);
 
     out << "RIFF";
@@ -65,9 +65,9 @@ void writeBigEndian(std::ofstream &out, std::uint32_t value, int bytes)
 */
 void writeQuietQoa(const std::filesystem::path &path)
 {
-    constexpr std::uint32_t SAMPLES = 5120;
-    constexpr std::uint32_t SLICES = SAMPLES / 20;
-    constexpr std::uint32_t FRAME_SIZE = 8 + 16 + (8 * SLICES);
+    constexpr std::uint32_t SAMPLES    = 5120;                  // NOLINT
+    constexpr std::uint32_t SLICES     = SAMPLES / 20;          // NOLINT
+    constexpr std::uint32_t FRAME_SIZE = 8 + 16 + (8 * SLICES); // NOLINT
     std::ofstream out(path, std::ios::binary);
 
     out << "qoaf";
@@ -79,10 +79,10 @@ void writeQuietQoa(const std::filesystem::path &path)
     out << std::string(FRAME_SIZE - 8, '\0');
 }
 
-}
+} // namespace
 
 /* ** Skipped on a machine without a sound device, like most CI runners */
-class RaylibAudioTests : public testing::Test {
+class RaylibAudioTests: public testing::Test {
 protected:
     void SetUp() override
     {
@@ -91,7 +91,8 @@ protected:
         } catch (const engine::core::EngineError &) {
             GTEST_SKIP() << "no sound device on this machine";
         }
-        _dir = std::filesystem::temp_directory_path() / ("rtype_audio_" + std::to_string(std::random_device{}()));
+        _dir = std::filesystem::temp_directory_path() /
+            ("rtype_audio_" + std::to_string(std::random_device{}()));
         std::filesystem::create_directories(_dir);
         writeSilentWav(_dir / "shot.wav");
         writeSilentWav(_dir / "boom.wav");
@@ -125,13 +126,15 @@ TEST_F(RaylibAudioTests, AMissingFileThrowsWithThePath)
         (void)_audio->loadSound(_dir / "missing.wav");
         FAIL() << "expected a ResourceError";
     } catch (const engine::core::ResourceError &error) {
-        EXPECT_NE(std::string{error.what()}.find("missing.wav"), std::string::npos);
+        EXPECT_NE(std::string{error.what()}.find("missing.wav"),
+            std::string::npos);
     }
 }
 
 TEST_F(RaylibAudioTests, AFileThatIsNotASoundThrows)
 {
-    EXPECT_THROW((void)_audio->loadSound(_dir / "broken.wav"), engine::core::ResourceError);
+    EXPECT_THROW((void)_audio->loadSound(_dir / "broken.wav"),
+        engine::core::ResourceError);
 }
 
 TEST_F(RaylibAudioTests, TenPlaysInARowOverlapWithoutThrowing)
@@ -158,14 +161,16 @@ TEST_F(RaylibAudioTests, MusicFollowsTheSameLoadingRules)
 
     EXPECT_EQ(_audio->loadMusic(_dir / "." / "stage.qoa"), stage);
     EXPECT_NE(_audio->loadMusic(_dir / "boss.qoa"), stage);
-    EXPECT_THROW((void)_audio->loadMusic(_dir / "missing.ogg"), engine::core::ResourceError);
-    EXPECT_THROW((void)_audio->loadMusic(_dir / "broken.wav"), engine::core::ResourceError);
+    EXPECT_THROW((void)_audio->loadMusic(_dir / "missing.ogg"),
+        engine::core::ResourceError);
+    EXPECT_THROW((void)_audio->loadMusic(_dir / "broken.wav"),
+        engine::core::ResourceError);
 }
 
 TEST_F(RaylibAudioTests, PlayingUpdatingAndStoppingMusicDoNotThrow)
 {
     const MusicId stage = _audio->loadMusic(_dir / "stage.qoa");
-    const MusicId boss = _audio->loadMusic(_dir / "boss.qoa");
+    const MusicId boss  = _audio->loadMusic(_dir / "boss.qoa");
 
     EXPECT_NO_THROW(_audio->stopMusic());
     EXPECT_NO_THROW(_audio->playMusic(stage, true));

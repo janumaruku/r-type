@@ -5,20 +5,19 @@
 ** SparseSetBaseTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/SparseSetBase.hpp"
 
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <type_traits>
 #include <vector>
-
-#include "engine/ecs/SparseSetBase.hpp"
 
 using engine::ecs::Entity;
 using engine::ecs::SparseSetBase;
 using engine::ecs::detail::EntityAccess;
 
 namespace {
-class TestSet : public SparseSetBase {
+class TestSet: public SparseSetBase {
 public:
     using SparseSetBase::append;
     using SparseSetBase::positionOf;
@@ -42,8 +41,8 @@ public:
                 return testing::AssertionFailure()
                     << "_sparse doesn't point back to position " << position;
         for (std::size_t index = 0; index < _sparse.size(); ++index)
-            if (_sparse[index] != NPOS
-                && _dense.at(_sparse[index]).index() != index)
+            if (_sparse[index] != NPOS &&
+                _dense.at(_sparse[index]).index() != index)
                 return testing::AssertionFailure()
                     << "_sparse[" << index << "] points at another entity";
         return testing::AssertionSuccess();
@@ -58,7 +57,7 @@ Entity entity(std::uint32_t index, std::uint32_t generation = 0)
 std::vector<std::uint32_t> indicesOf(const TestSet &set)
 {
     std::vector<std::uint32_t> indices;
-    for (const auto &held : set.entities())
+    for (const auto &held: set.entities())
         indices.push_back(held.index());
     return indices;
 }

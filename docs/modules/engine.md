@@ -117,8 +117,8 @@ classDiagram
 | `Rng` | The only source of randomness in the game. The server seeds it from `std::random_device` unless `--seed` is given, which makes test runs reproducible. Never use `std::rand`. |
 | `Logger`, `LogLine`, `log::*` | Thread-safe logging with a stream style and a `std::format` style, filtered by a global level, one line at a time, to `std::cerr` by default, coloured per level. See [Logging](#logging) below. |
 | Error types | Thrown only during start-up or for a fatal, unrecoverable state. Per-frame code never throws on bad input; it returns `bool` or `std::optional`. The one exception is `net::PacketError`, which is thrown and caught inside the packet decode boundary ([network](network.md#netpacket), [handbook](../handbook/development.md#error-handling-policy)). |
-| `ICommand<Args...>` | Generic command interface: `execute(Args...)` returns `false` when the command could not be carried out, and `operator()` is a non-virtual member that forwards to `execute`, so commands only implement `execute`. Used for the server's and client's message commands. |
-| `FactoryTemplate<Base, Key, Args...>` | Maps a key to a creator. `registerCreator<Concrete>(key)` only compiles if `Concrete::create(Args...)` returns `std::unique_ptr<Base>` (enforced by the `HasCreateMethod` concept). `create(key, args...)` throws `std::runtime_error` for an unknown key, so callers check `hasKey` first on untrusted keys. The key type needs `std::hash` and `operator<<` (used in that error message). Copy and move are deleted. |
+| `ICommand<Args...>` | Generic command interface, in namespace `designPattern` like `FactoryTemplate` (both come from Zappy). `execute(Args...)` returns `false` when the command could not be carried out. `operator()` is pure virtual too, so each command implements it as a one-line forward to `execute`. Used for the server's and client's message commands. |
+| `FactoryTemplate<Base, Key, Args...>` | Namespace `designPattern`. Maps a key to a creator. `registerCreator<Concrete>(key)` only compiles if `Concrete::create(Args...)` returns `std::unique_ptr<Base>` (enforced by the `HasCreateMethod` concept). `create(key, args...)` throws `std::runtime_error` for an unknown key, so callers check `hasKey` first on untrusted keys. The key type needs `std::hash` and `operator<<` (used in that error message). Copy and move are deleted. |
 | `AssetLocator` | Finds `assets/` from, in order: the `--assets` flag, the `RTYPE_ASSETS_DIR` environment variable, `<executable dir>/assets`, then `<cwd>/assets`. Throws `ResourceError` with every path it tried. |
 
 ### Logging
@@ -275,6 +275,7 @@ classDiagram
         +indexedView~Cs...~() IndexedView~Cs...~
         +addSystem~Cs...~(stage, name, f) void
         +runStage(stage) void
+        +systemNames(stage) std::vector~std::string~
         +commands() CommandBuffer&
         +applyCommands() void
         +setResource~T~(T value) T&
@@ -282,6 +283,7 @@ classDiagram
         +tryGetResource~T~() T*
         +emplaceResource~T~(Args&&...) T&
         -runStageAt(uint8_t) void
+        -systemNamesAt(uint8_t) std::vector~std::string~
     }
     class SystemEntry {
         +std::string name
@@ -393,13 +395,14 @@ registry.addSystem<Transform, const Velocity>(Stage::FIXED_UPDATE, "movement", m
 // movementSystem(Registry&, SparseSet<Transform>&, const SparseSet<Velocity>&)
 
 registry.runStage(Stage::FIXED_UPDATE);   // runs that stage's systems in insertion order
+registry.systemNames(Stage::FIXED_UPDATE); // {"movement", ...}, in the same order
 ```
 
 | Rule | Detail |
 | --- | --- |
 | Signature | A system receives the `Registry&` first, then one storage per listed component, in the listed order. A `const` component gives a `const SparseSet<C>&`, and a system taking a non-`const` storage for it doesn't compile. Checked at compile time with a readable `static_assert` message. |
 | Stages | Systems belong to a stage: any enumeration (`enum class` or plain `enum`) whose underlying type is `std::uint8_t`, defined by the game (for example `FIXED_UPDATE`, `RENDER`), checked by `StageConcept`. Systems are kept in a vector indexed by the stage's value, so stages use small values starting at 0. `runStage` runs one stage's systems in the order they were added. A stage with no systems only applies pending commands. The server never adds render systems. |
-| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time and the number of commands it recorded (`<name> took <µs> us and ran <n> commands`), which makes the tick order and its cost visible. The time covers the system only, not the apply of its commands. The clock is read only when `TRACE` is enabled, checked once per stage, so timing costs nothing otherwise. |
+| Names | Each system has a name, logged at `trace` level through a `Logger{"ecs"}` with its run time and the number of commands it recorded (`<name> took <µs> us and ran <n> commands`), which makes the tick order and its cost visible. The time covers the system only, not the apply of its commands. The clock is read only when `TRACE` is enabled, checked once per stage, so timing costs nothing otherwise. `systemNames(stage)` returns the names in run order (empty for a stage with no systems), so a test can check a stage's order without running it. |
 | Registration | Adding a system registers its component types. Adding a system while a stage is running is a programming error, caught with an `assert`. |
 | Callables | Stored in `std::function`, so systems must be copyable callables (free functions and lambdas without move-only captures). Move-only state goes in a resource. The registry keeps one copy and calls it on every run, so a `mutable` lambda keeps its state across runs. |
 | Running guard | A flag is set for the whole stage and reset by an RAII object. Calling `runStage` from inside a system is a programming error, caught with an `assert`. If a system throws, the commands it recorded are discarded (the buffer is cleared), so half of a system's intentions are never applied. The same goes when applying its commands throws (for example, a spawn's `init`). Either way, the exception reaches the caller of `runStage`, the rest of that stage doesn't run, and the next `runStage` works normally. |
@@ -588,6 +591,7 @@ classDiagram
         +submit(RenderQueue const&)* void
         +endFrame()* void
         +setLogicalSize(Vec2f)* void
+        +setBarsColor(Color)* void
     }
     class RaylibRenderer {
         -Window& _window
@@ -606,7 +610,7 @@ classDiagram
 
 - `DrawCommand` is `std::variant<SpriteCmd, RectCmd, TextCmd>`. Commands are plain values, so the client's render system can build them without knowing which backend draws them.
 - `TextureId` and `FontId` are strong `uint16_t` wrappers. Loading the same path twice returns the same id. A missing file throws `ResourceError` at start-up, never mid-game.
-- **Logical resolution.** The game draws in a fixed 1280 × 720 logical space, so every player sees the same playfield ([game rules](game.md#rules-and-tuning-values)). `beginFrame` starts drawing into a 1280 × 720 `RenderTexture2D` (`BeginTextureMode`). `endFrame` ends it, then draws that texture scaled and letterboxed into the real window with `DrawTexturePro`. Raylib render textures are stored upside down, so the source rectangle has a negative height.
+- **Logical resolution.** The game draws in a fixed 1280 × 720 logical space, so every player sees the same playfield ([game rules](game.md#rules-and-tuning-values)). `beginFrame` starts drawing into a 1280 × 720 `RenderTexture2D` (`BeginTextureMode`). `endFrame` ends it, then draws that texture scaled and letterboxed into the real window with `DrawTexturePro`. Raylib render textures are stored upside down, so the source rectangle has a negative height. The window around the letterboxed playfield is cleared with the bars colour, black until `setBarsColor` changes it. The r-type client sets white bars around its black playfield, so the playfield's edges are clear on any screen shape.
 - **Commands to Raylib calls.** `SpriteCmd` becomes `DrawTexturePro`, `RectCmd` becomes `DrawRectangleRec` plus `DrawRectangleLinesEx`, and `TextCmd` becomes `DrawTextEx`. A `TextCmd` with no font uses Raylib's built-in font (`GetFontDefault()`), so the HUD works without a font file.
 - **One window, created first, closed last.** Raylib keeps a single global window and OpenGL context. `Window`'s constructor calls `InitWindow` and asserts that no other `Window` exists, and its destructor calls `CloseWindow`. Textures and fonts can only be loaded once the window exists, and must be unloaded before it closes. `ClientApp` therefore declares `_window` before `_textures` and `_fonts`, so C++ builds them in that order and destroys them in reverse.
 - `sortByLayer()` is a stable sort, so commands on the same layer keep the order they were pushed in. The layers are: 0 far stars, 10 near stars, 100 enemies, 110 missiles, 120 players, 200 explosions, 1000 HUD.
@@ -631,6 +635,7 @@ classDiagram
         ESCAPE
         LSHIFT
         LCTRL
+        F1_TO_F12
         COUNT
     }
     class InputEvent {
@@ -669,7 +674,7 @@ classDiagram
 - **Where the events come from.** Raylib has no event queue: it answers questions like `IsKeyPressed(KEY_UP)` about the current frame. `Window::pollEvents()` turns those answers into events. For each engine `Key`, it asks Raylib `IsKeyPressed` and `IsKeyReleased` for the matching `KEY_*` code, through one fixed translation table. It reports `WindowShouldClose()` as `WINDOW_CLOSED`, a change of `IsWindowFocused()` as `FOCUS_LOST` or `FOCUS_GAINED`, and `IsWindowResized()` as `RESIZED`.
 - **Escape is a normal key.** By default Raylib closes the window when Escape is pressed. `Window` calls `SetExitKey(KEY_NULL)` to turn that off, so Escape goes through the `QUIT` action like any other binding.
 - `beginFrame()` clears the pressed and released sets. `apply()` updates all three sets. OS key-repeat events are ignored, and a key counts as pressed only on its first down event.
-- The client defines `enum class Action { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE, TOGGLE_HUD_HELP, QUIT }`. Default bindings are the arrow keys (required by F-09) plus WASD, with `SPACE` and `LCTRL` to fire. Bindings are saved to `config/keybindings.cfg` ([accessibility](../architecture/accessibility.md)).
+- The client defines `enum class Action { MOVE_UP, MOVE_DOWN, MOVE_LEFT, MOVE_RIGHT, FIRE, TOGGLE_HUD_HELP, QUIT, CONFIRM }`. Default bindings are the arrow keys (required by F-09) plus WASD, with `SPACE` and `LCTRL` to fire, `F1` for the controls overlay, `ESCAPE` to quit and `ENTER` to confirm. Bindings are saved to `config/keybindings.json` ([accessibility](../architecture/accessibility.md)).
 - **An action has a set of keys.** Binding the same pair twice stores it once, and `unbind` removes one key. A key can belong to several actions.
 - **The bindings file is JSON.** One entry per action, with its name and its keys:
   ```json
@@ -680,7 +685,7 @@ classDiagram
     ]
   }
   ```
-- **Names in the bindings file.** Key names are the enum's: `KEY_A` to `KEY_Z`, `NUM0` to `NUM9`, `UP`, `SPACE`, `LCTRL`, and so on, in any case. `engine_input` provides `toString(Key)` and `keyFromString`. Actions belong to the client, so `ActionMap` finds `toString(Action)` and `fromString(std::string_view, Action&)` by ADL, the same pattern as the `Packet` serializers. `ActionMap` is constrained on a concept that checks both functions exist.
+- **Names in the bindings file.** Key names are the enum's: `KEY_A` to `KEY_Z`, `NUM0` to `NUM9`, `F1` to `F12`, `UP`, `SPACE`, `LCTRL`, and so on, in any case. `engine_input` provides `toString(Key)` and `keyFromString`. Actions belong to the client, so `ActionMap` finds `toString(Action)` and `fromString(std::string_view, Action&)` by ADL, the same pattern as the `Packet` serializers. `ActionMap` is constrained on a concept that checks both functions exist.
 - **Loading.** A missing file returns `false` and keeps the default bindings. Each action in the file replaces its keys, and actions missing from the file keep theirs. An unknown action or key is skipped with a warning naming the entry, and an action left with no valid key keeps its old keys. A file that isn't valid JSON, or whose fields have the wrong type, is rejected as a whole with a warning, and nothing changes.
 - **Saving** writes every binding, creating the parent folder if needed. The order isn't fixed, because the bindings are stored in hash containers. An I/O error returns `false` with a warning.
 

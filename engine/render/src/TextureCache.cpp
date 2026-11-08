@@ -5,37 +5,39 @@
 ** TextureCache.cpp
 */
 
-#include "TextureCache.hpp"
-
-#include <raylib.h>
+#include "../include/engine/render/TextureCache.hpp"
 
 #include <cassert>
 #include <cstdint>
 #include <filesystem>
 #include <limits>
+#include <raylib.h>
 #include <unordered_map>
 #include <vector>
 
-#include "CacheAccess.hpp"
+#include "../include/engine/render/CacheAccess.hpp"
 #include "engine/core/Errors.hpp"
 #include "engine/core/ResourcePath.hpp"
 
 namespace engine::render {
 
 namespace {
-constexpr std::size_t MAX_TEXTURES = std::numeric_limits<std::uint16_t>::max();   // 65 535
+constexpr std::size_t MAX_TEXTURES =
+    std::numeric_limits<std::uint16_t>::max(); // 65 535
 }
 
 struct TextureCache::Impl {
-    std::vector<Texture2D> textures;                                 // index == TextureId::value
-    std::unordered_map<std::filesystem::path, TextureId> pathToId;   // key: cacheKey(path)
+    std::vector<Texture2D> textures; // index == TextureId::value
+    std::unordered_map<std::filesystem::path, TextureId>
+        pathToId; // key: cacheKey(path)
 };
 
-TextureCache::TextureCache() : _impl(std::make_unique<Impl>()) {}
+TextureCache::TextureCache(): _impl(std::make_unique<Impl>())
+{}
 
 TextureCache::~TextureCache()
 {
-    for (const Texture2D &texture : _impl->textures)
+    for (const Texture2D &texture: _impl->textures)
         UnloadTexture(texture);
 }
 
@@ -51,11 +53,15 @@ TextureId TextureCache::load(const std::filesystem::path &path)
         return it->second;
 
     if (!IsWindowReady())
-        throw core::EngineError("TextureCache::load called before the window was created: " + key.string());
+        throw core::EngineError(
+            "TextureCache::load called before the window was created: " +
+            key.string());
     if (!std::filesystem::is_regular_file(key))
-        throw core::ResourceError("Texture file does not exist: " + key.string());
+        throw core::ResourceError("Texture file does not exist: " +
+            key.string());
     if (_impl->textures.size() >= MAX_TEXTURES)
-        throw core::ResourceError("Too many textures (max 65535): " + key.string());
+        throw core::ResourceError("Too many textures (max 65535): " +
+            key.string());
 
     const Texture2D texture = LoadTexture(key.string().c_str());
     if (!IsTextureValid(texture))
@@ -70,7 +76,8 @@ TextureId TextureCache::load(const std::filesystem::path &path)
 core::Vec2u TextureCache::size(TextureId id) const
 {
     const Texture2D &texture = _impl->textures.at(id.value);
-    return {static_cast<unsigned>(texture.width), static_cast<unsigned>(texture.height)};
+    return {static_cast<unsigned>(texture.width),
+        static_cast<unsigned>(texture.height)};
 }
 
 Texture2D detail::CacheAccess::texture(const TextureCache &cache, TextureId id)

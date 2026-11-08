@@ -18,21 +18,32 @@
 
 namespace rtype::protocol {
 inline constexpr std::size_t MAX_ENTITIES_PER_CHUNK = 48;
-inline constexpr std::uint8_t MAX_CHUNKS = 16;
-inline constexpr std::uint8_t MAX_LIVES = 3;
+inline constexpr std::uint8_t MAX_CHUNKS            = 16;
+inline constexpr std::uint8_t MAX_LIVES             = 99;
+
+/**
+ * @brief The server's game phase. The values match game::Phase.
+ */
+enum class GamePhase : std::uint8_t {
+    PLAYING   = 0,
+    GAME_OVER = 1,
+    WAITING   = 2,
+};
 
 enum class PlayerState : std::uint8_t {
-    EMPTY = 0,
-    ALIVE = 1,
+    EMPTY      = 0,
+    ALIVE      = 1,
     RESPAWNING = 2,
-    OUT = 3,
+    PLAYER_OUT = 3,
 };
 
 struct PlayerInfo {
-    std::uint8_t playerId = 0;
-    PlayerState state = PlayerState::EMPTY;
-    std::uint8_t lives = 0;
-    std::uint32_t score = 0;
+    std::uint8_t playerId   = 0;
+    PlayerState state       = PlayerState::EMPTY;
+    std::uint8_t lives      = 0;
+    std::uint8_t health     = 0;
+    std::uint8_t maxHealth  = 0;
+    std::uint32_t score     = 0;
     std::uint32_t shipNetId = 0;
     std::string name{};
 
@@ -44,25 +55,27 @@ void serialize(net::Packet &packet, const PlayerInfo &message);
 void deserialize(net::Packet &packet, PlayerInfo &message);
 
 enum class EntityKind : std::uint8_t {
-    PLAYER_SHIP = 1,
-    BYDOS_SLAVE = 2,
+    PLAYER_SHIP    = 1,
+    BYDOS_SLAVE    = 2,
     PLAYER_MISSILE = 3,
-    ENEMY_MISSILE = 4,
+    ENEMY_MISSILE  = 4,
+    GENERIC_PLAYER = 5,
+    GENERIC_ENEMY  = 6,
 };
 
 namespace pattern {
 inline constexpr std::uint8_t STRAIGHT = 0;
-inline constexpr std::uint8_t SINE = 1;
-}
+inline constexpr std::uint8_t SINE     = 1;
+} // namespace pattern
 
 struct EntityState {
-    std::uint32_t netId = 0;
-    EntityKind kind = EntityKind::PLAYER_SHIP;
+    std::uint32_t netId  = 0;
+    EntityKind kind      = EntityKind::PLAYER_SHIP;
     std::uint8_t variant = 0;
-    float x = 0.0F;
-    float y = 0.0F;
-    float vx = 0.0F;
-    float vy = 0.0F;
+    float x              = 0.0F;
+    float y              = 0.0F;
+    float vx             = 0.0F;
+    float vy             = 0.0F;
 
     bool operator==(const EntityState &) const = default;
 };
@@ -74,10 +87,11 @@ void deserialize(net::Packet &packet, EntityState &message);
 struct Snapshot {
     static constexpr MessageType TYPE = MessageType::SNAPSHOT;
 
-    std::uint32_t serverTick = 0;
+    std::uint32_t serverTick         = 0;
     std::uint32_t lastProcessedInput = 0;
-    std::uint8_t chunkIndex = 0;
-    std::uint8_t chunkCount = 1;
+    std::uint8_t chunkIndex          = 0;
+    std::uint8_t chunkCount          = 1;
+    GamePhase phase                  = GamePhase::PLAYING;
     std::vector<PlayerInfo> roster{};
     std::vector<EntityState> entities{};
 
@@ -95,6 +109,6 @@ void deserialize(net::Packet &packet, Snapshot &message);
 ** bug, not network input, so it throws engine::core::EngineError.
 */
 [[nodiscard]] std::vector<Snapshot> splitSnapshot(const Snapshot &full);
-}
+} // namespace rtype::protocol
 
-#endif //R_TYPE_SNAPSHOT_HPP
+#endif // R_TYPE_SNAPSHOT_HPP

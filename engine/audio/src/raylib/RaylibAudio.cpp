@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <raylib.h>
 #include <unordered_map>
 #include <vector>
 
@@ -18,15 +19,14 @@
 #include "engine/core/Errors.hpp"
 #include "engine/core/ResourcePath.hpp"
 
-#include <raylib.h>
-
 namespace engine::audio {
 
 namespace {
 
 constexpr std::size_t ALIASES_PER_SOUND = 4;
-constexpr std::size_t COPIES_PER_SOUND = ALIASES_PER_SOUND + 1;
-constexpr std::size_t MAX_SOUNDS = std::numeric_limits<std::uint16_t>::max();   // 65 535
+constexpr std::size_t COPIES_PER_SOUND  = ALIASES_PER_SOUND + 1;
+constexpr std::size_t MAX_SOUNDS =
+    std::numeric_limits<std::uint16_t>::max(); // 65 535
 constexpr std::size_t MAX_MUSICS = std::numeric_limits<std::uint16_t>::max();
 
 /*
@@ -36,7 +36,8 @@ constexpr std::size_t MAX_MUSICS = std::numeric_limits<std::uint16_t>::max();
 struct SoundSlot {
     Sound original{};
     std::array<Sound, ALIASES_PER_SOUND> aliases{};
-    std::array<std::uint64_t, COPIES_PER_SOUND> startedAt{};   // copy 0 is the original
+    std::array<std::uint64_t, COPIES_PER_SOUND>
+        startedAt{}; // copy 0 is the original
 
     [[nodiscard]] Sound &copy(std::size_t index)
     {
@@ -44,26 +45,29 @@ struct SoundSlot {
     }
 };
 
-}
+} // namespace
 
 struct RaylibAudio::Impl {
     Volume volume;
-    std::vector<SoundSlot> sounds;                                   // index == SoundId::value
-    std::unordered_map<std::filesystem::path, SoundId> pathToSound;   // key: cacheKey(path)
+    std::vector<SoundSlot> sounds; // index == SoundId::value
+    std::unordered_map<std::filesystem::path, SoundId>
+        pathToSound; // key: cacheKey(path)
     std::uint64_t playCounter = 0;
-    std::vector<Music> musics;                                       // index == MusicId::value
-    std::unordered_map<std::filesystem::path, MusicId> pathToMusic;   // key: cacheKey(path)
+    std::vector<Music> musics; // index == MusicId::value
+    std::unordered_map<std::filesystem::path, MusicId>
+        pathToMusic; // key: cacheKey(path)
     std::optional<MusicId> currentMusic;
 
     /* ** Music takes a volume change at once, unlike sounds */
     void applyMusicVolume()
     {
         if (currentMusic)
-            SetMusicVolume(musics[currentMusic->value], volume.effectiveMusic());
+            SetMusicVolume(musics[currentMusic->value],
+                volume.effectiveMusic());
     }
 };
 
-RaylibAudio::RaylibAudio() : _impl(std::make_unique<Impl>())
+RaylibAudio::RaylibAudio(): _impl(std::make_unique<Impl>())
 {
     if (IsAudioDeviceReady())
         throw core::EngineError("only one RaylibAudio can exist at a time");
@@ -74,12 +78,12 @@ RaylibAudio::RaylibAudio() : _impl(std::make_unique<Impl>())
 
 RaylibAudio::~RaylibAudio()
 {
-    for (const SoundSlot &slot : _impl->sounds) {
-        for (const Sound &alias : slot.aliases)
+    for (const SoundSlot &slot: _impl->sounds) {
+        for (const Sound &alias: slot.aliases)
             UnloadSoundAlias(alias);
         UnloadSound(slot.original);
     }
-    for (const Music &music : _impl->musics)
+    for (const Music &music: _impl->musics)
         UnloadMusicStream(music);
     CloseAudioDevice();
 }
@@ -88,19 +92,21 @@ SoundId RaylibAudio::loadSound(const std::filesystem::path &path)
 {
     const std::filesystem::path key = core::cacheKey(path);
 
-    if (const auto it = _impl->pathToSound.find(key); it != _impl->pathToSound.end())
+    if (const auto it = _impl->pathToSound.find(key);
+        it != _impl->pathToSound.end())
         return it->second;
 
     if (!std::filesystem::is_regular_file(key))
         throw core::ResourceError("Sound file does not exist: " + key.string());
     if (_impl->sounds.size() >= MAX_SOUNDS)
-        throw core::ResourceError("Too many sounds (max 65535): " + key.string());
+        throw core::ResourceError("Too many sounds (max 65535): " +
+            key.string());
 
     SoundSlot slot;
     slot.original = LoadSound(key.string().c_str());
     if (!IsSoundValid(slot.original))
         throw core::ResourceError("Failed to decode sound: " + key.string());
-    for (Sound &alias : slot.aliases)
+    for (Sound &alias: slot.aliases)
         alias = LoadSoundAlias(slot.original);
 
     const SoundId id{static_cast<std::uint16_t>(_impl->sounds.size())};
@@ -113,13 +119,15 @@ MusicId RaylibAudio::loadMusic(const std::filesystem::path &path)
 {
     const std::filesystem::path key = core::cacheKey(path);
 
-    if (const auto it = _impl->pathToMusic.find(key); it != _impl->pathToMusic.end())
+    if (const auto it = _impl->pathToMusic.find(key);
+        it != _impl->pathToMusic.end())
         return it->second;
 
     if (!std::filesystem::is_regular_file(key))
         throw core::ResourceError("Music file does not exist: " + key.string());
     if (_impl->musics.size() >= MAX_MUSICS)
-        throw core::ResourceError("Too many musics (max 65535): " + key.string());
+        throw core::ResourceError("Too many musics (max 65535): " +
+            key.string());
 
     const Music music = LoadMusicStream(key.string().c_str());
     if (!IsMusicValid(music))
@@ -147,7 +155,7 @@ void RaylibAudio::playSound(SoundId id, float volume)
         voices[i] = {IsSoundPlaying(slot.copy(i)), slot.startedAt[i]};
 
     const std::size_t chosen = chooseVoice(voices);
-    Sound &copy = slot.copy(chosen);
+    Sound &copy              = slot.copy(chosen);
 
     SetSoundVolume(copy, _impl->volume.effectiveSfx(volume));
     PlaySound(copy);
@@ -162,12 +170,13 @@ void RaylibAudio::playMusic(MusicId id, bool loop)
 {
     if (id.value >= _impl->musics.size())
         return;
-    if (_impl->currentMusic == id && IsMusicStreamPlaying(_impl->musics[id.value]))
+    if (_impl->currentMusic == id &&
+        IsMusicStreamPlaying(_impl->musics[id.value]))
         return;
 
     stopMusic();
-    Music &music = _impl->musics[id.value];
-    music.looping = loop;
+    Music &music        = _impl->musics[id.value];
+    music.looping       = loop;
     _impl->currentMusic = id;
     _impl->applyMusicVolume();
     PlayMusicStream(music);
@@ -222,4 +231,4 @@ void RaylibAudio::update()
         _impl->currentMusic.reset();
 }
 
-}
+} // namespace engine::audio

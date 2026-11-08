@@ -1,0 +1,188 @@
+/*
+** EPITECH PROJECT, 2026
+** r-type
+** File description:
+** GameWorld
+*/
+
+#include "rtype/game/GameWorld.hpp"
+
+#include "engine/core/Rng.hpp"
+#include "rtype/game/Components.hpp"
+#include "rtype/game/GamePhase.hpp"
+#include "rtype/game/NetIdAllocator.hpp"
+#include "rtype/game/SpawnDirectorState.hpp"
+#include "rtype/game/Systems.hpp"
+
+namespace rtype::game {
+GameWorld::GameWorld(Rules rules, std::uint32_t seed)
+{
+    registerComponents(_registry);
+
+    _registry.setResource(rules);
+    _registry.setResource(engine::core::Rng(seed));
+    _registry.setResource(NetIdAllocator());
+    _registry.setResource(PlayerRoster());
+    _registry.setResource(GamePhase());
+    _registry.setResource(SpawnDirectorState());
+    _registry.setResource(EventOutbox());
+    _registry.setResource(engine::ecs::DeltaTime());
+
+    _registry.addSystem<PlayerShip, Velocity, Weapon>(Stage::SIMULATION,
+        "playerInput", playerInputSystem);
+    _registry.addSystem<const StraightMover, Velocity>(Stage::SIMULATION,
+        "straightMover", straightMoverSystem);
+    _registry.addSystem<SineMover, Velocity>(Stage::SIMULATION, "sineMover",
+        sineMoverSystem);
+    _registry
+        .addSystem<AimedShooter, const Transform, Weapon>(Stage::SIMULATION,
+            "aimedShooter", aimedShooterSystem);
+    _registry
+        .addSystem<Weapon, const Transform, const Replicated>(Stage::SIMULATION,
+            "weapon", weaponSystem);
+    _registry.addSystem<Transform, const Velocity>(Stage::SIMULATION,
+        "movement", movementSystem);
+    _registry.addSystem<Transform, const Collider>(Stage::SIMULATION,
+        "playfield", playfieldSystem);
+    _registry
+        .addSystem<const Collider, const Transform, Health>(Stage::SIMULATION,
+            "collision", collisionSystem);
+    _registry.addSystem<const Health, const Replicated>(Stage::SIMULATION,
+        "health", healthSystem);
+    _registry.addSystem<Lifetime>(Stage::SIMULATION, "lifetime",
+        lifetimeSystem);
+    _registry.addSystem<const Replicated>(Stage::SIMULATION, "spawnDirector",
+        spawnDirectorSystem);
+    _registry.addSystem(Stage::SIMULATION, "respawn", respawnSystem);
+    _registry.addSystem<const Replicated>(Stage::SIMULATION, "gameOver",
+        gameOverSystem);
+    _registry.addSystem(Stage::SIMULATION, "netIdCleanup", netIdCleanupSystem);
+}
+
+void GameWorld::apply(const PlayerCommand &command)
+{
+    std::visit([this](const auto &alternative) { handle(alternative); },
+        command);
+}
+
+void GameWorld::step(float dt)
+{
+    _registry.getResource<engine::ecs::DeltaTime>().seconds = dt;
+    _registry.runStage(Stage::SIMULATION);
+    ++_tick;
+}
+
+std::vector<GameEvent> GameWorld::drainEvents()
+{
+    return _registry.getResource<EventOutbox>().drain();
+}
+
+void GameWorld::collectReplicated(std::vector<ReplicatedEntity> &out) const
+{
+    out.clear();
+    for (auto &&[entity, replicated]:
+        _registry.indexedView<const Replicated>()) {
+        const auto *transform = _registry.getComponent<Transform>(entity);
+        const auto *velocity  = _registry.getComponent<Velocity>(entity);
+
+        out.push_back({.netId = replicated.netId,
+            .kind             = replicated.kind,
+            .variant          = replicated.variant,
+            .position         = transform != nullptr ? transform->position
+                                                     : engine::core::Vec2f{},
+            .velocity =
+                velocity != nullptr ? velocity->value : engine::core::Vec2f{}});
+    }
+}
+
+std::optional<std::uint8_t> GameWorld::reserveSlot()
+{
+    return _registry.getResource<PlayerRoster>().reserve();
+}
+
+const PlayerRoster &GameWorld::roster() const
+{
+    return _registry.getResource<PlayerRoster>();
+}
+
+Phase GameWorld::phase() const
+{
+    return _registry.getResource<GamePhase>().phase();
+}
+
+std::uint32_t GameWorld::tick() const noexcept
+{
+    return _tick;
+}
+
+const Rules &GameWorld::rules() const
+{
+    return _registry.getResource<Rules>();
+}
+
+std::optional<Health> GameWorld::shipHealth(std::uint8_t playerId) const
+{
+    for (auto &&[ship, health]: _registry.view<const PlayerShip, const Health>())
+        if (ship.playerId == playerId)
+            return health;
+    return std::nullopt;
+}
+
+void GameWorld::handle(const JoinPlayer &command)
+{
+    auto &roster = _registry.getResource<PlayerRoster>();
+    const bool gameOver =
+        _registry.getResource<GamePhase>().phase() == Phase::GAME_OVER;
+    const bool joined = gameOver
+        ? roster.joinWaiting(command.playerId, command.name)
+        : roster.join(command.playerId, command.name,
+              _registry.getResource<Rules>().playerLives);
+
+    if (!joined)
+        return;
+    _registry.getResource<EventOutbox>().push(PlayerJoined{
+        .playerId = command.playerId});
+    startWhenReady(_registry);
+}
+
+void GameWorld::handle(const LeavePlayer &command)
+{
+    auto &roster           = _registry.getResource<PlayerRoster>();
+    const PlayerSlot *slot = roster.get(command.playerId);
+
+    if (slot == nullptr)
+        return;
+
+    std::vector<engine::ecs::Entity> doomed;
+
+    if (const auto ship =
+            _registry.getResource<NetIdAllocator>().find(slot->shipNetId,
+                _registry))
+        doomed.push_back(*ship);
+    for (auto &&[entity, projectile]: _registry.indexedView<const Projectile>())
+        if (projectile.ownerPlayerId == command.playerId)
+            doomed.push_back(entity);
+    for (const auto &entity: doomed)
+        _registry.killEntity(entity);
+    roster.release(command.playerId);
+    _registry.getResource<EventOutbox>().push(PlayerLeft{
+        .playerId = command.playerId, .reason = command.reason});
+}
+
+void GameWorld::handle(const SetInput &command)
+{
+    auto &roster = _registry.getResource<PlayerRoster>();
+
+    if (!roster.acceptInput(command.playerId, command.inputSequence))
+        return;
+
+    const auto ship =
+        _registry.getResource<NetIdAllocator>()
+            .find(roster.get(command.playerId)->shipNetId, _registry);
+
+    if (!ship)
+        return;
+    if (auto *player = _registry.getComponent<PlayerShip>(*ship))
+        player->buttons = command.buttons;
+}
+} // namespace rtype::game

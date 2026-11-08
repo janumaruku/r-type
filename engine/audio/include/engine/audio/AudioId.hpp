@@ -20,7 +20,8 @@ struct SoundId {
     std::uint16_t value{};
 
     SoundId() = default;
-    constexpr explicit SoundId(std::uint16_t id) : value{id} {}
+    constexpr explicit SoundId(std::uint16_t id): value{id}
+    {}
 
     bool operator==(const SoundId &) const = default;
 };
@@ -29,11 +30,12 @@ struct MusicId {
     std::uint16_t value{};
 
     MusicId() = default;
-    constexpr explicit MusicId(std::uint16_t id) : value{id} {}
+    constexpr explicit MusicId(std::uint16_t id): value{id}
+    {}
 
     bool operator==(const MusicId &) const = default;
 };
 
-}
+} // namespace engine::audio
 
 #endif // !AUDIO_ID_HPP

@@ -16,16 +16,19 @@ namespace engine::core {
 
 class AssetLocator {
 public:
-    explicit AssetLocator(std::optional<std::filesystem::path> overrideRoot = std::nullopt);
+    explicit AssetLocator(std::optional<std::filesystem::path> overrideRoot =
+                              std::nullopt);
 
-    AssetLocator(const AssetLocator &) = delete;
+    AssetLocator(const AssetLocator &)            = delete;
     AssetLocator &operator=(const AssetLocator &) = delete;
 
-    AssetLocator(AssetLocator &&) noexcept = default;
+    AssetLocator(AssetLocator &&) noexcept            = default;
     AssetLocator &operator=(AssetLocator &&) noexcept = default;
 
-    [[nodiscard]] std::filesystem::path resolve(const std::string &relative) const;
+    [[nodiscard]] std::filesystem::path resolve(const std::string &relative)
+        const;
     [[nodiscard]] const std::filesystem::path &root() const noexcept;
+
 private:
     std::filesystem::path _root;
 };

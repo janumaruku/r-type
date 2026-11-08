@@ -6,12 +6,11 @@
 */
 
 #include <algorithm>
-
 #include <raylib.h>
 
-#include "World.hpp"
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
+#include "World.hpp"
 
 namespace {
 using ecs_example::Controls;
@@ -22,7 +21,7 @@ using ecs_example::Vec2f;
 float axis(const int negative, const int alternative, const int positive,
     const int alternativePositive)
 {
-    const bool back = IsKeyDown(negative) || IsKeyDown(alternative);
+    const bool back    = IsKeyDown(negative) || IsKeyDown(alternative);
     const bool forward = IsKeyDown(positive) || IsKeyDown(alternativePositive);
 
     return static_cast<float>(forward) - static_cast<float>(back);
@@ -33,7 +32,7 @@ Controls readControls()
     return Controls{
         .direction = Vec2f(axis(KEY_LEFT, KEY_A, KEY_RIGHT, KEY_D),
             axis(KEY_UP, KEY_W, KEY_DOWN, KEY_S)),
-        .fire = IsKeyDown(KEY_SPACE),
+        .fire      = IsKeyDown(KEY_SPACE),
     };
 }
 
@@ -55,7 +54,7 @@ void runFrame(engine::ecs::Registry &registry)
     registry.runStage(Stage::RENDER);
     EndDrawing();
 }
-}
+} // namespace
 
 int main()
 {

@@ -11,22 +11,22 @@
 #include <cstdint>
 #include <vector>
 
-#include "DrawCommand.hpp"
-#include "RenderQueue.hpp"
+#include "../../../engine/render/include/engine/render/DrawCommand.hpp"
+#include "../../../engine/render/include/engine/render/RenderQueue.hpp"
 #include "engine/audio/Volume.hpp"
 #include "engine/core/Vec2.hpp"
 
 namespace render_demo {
 using engine::core::Vec2f;
 
-constexpr int CELL = 32;
+constexpr int CELL           = 32;
 constexpr float SPRITE_SCALE = 2.0F;
 const Vec2f LOGICAL_SIZE{1280.0F, 720.0F};
 
 /*
 ** Cells of sprites.png, left to right.
 */
-enum class Cell: std::uint8_t {
+enum class Cell : std::uint8_t {
     SHIP,
     SHIP_THRUST,
     ENEMY,
@@ -59,6 +59,6 @@ struct Frame {
 void fillQueue(engine::render::RenderQueue &queue, const SceneAssets &assets,
     const Frame &frame);
 
-}
+} // namespace render_demo
 
 #endif // RENDER_DEMO_SCENE_HPP

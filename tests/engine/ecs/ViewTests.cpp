@@ -5,10 +5,11 @@
 ** ViewTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/View.hpp"
 
 #include <algorithm>
 #include <cstddef>
+#include <gtest/gtest.h>
 #include <iterator>
 #include <tuple>
 #include <type_traits>
@@ -17,7 +18,6 @@
 #include "engine/core/Errors.hpp"
 #include "engine/ecs/IndexedView.hpp"
 #include "engine/ecs/Registry.hpp"
-#include "engine/ecs/View.hpp"
 
 using engine::core::EngineError;
 using engine::ecs::Entity;
@@ -63,15 +63,15 @@ protected:
     template <class... Components>
     View<Components...> makeView()
     {
-        return View<Components...>(
-            _registry.getComponents<std::remove_const_t<Components>>()...);
+        return View<Components...>(_registry
+                .getComponents<std::remove_const_t<Components>>()...);
     }
 
     template <class... Components>
     IndexedView<Components...> makeIndexedView()
     {
-        return IndexedView<Components...>(
-            _registry.getComponents<std::remove_const_t<Components>>()...);
+        return IndexedView<Components...>(_registry
+                .getComponents<std::remove_const_t<Components>>()...);
     }
 
     template <class... Components>
@@ -88,8 +88,8 @@ protected:
     template <class... Components>
     static std::size_t countVisits(const View<Components...> &view)
     {
-        return static_cast<std::size_t>(
-            std::ranges::distance(view.begin(), view.end()));
+        return static_cast<std::size_t>(std::ranges::distance(view.begin(),
+            view.end()));
     }
 
     Registry _registry;
@@ -103,8 +103,7 @@ TEST_F(ViewTest, TwoSetJoinVisitsEntitiesInBothSetsOnce)
     for (int id = 0; id < 10; id += 2)
         _registry.addComponent(_entities[id], Speed{id});
 
-    EXPECT_EQ(visitedIds(makeView<Tag, Speed>()),
-        (std::vector{0, 2, 4, 6, 8}));
+    EXPECT_EQ(visitedIds(makeView<Tag, Speed>()), (std::vector{0, 2, 4, 6, 8}));
 }
 
 TEST_F(ViewTest, ThreeSetJoinVisitsEntitiesInAllSetsOnce)
@@ -124,8 +123,8 @@ TEST_F(ViewTest, ConstComponentYieldsAConstReference)
 
     static_assert(std::is_same_v<std::iter_reference_t<ViewType::iterator>,
         std::tuple<Tag &, const Speed &>>);
-    static_assert(std::is_same_v<decltype(*std::declval<
-        ViewType::iterator>()), std::tuple<Tag &, const Speed &>>);
+    static_assert(std::is_same_v<decltype(*std::declval<ViewType::iterator>()),
+        std::tuple<Tag &, const Speed &>>);
 }
 
 TEST_F(ViewTest, AnIteratorWithTheEntityYieldsItFirst)
@@ -393,7 +392,7 @@ TEST_F(ViewTest, RegistryIndexedViewOfAnUnregisteredTypeThrows)
 {
     EXPECT_THROW(static_cast<void>(_registry.indexedView<Unregistered>()),
         EngineError);
-    EXPECT_THROW(
-        static_cast<void>(_registry.indexedView<Tag, const Unregistered>()),
+    EXPECT_THROW(static_cast<void>(_registry
+                         .indexedView<Tag, const Unregistered>()),
         EngineError);
 }

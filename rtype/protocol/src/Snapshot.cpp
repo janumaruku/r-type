@@ -20,7 +20,8 @@ namespace rtype::protocol {
 void serialize(net::Packet &packet, const PlayerInfo &message)
 {
     packet << message.playerId << message.state << message.lives
-        << message.score << message.shipNetId << message.name;
+           << message.health << message.maxHealth << message.score
+           << message.shipNetId << message.name;
 }
 
 static bool isKnownPlayerState(const PlayerState state)
@@ -29,7 +30,7 @@ static bool isKnownPlayerState(const PlayerState state)
     case PlayerState::EMPTY:
     case PlayerState::ALIVE:
     case PlayerState::RESPAWNING:
-    case PlayerState::OUT:
+    case PlayerState::PLAYER_OUT:
         return true;
     }
 
@@ -38,8 +39,9 @@ static bool isKnownPlayerState(const PlayerState state)
 
 void deserialize(net::Packet &packet, PlayerInfo &message)
 {
-    packet >> message.playerId >> message.state >> message.lives
-        >> message.score >> message.shipNetId >> message.name;
+    packet >> message.playerId >> message.state >> message.lives >>
+        message.health >> message.maxHealth >> message.score >>
+        message.shipNetId >> message.name;
 
     if (!isKnownPlayerState(message.state))
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
@@ -48,6 +50,18 @@ void deserialize(net::Packet &packet, PlayerInfo &message)
     if (message.lives > MAX_LIVES)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
             "PLAYER_INFO: lives out of range");
+
+    if (message.health > message.maxHealth)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "PLAYER_INFO: health above maxHealth");
+
+    if (message.state != PlayerState::ALIVE && message.health != 0)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "PLAYER_INFO: health must be 0 without a ship");
+
+    if (message.state == PlayerState::EMPTY && message.maxHealth != 0)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "PLAYER_INFO: maxHealth must be 0 when state is EMPTY");
 
     if (message.name.size() > MAX_NAME_LENGTH)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
@@ -68,14 +82,14 @@ void deserialize(net::Packet &packet, PlayerInfo &message)
 
 void serialize(net::Packet &packet, const EntityState &message)
 {
-    packet << message.netId << message.kind << message.variant
-        << message.x << message.y << message.vx << message.vy;
+    packet << message.netId << message.kind << message.variant << message.x
+           << message.y << message.vx << message.vy;
 }
 
 void deserialize(net::Packet &packet, EntityState &message)
 {
-    packet >> message.netId >> message.kind >> message.variant
-        >> message.x >> message.y >> message.vx >> message.vy;
+    packet >> message.netId >> message.kind >> message.variant >> message.x >>
+        message.y >> message.vx >> message.vy;
 
     if (message.netId == 0)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
@@ -98,6 +112,9 @@ void deserialize(net::Packet &packet, EntityState &message)
             throw ProtocolError(DecodeError::OUT_OF_RANGE,
                 "ENTITY_STATE: variant must be 0 for a missile");
         return;
+    case EntityKind::GENERIC_PLAYER:
+    case EntityKind::GENERIC_ENEMY:
+        return;
     }
     throw ProtocolError(DecodeError::OUT_OF_RANGE,
         "ENTITY_STATE: kind out of range");
@@ -106,8 +123,8 @@ void deserialize(net::Packet &packet, EntityState &message)
 void serialize(net::Packet &packet, const Snapshot &message)
 {
     packet << message.serverTick << message.lastProcessedInput
-        << message.chunkIndex << message.chunkCount << message.roster
-        << message.entities;
+           << message.chunkIndex << message.chunkCount << message.phase
+           << message.roster << message.entities;
 }
 
 static bool isRosterInSlotOrder(const std::vector<PlayerInfo> &roster)
@@ -121,9 +138,15 @@ static bool isRosterInSlotOrder(const std::vector<PlayerInfo> &roster)
 
 void deserialize(net::Packet &packet, Snapshot &message)
 {
-    packet >> message.serverTick >> message.lastProcessedInput
-        >> message.chunkIndex >> message.chunkCount >> message.roster
-        >> message.entities;
+    packet >> message.serverTick >> message.lastProcessedInput >>
+        message.chunkIndex >> message.chunkCount >> message.phase >>
+        message.roster >> message.entities;
+
+    if (message.phase != GamePhase::PLAYING &&
+        message.phase != GamePhase::GAME_OVER &&
+        message.phase != GamePhase::WAITING)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "SNAPSHOT: phase out of range");
 
     if (message.chunkCount == 0 || message.chunkCount > MAX_CHUNKS)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
@@ -156,13 +179,13 @@ void deserialize(net::Packet &packet, Snapshot &message)
 
 std::vector<Snapshot> splitSnapshot(const Snapshot &full)
 {
-    const std::size_t total = full.entities.size();
+    const std::size_t total           = full.entities.size();
     constexpr std::size_t maxEntities = MAX_CHUNKS * MAX_ENTITIES_PER_CHUNK;
 
     if (total > maxEntities)
-        throw engine::core::EngineError(std::format(
-            "splitSnapshot: {} entities, at most {} fit in one tick", total,
-            maxEntities));
+        throw engine::core::EngineError(std::
+                format("splitSnapshot: {} entities, at most {} fit in one tick",
+                    total, maxEntities));
 
     const std::size_t count = std::max<std::size_t>(1,
         (total + MAX_ENTITIES_PER_CHUNK - 1) / MAX_ENTITIES_PER_CHUNK);
@@ -175,17 +198,19 @@ std::vector<Snapshot> splitSnapshot(const Snapshot &full)
             std::min(total, first + MAX_ENTITIES_PER_CHUNK);
 
         chunks.push_back(Snapshot{
-            .serverTick = full.serverTick,
+            .serverTick         = full.serverTick,
             .lastProcessedInput = full.lastProcessedInput,
-            .chunkIndex = static_cast<std::uint8_t>(index),
-            .chunkCount = static_cast<std::uint8_t>(count),
+            .chunkIndex         = static_cast<std::uint8_t>(index),
+            .chunkCount         = static_cast<std::uint8_t>(count),
+            .phase              = full.phase,
             .roster = index == 0 ? full.roster : std::vector<PlayerInfo>{},
-            .entities = {
-                full.entities.begin() + static_cast<std::ptrdiff_t>(first),
-                full.entities.begin() + static_cast<std::ptrdiff_t>(last),
-            },
+            .entities =
+                {
+                    full.entities.begin() + static_cast<std::ptrdiff_t>(first),
+                    full.entities.begin() + static_cast<std::ptrdiff_t>(last),
+                },
         });
     }
     return chunks;
 }
-}
+} // namespace rtype::protocol

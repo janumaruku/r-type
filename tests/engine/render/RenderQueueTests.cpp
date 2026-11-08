@@ -5,14 +5,14 @@
 ** RenderQueueTests.cpp
 */
 
-#include "RenderQueue.hpp"
+#include "../../../engine/render/include/engine/render/RenderQueue.hpp"
 
 #include <cstdint>
 #include <gtest/gtest.h>
 #include <type_traits>
 #include <variant>
 
-#include "DrawCommand.hpp"
+#include "../../../engine/render/include/engine/render/DrawCommand.hpp"
 
 TEST(RenderQueueTests, sortByLayerOrdersTheLayers)
 {
@@ -55,14 +55,28 @@ TEST(RenderQueueTests, preservesRelativeOrderOnEqualLayers)
     engine::render::RenderQueue queue;
 
     engine::render::TextCmd first{
-        .font=engine::render::FontId{1}, .text="first", .characterSize=0, .position={}, .color={}, .layer=100,};
+        .font          = engine::render::FontId{1},
+        .text          = "first",
+        .characterSize = 0,
+        .position      = {},
+        .color         = {},
+        .layer         = 100,
+    };
 
     engine::render::RectCmd second{};
     second.layer = 100;
     second.fill  = {1, 2, 3, 4};
 
     engine::render::SpriteCmd third{
-        .texture=engine::render::TextureId{42}, .source={}, .position={}, .origin={}, .scale={}, .rotationDeg={}, .tint={}, .layer=100,};
+        .texture     = engine::render::TextureId{42},
+        .source      = {},
+        .position    = {},
+        .origin      = {},
+        .scale       = {},
+        .rotationDeg = {},
+        .tint        = {},
+        .layer       = 100,
+    };
 
     engine::render::RectCmd above{};
     above.layer = 1000;

@@ -5,20 +5,19 @@
 ** SplitSnapshotTests
 */
 
-#include <gtest/gtest.h>
-
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "MessageTestHelpers.hpp"
 #include "engine/core/Errors.hpp"
+#include "MessageTestHelpers.hpp"
 #include "rtype/protocol/Snapshot.hpp"
 
-using namespace rtype::protocol;
-using namespace protocol_test;
+namespace proto = rtype::protocol;
+using protocol_test::expectRoundTrip;
 
 namespace {
 
@@ -26,39 +25,49 @@ namespace {
 ** chunkIndex and chunkCount are set to nonsense, since splitSnapshot must
 ** ignore them.
 */
-Snapshot wholeTick(std::size_t entityCount)
+proto::Snapshot wholeTick(std::size_t entityCount)
 {
-    Snapshot full{.serverTick = 1234, .lastProcessedInput = 812,
-        .chunkIndex = 5, .chunkCount = 3};
+    proto::Snapshot full{.serverTick = 1234,
+        .lastProcessedInput          = 812,
+        .chunkIndex                  = 5,
+        .chunkCount                  = 3};
 
     for (std::uint8_t slot = 0; slot < 4; ++slot)
-        full.roster.push_back(PlayerInfo{.playerId = slot,
-            .state = PlayerState::ALIVE, .lives = 3, .shipNetId = 900U + slot,
-            .name = "Player " + std::to_string(slot + 1)});
+        full.roster.push_back(proto::PlayerInfo{.playerId = slot,
+            .state     = proto::PlayerState::ALIVE,
+            .lives     = 3,
+            .shipNetId = 900U + slot,
+            .name      = "Player " + std::to_string(slot + 1)});
     for (std::size_t index = 0; index < entityCount; ++index)
-        full.entities.push_back(EntityState{
+        full.entities.push_back(proto::EntityState{
             .netId = static_cast<std::uint32_t>(index + 1),
-            .kind = EntityKind::BYDOS_SLAVE, .x = static_cast<float>(index)});
+            .kind  = proto::EntityKind::BYDOS_SLAVE,
+            .x     = static_cast<float>(index)});
     return full;
 }
 
-}
+} // namespace
 
 TEST(SplitSnapshotTests, ATickIsSplitIntoChunksThatEachDecodeAlone)
 {
     const std::pair<std::size_t, std::size_t> cases[]{
-        {0, 1}, {1, 1}, {48, 1}, {49, 2}, {94, 2}, {768, 16},
+        {0, 1},
+        {1, 1},
+        {48, 1},
+        {49, 2},
+        {94, 2},
+        {768, 16},
     };
 
     for (const auto &[entityCount, expectedChunks]: cases) {
         SCOPED_TRACE(std::to_string(entityCount) + " entities");
-        const Snapshot full = wholeTick(entityCount);
-        const std::vector<Snapshot> chunks = splitSnapshot(full);
-        std::vector<EntityState> reassembled;
+        const proto::Snapshot full                = wholeTick(entityCount);
+        const std::vector<proto::Snapshot> chunks = proto::splitSnapshot(full);
+        std::vector<proto::EntityState> reassembled;
 
         ASSERT_EQ(chunks.size(), expectedChunks);
         for (std::size_t index = 0; index < chunks.size(); ++index) {
-            const Snapshot &chunk = chunks[index];
+            const proto::Snapshot &chunk = chunks[index];
 
             EXPECT_EQ(chunk.serverTick, full.serverTick);
             EXPECT_EQ(chunk.lastProcessedInput, full.lastProcessedInput);
@@ -68,7 +77,7 @@ TEST(SplitSnapshotTests, ATickIsSplitIntoChunksThatEachDecodeAlone)
                 EXPECT_EQ(chunk.roster, full.roster);
             else
                 EXPECT_TRUE(chunk.roster.empty());
-            EXPECT_LE(chunk.entities.size(), MAX_ENTITIES_PER_CHUNK);
+            EXPECT_LE(chunk.entities.size(), proto::MAX_ENTITIES_PER_CHUNK);
             expectRoundTrip(chunk);
             reassembled.insert(reassembled.end(), chunk.entities.begin(),
                 chunk.entities.end());
@@ -79,6 +88,6 @@ TEST(SplitSnapshotTests, ATickIsSplitIntoChunksThatEachDecodeAlone)
 
 TEST(SplitSnapshotTests, MoreThanSixteenChunksOfEntitiesIsAServerBug)
 {
-    EXPECT_THROW(static_cast<void>(splitSnapshot(wholeTick(769))),
+    EXPECT_THROW(static_cast<void>(proto::splitSnapshot(wholeTick(769))),
         engine::core::EngineError);
 }

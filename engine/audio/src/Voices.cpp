@@ -14,7 +14,8 @@ namespace engine::audio {
 std::size_t chooseVoice(std::span<const Voice> voices)
 {
     if (voices.empty())
-        throw core::EngineError("chooseVoice: a sound needs at least one voice");
+        throw core::
+            EngineError("chooseVoice: a sound needs at least one voice");
 
     std::size_t oldest = 0;
 
@@ -27,4 +28,4 @@ std::size_t chooseVoice(std::span<const Voice> voices)
     return oldest;
 }
 
-}
+} // namespace engine::audio

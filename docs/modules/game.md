@@ -13,24 +13,31 @@ Every component is a plain aggregate with no methods and no pointers. Entities a
 | `Collider` | `Vec2f halfSize`, `CollisionLayer layer` | Axis-aligned box centred on `position` |
 | `Health` | `int16_t current`, `int16_t max` | The entity dies at 0 or below |
 | `Damage` | `int16_t amount` | Damage dealt on contact |
-| `Replicated` | `NetId netId`, `EntityKind kind`, `uint8_t variant` | Marks the entity for the network. The only component `collectReplicated()` reads |
+| `Replicated` | `NetId netId`, `EntityKind kind`, `uint8_t variant` | Marks the entity for the network: `collectReplicated()` sends one entry per entity that has it |
 | `PlayerShip` | `uint8_t playerId`, `InputButtons buttons`, `float invulnerableFor` | Present only on player ships |
-| `Weapon` | `float cooldown`, `float timer`, `Vec2f muzzleOffset`, `float projectileSpeed`, `bool triggered` | Fires when `triggered` is set and `timer` ≤ 0 |
-| `EnemyBrain` | `MovePattern pattern`, `float baseY`, `float amplitude`, `float frequency`, `float age`, `float fireTimer` | Bydos movement and firing state |
-| `Projectile` | `NetId owner` | Who to credit for a kill |
+| `Weapon` | `float cooldown`, `float timer`, `Vec2f muzzleOffset`, `float projectileSpeed`, `Vec2f aim`, `bool triggered` | Fires when `triggered` is set and `timer` ≤ 0. `aim` is the unit direction of the next shot: (1, 0) for a ship, set by `aimedShooterSystem` for an enemy |
+| `StraightMover` | `float speed` | Moves left at `speed` |
+| `SineMover` | `float speed`, `float baseY`, `float amplitude`, `float frequency`, `float age` | Moves left at `speed` while oscillating around `baseY` |
+| `AimedShooter` | `FloatRange interval`, `float timer` | Fires at the nearest ship every random `interval` |
+| `Projectile` | `NetId owner`, `uint8_t ownerPlayerId` | Who fired it. `ownerPlayerId` survives the shooter's death, and is `NO_PLAYER` for enemy missiles |
+| `LastHit` | `NetId by`, `uint8_t byPlayerId` | Who dealt the last damage, so `healthSystem` knows whom to credit and whom to name as the killer |
 | `Lifetime` | `float remaining` | The entity is destroyed when it reaches 0 |
-| `ConfinedToPlayfield` | (none) | Clamped inside 1280 × 720 |
+| `ConfinedToPlayfield` | (none) | Clamped so its collider stays inside 1280 × 720 |
 | `DespawnOutsidePlayfield` | `float margin` | Destroyed once more than `margin` outside the playfield |
 | `ScoreValue` | `uint32_t points` | Points awarded to the killer |
 
-**Which components each entity has:**
+`registerComponents(Registry &)` registers all 17. Registering is idempotent, so calling it twice is harmless.
+
+**Behaviour components.** An enemy's behaviour is the set of components it has, not a type switch: `StraightMover` or `SineMover` for its movement, `AimedShooter` for its attack. Each has its own system and only writes plain data (`Velocity`, `Weapon.aim`, `Weapon.triggered`). A new movement or attack is a new component and a new system, with no change to the existing ones. `MovePattern` remains as the BYDOS_SLAVE's network `variant` (0 = STRAIGHT, 1 = SINE) and as the argument `makeBydosSlave` uses to pick the mover.
+
+**Which components each entity has** (Collider in full sizes, see [sizes](#sizes-follow-the-sprite-frames)):
 
 | Kind | Transform | Velocity | Collider | Health | Damage | Replicated | Extra |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| PLAYER_SHIP | yes | yes | PLAYER, 16×8 | 1 | 1 | yes | `PlayerShip`, `Weapon`, `ConfinedToPlayfield` |
-| BYDOS_SLAVE | yes | yes | ENEMY, 16×16 | 1 | 1 | yes | `EnemyBrain`, `Weapon`, `DespawnOutsidePlayfield`, `ScoreValue(100)` |
-| PLAYER_MISSILE | yes | yes | PLAYER_SHOT, 8×3 | 1 | 1 | yes | `Projectile`, `Lifetime(2 s)`, `DespawnOutsidePlayfield` |
-| ENEMY_MISSILE | yes | yes | ENEMY_SHOT, 4×4 | 1 | 1 | yes | `Projectile`, `Lifetime(4 s)`, `DespawnOutsidePlayfield` |
+| PLAYER_SHIP | yes | yes | PLAYER, 32 × 14 | `playerHealth` (100) | 1 | yes | `PlayerShip`, `Weapon`, `ConfinedToPlayfield` |
+| BYDOS_SLAVE | yes | yes | ENEMY, 21 × 24 | 1 | `enemyCollisionDamage` (20) | yes | `StraightMover` or `SineMover`, `AimedShooter`, `Weapon`, `DespawnOutsidePlayfield`, `ScoreValue(100)` |
+| PLAYER_MISSILE | yes | yes | PLAYER_SHOT, 12 × 4 | 1 | 1 | yes | `Projectile`, `Lifetime(2 s)`, `DespawnOutsidePlayfield` |
+| ENEMY_MISSILE | yes | yes | ENEMY_SHOT, 7 × 6 | 1 | `enemyMissileDamage` (5) | yes | `Projectile`, `Lifetime(6 s)`, `DespawnOutsidePlayfield` |
 
 **Which layers collide** (anything not listed never collides):
 
@@ -58,15 +65,35 @@ classDiagram
         +collectReplicated(std::vector~ReplicatedEntity~&) void
         +reserveSlot() std::optional~uint8_t~
         +roster() PlayerRoster const&
+        +phase() Phase
         +tick() uint32_t
+        +rules() Rules const&
+        +shipHealth(uint8_t playerId) std::optional~Health~
+        -handle(JoinPlayer const&) void
+        -handle(LeavePlayer const&) void
+        -handle(SetInput const&) void
+    }
+    class GameWorldTestAccess {
+        <<tests only>>
+        +registry(GameWorld&)$ Registry&
     }
     class PlayerRoster {
         -std::array~std::optional~PlayerSlot~, 4~ _slots
         +reserve() std::optional~uint8_t~
         +release(uint8_t playerId) void
-        +get(uint8_t playerId) PlayerSlot*
+        +join(uint8_t playerId, std::string name, uint8_t lives) bool
+        +joinWaiting(uint8_t playerId, std::string name) bool
+        +onShipSpawned(uint8_t playerId, NetId ship) bool
+        +onShipKilled(uint8_t playerId, float respawnDelay) bool
+        +onGameRestarted(uint8_t lives) void
+        +advanceRespawns(float dt) std::vector~uint8_t~
+        +addScore(uint8_t playerId, uint32_t points) bool
+        +acceptInput(uint8_t playerId, uint32_t inputSequence) bool
+        +get(uint8_t playerId) PlayerSlot const*
         +active() size_t
         +allOut() bool
+        +anyAlive() bool
+        +teamScore() uint32_t
     }
     class PlayerSlot {
         +uint8_t playerId
@@ -84,11 +111,28 @@ classDiagram
         +allocate(Entity) NetId
         +find(NetId, Registry const&) std::optional~Entity~
         +releaseDead(Registry const&) void
+        +size() size_t
+    }
+    class GamePhase {
+        -Phase _phase = WAITING
+        -float _untilReset = 0
+        +phase() Phase
+        +isOver() bool
+        +start() bool
+        +wait() bool
+        +enterGameOver(float resetDelay) bool
+        +update(float dt) bool
+    }
+    class SpawnDirectorState {
+        <<struct>>
+        +float elapsed
+        +float untilNextSpawn
     }
     class EventOutbox {
         -std::vector~GameEvent~ _events
         +push(GameEvent) void
         +drain() std::vector~GameEvent~
+        +size() size_t
     }
     class PlayerCommand {
         <<variant>>
@@ -103,9 +147,12 @@ classDiagram
         see Rules and tuning values
     }
     GameWorld *-- Registry
+    GameWorldTestAccess ..> GameWorld : friend
     Registry o-- PlayerRoster : resource
     Registry o-- NetIdAllocator : resource
     Registry o-- EventOutbox : resource
+    Registry o-- GamePhase : resource
+    Registry o-- SpawnDirectorState : resource
     Registry o-- Rules : resource
     PlayerRoster *-- PlayerSlot
     GameWorld ..> PlayerCommand : consumes
@@ -120,10 +167,22 @@ classDiagram
 | `engine::core::Rng` | spawn positions, movement patterns, fire timers |
 | `NetIdAllocator` | builders (allocate), `netIdCleanupSystem` (release) |
 | `PlayerRoster` | input, health, respawn, game-over systems |
+| `GamePhase` | `gameOverSystem` (starts the game, enters and leaves GAME_OVER, goes back to WAITING), `apply(JoinPlayer)` (`join` or `joinWaiting`, then `startWhenReady`), `spawnDirectorSystem` and `respawnSystem` (only in PLAYING) |
+| `SpawnDirectorState` | `spawnDirectorSystem`: elapsed time and the countdown to the next spawn, so systems hold no `static` state |
 | `EventOutbox` | every system that emits a `GameEvent` |
 | `engine::ecs::DeltaTime` | every system that moves or counts down; set by `step(dt)` |
 
-- **Commands.** `JoinPlayer{playerId, name}` spawns a ship in the reserved slot with 3 lives. `LeavePlayer{playerId, reason}` destroys the ship and that player's missiles and frees the slot. `SetInput{playerId, inputSequence, buttons}` is ignored unless `inputSequence` is newer than the slot's `lastInputSequence`.
+- **Commands.** `apply` visits the `PlayerCommand` with one private `handle` overload per alternative, so a command type without a handler doesn't compile. Commands run outside any stage, between two `step` calls.
+
+    | Command | Effect |
+    | --- | --- |
+    | `JoinPlayer{playerId, name}` | `roster.join(…, rules.playerLives)`, or `roster.joinWaiting` during a game over, then `PlayerJoined` and `startWhenReady`, which starts the game if this join makes `playersToStart`. A slot that wasn't reserved is refused by the roster (with an error logged), and no event is emitted |
+    | `LeavePlayer{playerId, reason}` | Kills the ship and every missile whose `Projectile::ownerPlayerId` is that player, frees the slot, then `PlayerLeft`. Other players' ships and missiles are untouched. A free slot does nothing. The NetIds are released by `netIdCleanupSystem` on the next step |
+    | `SetInput{playerId, inputSequence, buttons}` | Ignored unless `inputSequence` is newer than the slot's `lastInputSequence`. Otherwise copies `buttons` into the ship's `PlayerShip::buttons`, read by `playerInputSystem` on the next step. Without a ship (RESPAWNING or OUT) only the sequence is kept: the next INPUT, 16 ms later, carries the buttons again |
+
+- **Joining, step by step.** The server calls `reserveSlot()` when a client connects, then `apply(JoinPlayer)`: the slot goes EMPTY → RESPAWNING with a respawn timer of 0, and `PlayerJoined` is in the outbox at once. No ship exists yet. While fewer than `playersToStart` players have joined, the phase stays WAITING and nothing spawns (see [Game flow](#game-flow)). Once the game is PLAYING, on the next `step`, `respawnSystem` (row 12) spawns the ship at `rules.playerSpawn[playerId]` and the slot becomes ALIVE, so the ship is in the next `collectReplicated`. `spawnDirectorSystem` (row 11) runs before it, so the first Bydos waits one more tick.
+- **`step(dt)`** writes `dt` into `DeltaTime`, runs the `SIMULATION` stage, then increments `tick()`. Every kill and spawn of the tick is applied when it returns.
+- **`phase()`** returns `GamePhase::phase()`: WAITING, PLAYING or GAME_OVER. A new world is WAITING.
 - **Events** say *why* something happened, for sounds, effects and banners. They are values with no references into the registry, so the adapter can keep them after `step()` returns:
 
     | Event | Fields | Emitted by |
@@ -138,44 +197,185 @@ classDiagram
 
 - **State is not an event.** Spawns, moves, deaths and roster changes reach clients through snapshots, not through events. A lost event only costs a sound or a banner, never a wrong world ([ADR 0002](../decisions/0002-state-based-replication.md)).
 - **This is the Mediator pattern the subject recommends.** Systems never call the network or the audio. They push events into `EventOutbox`, and whatever owns the world decides what each event means: the server sends packets, and a future local mode could play sounds.
-- `collectReplicated()` fills a caller-owned vector with one `ReplicatedEntity{netId, kind, variant, position, velocity}` per entity that has `Replicated`. The server's `SnapshotBuilder` turns it into SNAPSHOT chunks. A player who joins mid-game gets the full world from their first snapshot, with no special case.
+- `collectReplicated()` clears a caller-owned vector, then fills it with one `ReplicatedEntity{netId, kind, variant, position, velocity}` per entity that has `Replicated`. The position comes from `Transform` and the velocity from `Velocity`, with a zero vector if the entity lacks one. Clearing instead of reallocating lets the server pass the same vector every tick and keep its capacity. The server's `SnapshotBuilder` turns it into SNAPSHOT chunks. A player who joins mid-game gets the full world from their first snapshot, with no special case.
 - `PlayerRoster` is a resource, not a component, because lives and score must outlast the ship entity, which is destroyed and spawned again on each death.
-- `NetIdAllocator::find` only returns an entity that is still alive, thanks to generational handles. `releaseDead` forgets the NetIds of dead entities.
+- `NetIdAllocator::find` only returns an entity that is still alive, thanks to generational handles. `releaseDead` forgets the NetIds of dead entities. NetIds are never reused during a run, and running out of the 2³² − 1 values throws `engine::core::EngineError`.
+- `EventOutbox::drain` returns the events in push order and leaves the outbox empty. Every event and command struct has a defaulted `operator==`, so tests compare whole lists.
+- **`GameWorldTestAccess`** is only declared in `GameWorld.hpp`, as a friend. `tests/game/GameWorldTestAccess.hpp` defines it with a static `registry(GameWorld &)`, so tests can place entities and read components. Nothing outside the tests defines it, so release code can't reach the registry.
+- **Why `std::variant` for events and commands,** and not command classes with a factory: the set is closed and known at compile time, the values need no allocation, and `std::visit` refuses to compile if a case is forgotten. The Factory pattern ([ADR 0003](../decisions/0003-command-factory-handlers.md)) is for keys that arrive at run time: the network messages.
+
+### State machines
+
+**Only `PlayerRoster` changes a slot's state, and only `GamePhase` changes the game phase.** Systems read them through `const` accessors (`get` returns a `PlayerSlot const*`) and change them through the named transitions only, so no system can make an invalid transition.
+
+```mermaid
+stateDiagram-v2
+    [*] --> EMPTY : reserve()
+    EMPTY --> RESPAWNING : join() (timer 0)
+    EMPTY --> OUT : joinWaiting() (during a game over)
+    RESPAWNING --> ALIVE : onShipSpawned()
+    ALIVE --> RESPAWNING : onShipKilled(), lives left
+    ALIVE --> OUT : onShipKilled(), no life left
+    OUT --> RESPAWNING : onGameRestarted()
+    ALIVE --> RESPAWNING : onGameRestarted()
+    RESPAWNING --> RESPAWNING : onGameRestarted()
+    EMPTY --> [*] : release()
+    ALIVE --> [*] : release()
+    RESPAWNING --> [*] : release()
+    OUT --> [*] : release()
+```
+
+In the code, OUT is `SlotState::SLOT_OUT`, and the protocol's matching value is `PlayerState::PLAYER_OUT`. `OUT` is a macro in the Windows headers that Asio includes, so neither enumerator can be called `OUT`. This document and the RFC keep the name OUT.
+
+| Transition | From | To, and effects |
+| --- | --- | --- |
+| `reserve()` | free | EMPTY, `playerId` set. Returns the lowest free id, or `nullopt` if the 4 are taken |
+| `join(id, name, lives)` | EMPTY | RESPAWNING, with `name`, `lives`, a score of 0 and `respawnTimer = 0`. The ship appears on the next tick, through `respawnSystem` |
+| `joinWaiting(id, name)` | EMPTY | OUT, with `name` and 0 lives: joining during a game over, waiting for the restart |
+| `onShipSpawned(id, ship)` | RESPAWNING | ALIVE, `shipNetId = ship` |
+| `onShipKilled(id, delay)` | ALIVE | `lives − 1`, `shipNetId = 0`. RESPAWNING with `respawnTimer = delay` if lives are left, OUT otherwise |
+| `onGameRestarted(lives)` | every slot but EMPTY | RESPAWNING, with `lives`, a score of 0, `respawnTimer = 0` and `shipNetId = 0` |
+| `advanceRespawns(dt)` | RESPAWNING | counts the timers down and returns the ids whose timer reached 0, within 1e-4 like [`lifetimeSystem`](#lifetime), so a 2 s respawn takes 120 ticks; their timer is then exactly 0. They stay RESPAWNING until `onShipSpawned`, so a failed spawn is retried on the next tick |
+| `addScore(id, points)` | any reserved state | `score += points`: a missile can kill after its shooter died |
+| `acceptInput(id, seq)` | any reserved state | returns `true` and stores `seq` only if `seq > lastInputSequence`. A late or duplicate INPUT returns `false` without logging |
+| `release(id)` | any | free. A free slot, or an id ≥ 4, does nothing |
+
+- **A transition from the wrong state changes nothing.** It logs an error with the transition's name and the actual state, and returns `false`. The same goes for a free slot or an id ≥ 4. A bug in one system can't crash the server mid-tick, and a ship hit twice in one tick loses one life only.
+- **Queries:** `active` counts the reserved slots, EMPTY included. `allOut` is true when at least one slot has joined (any state but EMPTY) and every joined slot is OUT. `anyAlive` is true when a slot is ALIVE. `teamScore` sums the scores.
+- **`GamePhase`** has three states and starts in WAITING. `start()` goes from WAITING to PLAYING, and `wait()` from PLAYING back to WAITING. `enterGameOver(delay)` goes from PLAYING to GAME_OVER and starts the countdown. Each returns `false` and changes nothing from any other state, so `GameOver` is emitted once. `update(dt)` counts down in GAME_OVER, and when the countdown reaches 0 it switches to WAITING and returns `true`, exactly once per game over. In the other states it does nothing and returns `false`.
 
 ## Systems and tick order
 
-`GameWorld::step(dt)` sets the `DeltaTime` resource (`dt = 1/60 s`) and runs the `SIMULATION` stage. Its systems were added in the order below, and the order is part of the specification: moving a system changes the game. Kills and spawns requested inside a view loop go through `registry.commands()`, which the registry applies after each system ([engine: command buffer](engine.md#command-buffer)).
+`GameWorld::step(dt)` sets the `DeltaTime` resource (`dt = 1/60 s`) and runs the `SIMULATION` stage. Its systems were added in the order below, each named after its function without the `System` suffix (`"playerInput"`, `"straightMover"`…, as `registry.systemNames(Stage::SIMULATION)` returns them and the trace log prints them), and the order is part of the specification: moving a system changes the game. Kills and spawns requested inside a view loop go through `registry.commands()`, which the registry applies after each system ([engine: command buffer](engine.md#command-buffer)).
 
 | # | System | Reads | Writes | Behaviour |
 | --- | --- | --- | --- | --- |
-| 1 | `playerInputSystem` | `PlayerShip` | `Velocity`, `Weapon.triggered` | Turns held buttons into velocity using `rules.playerSpeed`. Diagonals are normalised. FIRE sets `triggered`. |
-| 2 | `enemyBrainSystem` | `EnemyBrain`, `Transform` | `Velocity`, `Weapon.triggered` | STRAIGHT moves left at `speed`. SINE sets vy so that `y = baseY + amplitude × sin(2π × frequency × age)`. Counts down `fireTimer`, then fires at the nearest ship. |
-| 3 | `weaponSystem` | `Weapon`, `Transform` | spawn commands | Decrements `timer`. When triggered and ready, records a missile spawn command, resets `timer` to `cooldown`, and emits `Fired`. The missiles exist when the system ends. |
-| 4 | `movementSystem` | `Velocity` | `Transform` | `position += value × dt` |
-| 5 | `playfieldSystem` | `ConfinedToPlayfield`, `DespawnOutsidePlayfield` | `Transform`, kill commands | Clamps ships inside the playfield. Records a kill for anything else outside its margin. |
-| 6 | `collisionSystem` | `Collider`, `Transform` | `Health` | Checks every pair of colliding layers (n ≤ ~100, so a plain double loop is fast enough). Applies `Damage` both ways. |
-| 7 | `healthSystem` | `Health`, `ScoreValue`, `Projectile` | kill commands, roster | At 0 HP: records a kill and credits the score to the missile owner's slot. For a ship, takes a life and moves the slot to RESPAWNING or OUT. Emits `EnemyKilled` or `PlayerKilled`. |
-| 8 | `lifetimeSystem` | `Lifetime` | kill commands | Records a kill at 0 |
-| 9 | `spawnDirectorSystem` | rules, roster | new enemies | Only when at least one player is ALIVE. Spawns a Bydos at x = 1312 and a random y in [40, 680] every `spawnInterval`. The interval shrinks over time. Respects `maxEnemies`. |
-| 10 | `respawnSystem` | roster | new ships | Counts down `respawnTimer`, then spawns the ship at its slot position with `invulnerableFor = 2 s`. |
-| 11 | `gameOverSystem` | roster | world reset | When `allOut()`, emits `GameOver` once. After 5 s, kills every entity, gives every connected slot 3 lives again, and emits `GameRestarted`. |
-| 12 | `netIdCleanupSystem` | `NetIdAllocator` | `NetIdAllocator` | Releases the NetIds of entities killed during this tick (`releaseDead`). Every earlier system's commands have been applied by then. |
+| 1 | `playerInputSystem` | `PlayerShip`, rules | `Velocity`, `Weapon.triggered`, `PlayerShip.invulnerableFor` | Turns held buttons into velocity using `rules.playerSpeed`. Diagonals are normalised. FIRE sets `triggered` while held. Counts `invulnerableFor` down to 0. |
+| 2 | `straightMoverSystem` | `StraightMover` | `Velocity` | `velocity = (−speed, 0)` |
+| 3 | `sineMoverSystem` | `SineMover` | `SineMover.age`, `Velocity` | Advances `age` by dt, and sets vy so that `y = baseY + amplitude × sin(2π × frequency × age)` at every tick (see [Behaviour systems](#behaviour-systems)). Runs after `straightMoverSystem`, so it wins on an entity built by hand with both movers. |
+| 4 | `aimedShooterSystem` | `AimedShooter`, `Transform`, `PlayerShip`, roster, `Rng` | `AimedShooter.timer`, `Weapon.aim`, `Weapon.triggered` | Counts `timer` down. At ≤ 0, draws a new one from `interval`, and if a slot is ALIVE, aims at the ship nearest to the muzzle and sets `triggered`. |
+| 5 | `weaponSystem` | `Weapon`, `Transform`, `Replicated`, `PlayerShip` | `Weapon`, spawn commands, `Fired` | `timer = max(0, timer − dt)`. When `triggered` and `timer == 0`, records a missile spawn command and resets `timer` to `cooldown`. Enemy weapons drop `triggered` every tick. The missiles exist when the system ends. |
+| 6 | `movementSystem` | `Velocity` | `Transform` | `position += value × dt` |
+| 7 | `playfieldSystem` | `Collider`, `ConfinedToPlayfield`, `DespawnOutsidePlayfield` | `Transform`, kill commands | Clamps ships inside the playfield. Records a kill for anything else outside its margin. |
+| 8 | `collisionSystem` | `Collider`, `Transform`, `Damage`, `PlayerShip`, `Projectile`, `Replicated` | `Health`, `LastHit` | Sorts the colliders by layer and tests only the 3 pairs that collide (see [Collisions](#collisions)). |
+| 9 | `healthSystem` | `Health`, `Replicated`, `LastHit`, `Transform`, `PlayerShip`, `ScoreValue`, rules | kill commands, roster, `EnemyKilled`, `PlayerKilled` | At 0 HP or below: records a kill. A ship loses a life (`onShipKilled`, slot to RESPAWNING or OUT) and emits `PlayerKilled`. An enemy credits its `ScoreValue` to `LastHit`'s player if that slot is still reserved, and emits `EnemyKilled`. A missile dies silently. |
+| 10 | `lifetimeSystem` | `Lifetime` | `Lifetime`, kill commands | `remaining −= dt`, and records a kill once `remaining ≤ 1e-4` (see [Lifetime](#lifetime)). |
+| 11 | `spawnDirectorSystem` | rules, roster, `GamePhase`, `SpawnDirectorState`, `Replicated`, `Rng` | `SpawnDirectorState`, new enemies | Only while a slot is ALIVE and the phase is PLAYING; otherwise its clock pauses. When `untilNextSpawn` runs out, spawns a Bydos at x = `enemySpawnX` and a random y in `enemySpawnY` unless `maxEnemies` exist, then restarts the countdown at the current interval, which shrinks over time (see [Game flow](#game-flow)). |
+| 12 | `respawnSystem` | roster, `GamePhase` | new ships, roster | Only in PLAYING. For every slot whose `respawnTimer` reaches 0 (`advanceRespawns`), spawns its ship with `makePlayerShip` (its lane, invulnerable for 2 s) and marks it ALIVE. The only place a ship is spawned. |
+| 13 | `gameOverSystem` | rules, roster, `GamePhase`, `Replicated` | `GamePhase`, kill commands, roster, `SpawnDirectorState`, `GameOver`, `GameRestarted` | In WAITING: `startWhenReady`. In PLAYING: back to WAITING when nobody is left, or, when `allOut()`, enters GAME_OVER and emits `GameOver` once. In GAME_OVER, after `gameOverResetDelay` (5 s): kills every replicated entity, gives every joined slot 3 lives and a score of 0, resets the spawn director, emits `GameRestarted` and goes to WAITING, which starts again at once if enough players are there. |
+| 14 | `netIdCleanupSystem` | `NetIdAllocator` | `NetIdAllocator` | Releases the NetIds of entities killed during this tick (`releaseDead`). It runs last, so every earlier system's kill commands have been applied. |
 
-**Randomness** (random spawn position, sine parameters, fire timers) comes only from the `Rng` resource. With a fixed `--seed` and the same commands at the same ticks, the simulation produces the same events, which makes a determinism test possible later ([handbook](../handbook/development.md#other-kinds-of-tests-later)).
+A system declares the storages it iterates in its signature, and reads the others through `getComponent` (for example `healthSystem` reads `LastHit`, `ScoreValue`, `PlayerShip` and `Transform`). The Reads and Writes columns list both.
 
-**Prediction helper.** `Vec2f movePlayer(Vec2f position, InputButtons buttons, float dt, Rules const&)` is a pure function. `playerInputSystem`, `movementSystem` and `playfieldSystem` together are equivalent to calling it on a ship. The client calls the same function to predict its own ship, so both sides compute the motion the same way ([client: prediction](client.md#frame-loop-interpolation-and-prediction)).
+**Randomness** (random spawn position, sine parameters, fire timers) comes only from the `Rng` resource. With a fixed `--seed` and the same commands at the same ticks, the simulation produces the same events and the same replicated entities, bit for bit: `DeterminismTests.cpp` checks it (see [Scenario and determinism tests](#scenario-and-determinism-tests)).
+
+**Prediction helper.** The motion helpers in `rtype/game/Motion.hpp` are pure functions: no registry, no resource, no randomness.
+
+| Helper | Result |
+| --- | --- |
+| `Vec2f inputDirection(InputButtons)` | UP is −y, DOWN +y, LEFT −x, RIGHT +x. Opposite buttons cancel out, FIRE is ignored. Normalised, so a diagonal isn't faster; (0, 0) when nothing moves |
+| `Vec2f confineToPlayfield(Vec2f position, Vec2f halfSize, Rules const&)` | the position clamped so the whole box stays inside `[0, playfield]`: x in [16, 1264] and y in [7, 713] for a ship |
+| `Vec2f movePlayer(Vec2f position, InputButtons, float dt, Rules const&)` | `confineToPlayfield(position + inputDirection(buttons) × playerSpeed × dt, playerHalfSize, rules)` |
+
+`playerInputSystem`, `movementSystem` and `playfieldSystem` together are equivalent to calling `movePlayer` on a ship, because **the systems use the same helpers**: `inputDirection` for the velocity, `confineToPlayfield` for the clamp. The client calls `movePlayer` to predict its own ship, so both sides run the very same code, not a copy of it ([client: prediction](client.md#frame-loop-interpolation-and-prediction)).
+
+### Behaviour systems
+
+An enemy's behaviour is its set of behaviour components, each with its own system that only writes plain data.
+
+- **`straightMoverSystem`** sets `velocity = (−speed, 0)` every tick.
+- **`sineMoverSystem`** keeps `movementSystem` the only system that writes positions: it sets a velocity, not a position. The obvious choice, the derivative `amplitude × 2π × frequency × cos(2π × frequency × age)` sampled once per tick, overshoots `baseY ± amplitude` by up to 7.6 units at 60 Hz, because the slope changes during the tick. The system uses the derivative **averaged over the tick** instead:
+
+    ```
+    vy = amplitude × (sin(2π × frequency × (age + dt)) − sin(2π × frequency × age)) / dt
+    ```
+
+    so `y += vy × dt` lands exactly on `baseY + amplitude × sin(2π × frequency × age)` at every tick, never beyond `baseY ± amplitude`. With `dt = 0` it sets vy to 0.
+- **`aimedShooterSystem`** draws a new `timer` every time it expires, **whether or not a ship is alive**, so the `Rng` sequence only depends on the ticks. It fires only if a slot is ALIVE. The target is the ship nearest to the muzzle (`position + muzzleOffset`), found with a view over `PlayerShip` and `Transform`, which is fine for at most 4 ships. If the ship is exactly on the muzzle, there's no direction to aim in, so the shot is skipped.
+
+### Weapons
+
+- **`Weapon::aim`** is the unit direction of the next shot. A ship keeps (1, 0) from its builder, and its missiles always fly right. An enemy's `aim` is rewritten by `aimedShooterSystem` before each shot.
+- **`triggered`:** a ship's is rewritten every tick by `playerInputSystem` from FIRE, so holding FIRE fires once every `cooldown`. An enemy's is set by `aimedShooterSystem` for a single shot, and `weaponSystem` sets it back to `false` every tick, after deciding whether to fire.
+- **Where `Fired` is pushed:** a weapon that fires records `commands().spawn(init)`. The spawn is deferred, so the missile's NetId only exists when `init` runs, right after `weaponSystem`. `init` calls `makePlayerMissile` (a ship, side PLAYER) or `makeEnemyMissile` (anything else, side ENEMY, direction `aim`) at `position + muzzleOffset`, then pushes `Fired{shooter, missile, side, position}` with the NetId the builder returned. The event still belongs to the tick. `init` captures values (NetId, player id, side, muzzle, aim), never references into the registry, since it runs after the view is gone.
+
+### Collisions
+
+- **One list per layer.** `collisionSystem` copies every collider into a local hitbox (`entity` and a `FloatRect` built with `FloatRect::fromCenter(position, halfSize)`), sorted into 4 lists by `CollisionLayer`. It then loops over the 3 rows of [Which layers collide](#components) only: ship × Bydos, ship × enemy missile, Bydos × player missile. Pairs that can't collide (two Bydos, two missiles, a missile and its own side) are never tested, and every pair is tested once by construction.
+- **The overlap test** is `FloatRect::intersects`, strict: two boxes that only touch don't collide.
+- **Invulnerability:** a ship with `invulnerableFor > 0` is left out of the lists, so it skips every pair it's part of, on both sides. Every ship starts with `respawnInvulnerability` (2 s) from `makePlayerShip`, and `playerInputSystem` counts it down.
+- **A missile is spent once.** Hitting its target sets its `Health` to 0. A missile already at 0 hits nothing more in the same tick, so a missile overlapping two Bydos damages only the first one.
+- **`LastHit`:** every hit sets the target's `LastHit`. `by` is the hitter's NetId. `byPlayerId` is the ship's `playerId`, or the missile's `ownerPlayerId`, or `NO_PLAYER` for an enemy. It's added with `commands().add` the first time, then updated in place. Two adds in the same tick are applied in order, so the last hit wins.
+- **`EnemyKilled::killerShip`** is `LastHit::by`: the missile's NetId when a missile made the kill, the ship's when the ship rammed the Bydos.
+- **Order:** the 3 pair loops run in the order above, each in storage order. That's deterministic, which is all the game needs.
+- **Cost:** with 4 ships, 30 Bydos, 40 player missiles and 30 enemy missiles, that's 1,440 tests instead of 5,356 for every pair, a few microseconds per tick. A uniform grid or a sort-and-sweep can be added on top if a benchmark ever shows collisions taking a real share of the tick.
+
+### Lifetime
+
+`lifetimeSystem` kills at `remaining ≤ 1e-4`, not `≤ 0`. In float, `1/60` isn't exact, and subtracting it from 2.0 a hundred and twenty times leaves 1.2e-6, which would kill a 2 s missile on tick 121 instead of 120. The tolerance is 160 times smaller than a tick, so it can never kill a tick early.
+
+### Game flow
+
+The 4 last systems decide when things happen. They keep no state of their own: everything lives in the `SpawnDirectorState`, `PlayerRoster` and `GamePhase` resources.
+
+- **Waiting for players.** A new world is WAITING. `startWhenReady` switches it to PLAYING (and resets the spawn director) as soon as `roster.joined()`, the slots that aren't EMPTY, reaches `rules.playersToStart` (4 by default). It runs after each `JoinPlayer` and on every tick in WAITING. While WAITING, `respawnSystem` and `spawnDirectorSystem` do nothing, so the joined players are RESPAWNING without a ship and no Bydos appears.
+    - **A player leaving mid-game** doesn't stop it: the game only checks the count to start. When the last player leaves, `gameOverSystem` goes back to WAITING and clears the world, so the next players start a fresh game.
+    - **After a game over**, the restart goes to WAITING, so the game starts again only when `playersToStart` players are still joined. Players who stay are RESPAWNING until then.
+- **Spawn director.**
+    - It runs only while a slot is ALIVE and the phase is PLAYING. Otherwise it returns before touching its state, so `elapsed` and `untilNextSpawn` **pause, they don't reset**: the difficulty picks up where it was when a player comes back.
+    - `untilNextSpawn` starts at 0, so the first Bydos appears on the first tick with a ship alive.
+    - When the countdown runs out, it spawns a Bydos at x = `enemySpawnX` (1312, just right of the screen) and a random y in `enemySpawnY` ([40, 680]), with the SINE pattern with probability `sineChance` (0.5), STRAIGHT otherwise. If `maxEnemies` (30) BYDOS_SLAVE already exist, counted through `Replicated::kind`, it skips the spawn.
+    - Either way, it restarts the countdown at the current interval, so a full screen delays the next try by one interval instead of retrying every tick:
+
+        ```
+        interval = max(spawnIntervalMin, spawnIntervalStart − spawnIntervalStep × floor(elapsed / spawnIntervalStepEvery))
+        ```
+
+        | `elapsed` | 0 s | 10 s | 100 s | 220 s and later |
+        | --- | --- | --- | --- | --- |
+        | interval | 1.6 s | 1.55 s | 1.1 s | 0.5 s |
+
+    - It isn't inside a view loop when it spawns, so it calls `makeBydosSlave(registry, registry.spawnEntity(), …)` directly.
+- **Respawn.** `respawnSystem` is the only place a ship is spawned. A first join (`join` leaves the timer at 0), a respawn after a death (`respawnDelay`, 2 s) and a restart all go through `advanceRespawns`, then `makePlayerShip` and `onShipSpawned` with the new NetId. The ship appears at its lane, invulnerable for `respawnInvulnerability` (2 s).
+- **Game over.** When every joined slot is OUT, `gameOverSystem` calls `enterGameOver(gameOverResetDelay)` and emits `GameOver{teamScore}`. `enterGameOver` returns `false` once the game is already over, so the event is emitted once. An empty server (nobody joined) is never `allOut`, so it never ends a game.
+- **Restart.** When the 5 s countdown ends (`GamePhase::update` returns `true`, the phase is WAITING), in this order:
+    1. every replicated entity is killed through the command buffer (Bydos and missiles; the ships are already dead);
+    2. `onGameRestarted(playerLives)`: **everyone joined comes back with 3 lives and a score of 0**, OUT slots included, all RESPAWNING with a timer of 0;
+    3. `SpawnDirectorState` is reset to `{}`, so the enemy interval starts again at 1.6 s;
+    4. `GameRestarted` is emitted;
+    5. `startWhenReady`: PLAYING again if `playersToStart` players are joined, WAITING otherwise.
+
+    `respawnSystem` runs before `gameOverSystem` in the tick, so the ships come back on the next tick.
+- **Joining during a game over.** `apply(JoinPlayer)` calls `joinWaiting` instead of `join` while the phase is GAME_OVER: the player is OUT with 0 lives until the restart, then comes back with everyone else. They don't play the end of a lost game, and they don't stop `allOut` from being true.
+- **NetId cleanup.** `netIdCleanupSystem` calls `NetIdAllocator::releaseDead`. It runs last, after every other system's kill commands have been applied, so a NetId is forgotten in the same tick its entity dies.
+
 
 ## Builders
 
-Builders are free functions in `rtype/game/Builders.hpp`. Each one turns an **already spawned** entity into a player ship, a Bydos or a missile: it attaches the component set listed under [Components](#components) and allocates a NetId through the `NetIdAllocator` resource. Nothing else in the game builds a replicated entity.
+Builders are free functions in `rtype/game/Builders.hpp`. Each one turns an **already spawned** entity into a player ship, a Bydos or a missile: it attaches the component set listed under [Components](#components), allocates a NetId through the `NetIdAllocator` resource, and **returns that NetId**, so the caller can use it right away: `respawnSystem` passes it to `PlayerRoster::onShipSpawned`, and `weaponSystem` puts it in the `Fired` event. Nothing else in the game builds a replicated entity.
 
 | Builder | Builds |
 | --- | --- |
-| `makePlayerShip(Registry&, Entity, std::uint8_t playerId)` | a ship at `rules.playerSpawn[playerId]` |
-| `makeBydosSlave(Registry&, Entity, Vec2f position, MovePattern)` | an enemy |
-| `makePlayerMissile(Registry&, Entity, NetId owner, Vec2f position)` | a player missile |
-| `makeEnemyMissile(Registry&, Entity, NetId owner, Vec2f position, Vec2f direction)` | an enemy missile |
+| `NetId makePlayerShip(Registry&, Entity, uint8_t playerId)` | a ship at `rules.playerSpawn[playerId]`. A `playerId` ≥ 4 throws `EngineError` before anything is attached or allocated |
+| `NetId makeBydosSlave(Registry&, Entity, Vec2f position, MovePattern)` | an enemy, with the mover of its pattern |
+| `NetId makePlayerMissile(Registry&, Entity, NetId owner, uint8_t ownerPlayerId, Vec2f position)` | a player missile flying right |
+| `NetId makeEnemyMissile(Registry&, Entity, NetId owner, Vec2f position, Vec2f direction)` | an enemy missile flying along `direction` |
 | `registerComponents(Registry&)` | registers every component type of the game |
+
+- **Resources.** Builders read `Rules` and, for the Bydos, `engine::core::Rng` from the registry. A missing resource throws `EngineError`, through `getResource`.
+- **Each builder attaches exactly its row** of the table below, plus `Replicated{netId, kind, variant}`. No other component, so a test can check all 17 types.
+- **They don't spawn the entity and don't touch the roster.** Slot transitions belong to `PlayerRoster`, called by whoever builds the ship.
+
+| Builder | Components and values |
+| --- | --- |
+| `makePlayerShip` | `Transform{playerSpawn[playerId]}`, `Velocity{0, 0}`, `Collider{playerHalfSize, PLAYER}`, `Health{playerHealth, playerHealth}`, `Damage{1}`, `PlayerShip{playerId, {}, respawnInvulnerability}` (every spawn starts protected), `Weapon{playerFireCooldown, 0, playerMuzzleOffset, playerMissileSpeed, (1, 0), false}`, `ConfinedToPlayfield`. `variant = playerId` |
+| `makeBydosSlave` | `Transform{position}`, `Velocity{−speed, 0}`, `Collider{enemyHalfSize, ENEMY}`, `Health{1, 1}`, `Damage{enemyCollisionDamage}`, `StraightMover{speed}` **or** `SineMover{speed, position.y, amplitude, frequency, 0}`, `AimedShooter{enemyFireInterval, timer}`, `Weapon{0, 0, enemyMuzzleOffset, enemyMissileSpeed, (−1, 0), false}`, `ScoreValue{killScore}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant` = the pattern's value |
+| `makePlayerMissile` | `Transform{position}`, `Velocity{playerMissileSpeed, 0}`, `Collider{playerMissileHalfSize, PLAYER_SHOT}`, `Health{1, 1}`, `Damage{1}`, `Projectile{owner, ownerPlayerId}`, `Lifetime{playerMissileLifetime}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant = 0` |
+| `makeEnemyMissile` | `Transform{position}`, `Velocity{direction.normalized() × enemyMissileSpeed}`, `Collider{enemyMissileHalfSize, ENEMY_SHOT}`, `Health{1, 1}`, `Damage{enemyMissileDamage}`, `Projectile{owner, NO_PLAYER}`, `Lifetime{enemyMissileLifetime}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant = 0` |
+
+- **Randomness.** `makeBydosSlave` draws every random value from `Rng`, always in the same order: `speed` in `enemySpeed`, then `amplitude` and `frequency` in their ranges for a SINE, then the first fire `timer` in `enemyFireInterval`. With the same seed, the same builder calls give the same components.
+- **A zero `direction`** for `makeEnemyMissile` is a bug: it asserts in Debug, and fires straight left, (−1, 0), in Release.
+- **The missile's `position` is given by the caller,** who adds the shooter's `Weapon.muzzleOffset`, so the builders don't need to know the shooter.
 
 They're called *builders*, not factories, on purpose: "factory" in this code base means the `FactoryTemplate` pattern (a run-time key mapped to a creator, as for network message commands). Here the caller always knows at compile time what it builds, and each kind takes different parameters, so plain functions are simpler.
 
@@ -189,22 +389,125 @@ Every gameplay number lives in `struct Rules` with these defaults. Nothing in a 
 
 | Rule | Default | Notes |
 | --- | --- | --- |
-| `playfield` | 1280 × 720 | Logical units. The client letterboxes it to its window. |
+| `playfield` | 1280 × 720 | Logical units, fixed: not in `rules.json`. Every client draws this same playfield, letterboxed to its window, so no player sees more of the world than another. |
 | `maxPlayers` | 4 |  |
+| `playersToStart` | 4 | The game waits for this many players before it starts, and again after each game over. At most `maxPlayers` |
 | `playerSpeed` | 320 u/s |  |
 | `playerSpawn[0..3]` | (120, 144), (120, 288), (120, 432), (120, 576) | One lane per player |
-| `playerLives` | 3 |  |
+| `playerLives` | 3 | At most 99, the most a SNAPSHOT carries |
+| `playerHealth` | 100 | A ship's health on every spawn. Each hit takes the hitter's damage; at 0 the ship dies and loses a life. There is no protection after a hit, only after a respawn |
 | `respawnDelay` / `respawnInvulnerability` | 2 s / 2 s |  |
 | `playerFireCooldown` | 0.20 s | 5 shots per second while held |
-| `playerMissileSpeed` | 900 u/s | Fired straight right |
-| `enemySpeed` | random 160–240 u/s |  |
-| `sineAmplitude` / `sineFrequency` | random 40–120 u / 0.5–1.2 Hz | Half of the spawned Bydos use SINE |
-| `enemyFireInterval` | random 1.5–3.0 s | Aimed at the nearest ship |
-| `enemyMissileSpeed` | 420 u/s |  |
-| `spawnInterval` | starts at 1.6 s, 0.05 s shorter every 10 s, minimum 0.5 s |  |
+| `playerMissileSpeed` / `playerMissileLifetime` | 900 u/s / 2 s | Fired straight right |
+| `enemySpeed` | random 60–100 u/s | A Bydos crosses the 1280-wide playfield in 13 to 21 s |
+| `sineAmplitude` / `sineFrequency` | random 15–40 u / 0.2–0.5 Hz | A gentle wave, one cycle every 2 to 5 s |
+| `sineChance` | 0.5 | Half of the spawned Bydos get `SineMover` |
+| `enemyFireInterval` | random 2.5–5.0 s | Aimed at the nearest ship. A Bydos fires about 3 to 8 shots while it crosses the playfield |
+| `enemyMissileSpeed` / `enemyMissileLifetime` | 240 u/s / 6 s | 1440 u of range: a shot from the right edge still reaches a ship on the left |
+| `enemyMissileDamage` / `enemyCollisionDamage` | 5 / 20 | Health a ship loses to an enemy missile / to running into a Bydos (which dies). A ship survives 20 missiles or 5 collisions |
+| `spawnIntervalStart` / `spawnIntervalStep` / `spawnIntervalStepEvery` / `spawnIntervalMin` | 1.6 s / 0.05 s / 10 s / 0.5 s | Starts at 1.6 s, 0.05 s shorter every 10 s, never below 0.5 s |
+| `enemySpawnX` / `enemySpawnY` | 1312 / random 40–680 | Just off the right edge |
 | `maxEnemies` | 30 |  |
 | `killScore` | 100 |  |
 | `gameOverResetDelay` | 5 s |  |
+| `despawnMargin` | 64 u | Larger than the gap between `enemySpawnX` and the edge, so an enemy isn't destroyed as soon as it spawns |
+| `playerHalfSize` / `enemyHalfSize` | 16 × 7 / 10.5 × 12 | See below |
+| `playerMissileHalfSize` / `enemyMissileHalfSize` | 6 × 2 / 3.5 × 3 | See below |
+| `playerMuzzleOffset` | (16, 0) | The ship's half width: a missile starts at its nose |
+| `enemyMuzzleOffset` | (−10.5, 0) | Minus the Bydos's half width: its shots leave from its left edge |
+
+Each default is checked by `RulesTests.cpp`, so changing a number is a deliberate change to both this table and the test.
+
+### Loading the rules from JSON
+
+`Rules::load(path)` reads a JSON file, and `Rules::fromJson(json)` does the work: it starts from the defaults above and overrides each key it finds. The server loads `config/rules.json`, or the file given with `--rules` ([server.md](server.md#command-line)). The repository's `config/rules.json` lists every rule at its default, and `RulesLoadTests` checks that it loads back to exactly `Rules{}`.
+
+```json
+{
+  "playerSpeed": 400,
+  "playerHalfSize": [16, 7],
+  "enemySpeed": {"min": 60, "max": 100},
+  "playerSpawn": [[120, 144], [120, 288], [120, 432], [120, 576]]
+}
+```
+
+- **Keys** are the field names, except `playfield`, which is fixed (`playfield: unknown rule`). Every key is optional; a missing one keeps its default.
+- **Shapes.** A vector is `[x, y]`, a range is `{"min": a, "max": b}` with `min ≤ max`, and `playerSpawn` is an array of 4 vectors. Whole-number rules refuse `2.5`.
+- **Limits.**
+
+  | Rules | Accepted values |
+  | --- | --- |
+  | `maxPlayers` | 1–4: the roster, `playerSpawn` and the protocol have 4 slots |
+  | `playersToStart` | 1–4 |
+  | `playerLives` | 1–99 |
+  | `playerHealth`, `enemyMissileDamage`, `enemyCollisionDamage` | 1–255: the health travels as a u8 in each SNAPSHOT |
+  | `maxEnemies` | 0–255 |
+  | `killScore` | 0–4294967295 |
+  | `playerSpeed`, `playerFireCooldown`, the missile speeds and lifetimes, `spawnIntervalStart`, `spawnIntervalStepEvery`, `spawnIntervalMin` | > 0 |
+  | `respawnDelay`, `respawnInvulnerability`, `spawnIntervalStep`, `gameOverResetDelay`, `despawnMargin` | ≥ 0 |
+  | `sineChance` | 0–1 |
+  | The ranges | ≥ 0; `enemyFireInterval.min` > 0 |
+  | The half sizes | both components > 0 |
+  | `playerSpawn` | ≥ 0 and inside the playfield |
+  | `enemySpawnX`, the muzzle offsets | any finite number |
+
+- **Rules that must agree,** checked once every key is read: `playersToStart` ≤ `maxPlayers`, `spawnIntervalMin` ≤ `spawnIntervalStart`, every `playerSpawn` point inside the playfield, and `enemySpawnY.max` ≤ the playfield height.
+- **Errors.** Anything else throws `engine::core::ConfigError` naming the key: an unknown key (`playerSped: unknown rule`), a wrong type, an out-of-range value, a number too large for a float, or a top level that isn't an object. `load` adds the path in front, and also throws when the file can't be opened or isn't valid JSON.
+- **The client** never reads this file. It gets `playerSpeed` and `playerHalfSize` from WELCOME: with the fixed playfield, they are the only rules its prediction uses. WELCOME also carries `playersToStart`, for the waiting screen.
+
+`maxPlayers` is read and sent in WELCOME, but the roster still has 4 slots whatever its value.
+
+### Sizes follow the sprite frames
+
+One game unit is one pixel of the 1280 × 720 logical screen, and sprites are drawn at scale 1, so a size measured on a sprite sheet is a size in game units. Each collider is the tight box of the visible pixels, the largest over all the entity's frames, so the hitbox matches what's drawn. The frames are those of `assets/sprites/catalog.json`, whose sheets come from ManuelR-T/R-Type.
+
+| Entity | Sheet and frames | Visible pixels | Full size | `halfSize` |
+| --- | --- | --- | --- | --- |
+| Player ship | `player_ships.gif`, 33 × 17 cells | 32 × 12 idle, up to 32 × 14 tilted | 32 × 14 | 16 × 7 |
+| Bydos slave | `bydos_slave.gif`, 21 × 24 frames | 21 × 7 to 21 × 24 while it turns | 21 × 24 | 10.5 × 12 |
+| Player missile | `player_shots.gif`, frame `[337, 255, 12, 4]` | 12 × 4 | 12 × 4 | 6 × 2 |
+| Enemy missile | `enemy_shots_and_explosions.png`, the ball's 4 frames | 7 × 6 in every frame | 7 × 6 | 3.5 × 3 |
+
+`confineToPlayfield` uses `playerHalfSize`, so the ship's visible pixels never leave the playfield. The 33 × 17 cell drawn around them overhangs by at most 1.5 pixels, which are transparent.
+
+**If a frame in `catalog.json` is re-measured, its size here and in `Rules` must follow.**
 
 **Telling players apart (requirement F-12).** Player 0 is cyan, player 1 magenta, player 2 green and player 3 red. These are the colour rows of the provided sprite sheet. Every ship also shows a `P1`–`P4` label, so players stay distinguishable without relying on colour ([accessibility](../architecture/accessibility.md)).
 
+## Scenario and determinism tests
+
+The unit tests check one system or one resource at a time. These tests drive a whole `GameWorld` the way the server does, with commands, `step(1/60)` and `drainEvents()` only, to prove the parts work together and the game is reproducible.
+
+**`tests/game/ScriptedGame.hpp`** gives a script runner:
+
+```cpp
+struct ScriptedStep { std::uint32_t tick; PlayerCommand command; };
+struct ScriptedResult {
+    std::vector<std::pair<std::uint32_t, GameEvent>> events;
+    std::vector<std::vector<ReplicatedEntity>> replicated;
+};
+
+ScriptedResult runScript(std::uint32_t seed, const std::vector<ScriptedStep> &script,
+    std::uint32_t ticks, bool recordReplicated = false);
+```
+
+- It builds a `GameWorld{soloRules(), seed}`: the default rules with `playersToStart` at 1, so the first join starts the game. Before each step, it applies the commands whose `tick` is the number of steps already played (tick 0 before the first step), in script order, so the script must be sorted by tick.
+- Each drained event is kept with the tick of the step that drained it. With `recordReplicated`, the replicated entities are kept after every step.
+- A `JoinPlayer` first calls `reserveSlot()`, as the server does when a client connects. The reserved id must be the command's `playerId`, so a script joins its players in slot order.
+
+**Scenarios** (`ScenarioTests.cpp`) use a fixture holding one `GameWorld`. It holds the spawn director back (`SpawnDirectorState::untilNextSpawn` set very high) so a random Bydos or its missile can't change the outcome, and places the entities each scenario needs through `GameWorldTestAccess` and the [builders](#builders):
+
+| Scenario | What it proves |
+| --- | --- |
+| Join and move | No ship before the first step after `JoinPlayer`, one after it. With RIGHT held for 60 ticks, the ship's position equals `movePlayer` exactly at every tick, so the client's prediction matches the server |
+| Shoot a Bydos | A Bydos placed on the ship's lane, FIRE held: the first `Fired` (shooter the ship, side PLAYER) comes before `EnemyKilled`, whose `killerShip` is that shot's missile; the player's score is `killScore` |
+| Die and respawn | An enemy missile placed in front of the ship once its protection is over: `PlayerKilled`, 2 lives, RESPAWNING. The ship is back 119 ticks after the death tick (the respawn timer counts down in the death tick too), at its lane, with `respawnInvulnerability` |
+| Game over and restart | One Bydos kill, then 3 deaths: `GameOver` once, with a team score of `killScore`, and the phase is GAME_OVER. `GameRestarted` comes 300 ticks (`gameOverResetDelay`) after `GameOver`, and the ship is back the tick after with 3 lives and a score of 0 |
+| Join during a game over | `PlayerJoined`, the slot is OUT with 0 lives and the game stays over. After the restart, both players are ALIVE together |
+| Leave mid-game | Both players firing, player 1 leaves: their ship and missiles are gone at once, `PlayerLeft` is drained, player 0 keeps the same ship and all its missiles, and the game goes on |
+
+**Determinism** (`DeterminismTests.cpp`) uses one script: 4 joins on ticks 0–3, then every 15 ticks random buttons for every player still in the game, drawn from an `Rng` with its own fixed seed, and player 2 leaving at tick 2404, over 3600 ticks (one minute).
+
+- **Same seed, twice:** the event lists and the replicated entities after every tick are equal. The test first checks that shots and kills happened, so an empty game can't pass it.
+- **Two seeds:** the positions where the Bydos first appear differ, so the seed really drives the randomness.
+- **The comparison is exact (`==`),** floats included: the same binary with the same inputs must give the same bits. It doesn't compare runs across compilers or platforms, whose floating-point results may differ.

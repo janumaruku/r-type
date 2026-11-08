@@ -6,12 +6,12 @@
 */
 
 #ifndef CLOCK_HPP
-    #define CLOCK_HPP
-    #include <chrono>
+#define CLOCK_HPP
+#include <chrono>
 
 namespace engine::runtime {
-    using Clock = std::chrono::steady_clock;
-    using TimePoint = std::chrono::time_point<Clock>;
-}
+using Clock     = std::chrono::steady_clock;
+using TimePoint = std::chrono::time_point<Clock>;
+} // namespace engine::runtime
 
 #endif
