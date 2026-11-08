@@ -340,7 +340,7 @@ Rules Rules::fromJson(const nlohmann::json &json)
     Rules rules;
 
     for (const auto &[key, value]: json.items()) {
-        const auto *rule = std::ranges::find(RULES, key, &Rule::key);
+        const auto rule = std::ranges::find(RULES, key, &Rule::key);
 
         if (rule == RULES.end())
             throw ConfigError(key + ": unknown rule");
