@@ -38,7 +38,7 @@ std::vector<protocol::Snapshot> &SnapshotBuilder::build(const game::GameWorld
         &world)
 {
     world.collectReplicated(_entities);
-    const auto roster = rosterToProtocol(world.roster());
+    const auto roster = rosterToProtocol(world);
     protocol::Snapshot s{
         .serverTick         = world.tick(),
         .lastProcessedInput = 0,

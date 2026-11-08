@@ -172,7 +172,7 @@ const MessageScene &messageOf(const SceneRequest &request)
 }
 } // namespace
 
-TEST_F(Connecting, FirstHelloCarriesVersionOneAndTheName)
+TEST_F(Connecting, FirstHelloCarriesOurVersionAndTheName)
 {
     ConnectingScene scene;
     net::Datagram hello = enter(scene);
@@ -183,7 +183,8 @@ TEST_F(Connecting, FirstHelloCarriesVersionOneAndTheName)
     EXPECT_EQ(header.type, MessageType::HELLO);
     EXPECT_EQ(header.sequence, 1U);
     EXPECT_EQ(rtype::protocol::decode<Hello>(packet),
-        (Hello{.protocolVersion = 1, .playerName = "alice"}));
+        (Hello{.protocolVersion = rtype::protocol::Header::VERSION,
+            .playerName = "alice"}));
 }
 
 TEST_F(Connecting, WelcomeSwitchesToTheGameSceneWithThatPlayerId)

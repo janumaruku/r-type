@@ -182,7 +182,9 @@ protected:
     }
 
     /*
-    ** Waits for the ship, lets its protection run out, and kills it.
+    ** Waits for the ship, lets its protection run out, then fires enemy
+    ** missiles at it one at a time until it dies: playerHealth /
+    ** enemyMissileDamage of them, rounded up. Each one hits within 10 ticks.
     */
     std::optional<PlayerKilled> killPlayer(const std::uint8_t playerId)
     {
@@ -190,8 +192,15 @@ protected:
             ++i)
             play();
         waitForVulnerable(playerId);
-        fireAt(playerId);
-        return playUntil<PlayerKilled>(60);
+        const int shots = (_rules.playerHealth + _rules.enemyMissileDamage - 1) /
+            _rules.enemyMissileDamage;
+
+        for (int shot = 0; shot < shots; ++shot) {
+            fireAt(playerId);
+            if (const auto killed = playUntil<PlayerKilled>(10))
+                return killed;
+        }
+        return std::nullopt;
     }
 
     template <class Event>

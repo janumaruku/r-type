@@ -72,6 +72,15 @@ std::unique_ptr<CLI::App> makeApp(ServerConfig &config,
         ->default_str("info")
         ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
+    app->add_option_function<std::string>(
+           "-r,--rules",
+           [&config](const std::string &path) { config.rulesPath = path; },
+           "Game rules, as JSON")
+        ->type_name("FILE")
+        ->check(CLI::ExistingFile)
+        ->default_str(std::string(DEFAULT_RULES_PATH))
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+
     return app;
 }
 

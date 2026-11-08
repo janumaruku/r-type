@@ -78,7 +78,7 @@ void ClientWorld::applyEntity(std::uint32_t tick,
     _latestServerTick = std::max(_latestServerTick, tick);
 
     auto &catalog  = _registry.getResource<SpriteCatalog>();
-    auto spriteKey = static_cast<SpriteKey>(state.kind);
+    const auto spriteKey = static_cast<SpriteKey>(state.kind);
     const NetSample sample{
         .tick     = tick,
         .position = {state.x, state.y},
@@ -143,7 +143,7 @@ void ClientWorld::applyRoster(std::span<const protocol::PlayerInfo> roster)
 
 void ClientWorld::tagLocalShip()
 {
-    auto &locals = _registry.registerComponent<LocalPlayer>();
+    const auto &locals = _registry.registerComponent<LocalPlayer>();
     const auto ship = localShip();
     const std::vector tagged(locals.entities().begin(),
         locals.entities().end());
@@ -219,5 +219,4 @@ engine::ecs::Registry &ClientWorld::registry() noexcept
 {
     return _registry;
 }
-
-} // namespace rtype::client
+}

@@ -103,4 +103,13 @@ std::size_t PredictionState::pending() const noexcept
 {
     return _pending.size();
 }
+
+game::Rules predictionRules(const protocol::Welcome &welcome)
+{
+    game::Rules rules;
+
+    rules.playerSpeed    = welcome.playerSpeed;
+    rules.playerHalfSize = {welcome.playerHalfWidth, welcome.playerHalfHeight};
+    return rules;
+}
 }

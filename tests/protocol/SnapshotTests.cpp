@@ -37,22 +37,28 @@ std::vector<proto::PlayerInfo> fullRoster()
         proto::PlayerInfo{.playerId = 0,
             .state                  = proto::PlayerState::ALIVE,
             .lives                  = 3,
+            .health                 = 255,
+            .maxHealth              = 255,
             .score                  = 0xFFFFFFFF,
             .shipNetId              = 101,
             .name                   = SIXTEEN_BYTES},
         proto::PlayerInfo{.playerId = 1,
             .state                  = proto::PlayerState::RESPAWNING,
             .lives                  = 2,
+            .maxHealth              = 255,
             .score                  = 1500,
             .name                   = SIXTEEN_BYTES},
         proto::PlayerInfo{.playerId = 2,
             .state                  = proto::PlayerState::PLAYER_OUT,
             .lives                  = 0,
+            .maxHealth              = 255,
             .score                  = 42,
             .name                   = SIXTEEN_BYTES},
         proto::PlayerInfo{.playerId = 3,
             .state                  = proto::PlayerState::ALIVE,
             .lives                  = 1,
+            .health                 = 37,
+            .maxHealth              = 255,
             .score                  = 7,
             .shipNetId              = 104,
             .name                   = SIXTEEN_BYTES},
@@ -134,7 +140,7 @@ TEST(SnapshotTests, AFullChunkRoundTripsAndFitsInOneDatagram)
 
     expectRoundTrip(chunk);
     EXPECT_EQ(proto::makePacket(proto::MessageType::SNAPSHOT, 1, chunk).size(),
-        1190U);
+        1198U);
 }
 
 TEST(SnapshotTests, AnEmptyLaterChunkIsTheSmallestPayload)
@@ -180,10 +186,21 @@ TEST(SnapshotTests, AnUnknownPlayerStateIsRejected)
         .state = static_cast<proto::PlayerState>(4)});
 }
 
-TEST(SnapshotTests, MoreThanThreeLivesIsRejected)
+TEST(SnapshotTests, MoreThanNinetyNineLivesIsRejected)
 {
     expectOutOfRange(proto::PlayerInfo{
-        .state = proto::PlayerState::PLAYER_OUT, .lives = 4});
+        .state = proto::PlayerState::PLAYER_OUT, .lives = 100});
+}
+
+TEST(SnapshotTests, AnImpossibleHealthIsRejected)
+{
+    expectOutOfRange(proto::PlayerInfo{.state = proto::PlayerState::ALIVE,
+        .health = 101, .maxHealth = 100});
+    expectOutOfRange(proto::PlayerInfo{
+        .state = proto::PlayerState::RESPAWNING, .health = 50,
+        .maxHealth = 100});
+    expectOutOfRange(proto::PlayerInfo{.state = proto::PlayerState::EMPTY,
+        .maxHealth = 100});
 }
 
 TEST(SnapshotTests, ANameLongerThanSixteenBytesIsRejected)

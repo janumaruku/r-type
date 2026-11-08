@@ -20,6 +20,7 @@ rtype_add_test(client_tests
         HudTests.cpp
         InputSamplingTests.cpp
         InterpolationTests.cpp
+        PredictionRulesTests.cpp
         GameSceneTests.cpp
 )
 

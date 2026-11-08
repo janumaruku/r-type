@@ -14,6 +14,10 @@ using server_test::Fixture;
 using server_test::readMessage;
 using namespace std::chrono_literals;
 
+namespace {
+constexpr std::uint8_t WRONG_VERSION = proto::Header::VERSION + 1;
+}
+
 /*
 ** A kick is queued, not sent: each flushGoodbyes (one per tick) sends one
 ** copy of the same KICK, 3 ticks in a row, then nothing.
@@ -93,7 +97,7 @@ TEST(DispatchTests, RejectToAnAddressWithoutSessionIsSequenceOne)
     const auto from = fixture.client.local_endpoint();
 
     fixture.send(datagram(from, proto::MessageType::HELLO,
-        proto::Hello{.protocolVersion = 2, .playerName = "Alice"}));
+        proto::Hello{.protocolVersion = WRONG_VERSION, .playerName = "Alice"}));
 
     const auto rejects = server_test::receive(fixture.client, 1);
 
@@ -168,14 +172,14 @@ TEST(DispatchTests, VersionMismatchesAreRejected)
     Fixture fixture;
     const auto from = fixture.client.local_endpoint();
     fixture.send(datagramWithVersion(from, proto::MessageType::HELLO,
-        proto::Hello{.playerName = "Alice"}, 2));
+        proto::Hello{.playerName = "Alice"}, WRONG_VERSION));
     fixture.send(datagram(from, proto::MessageType::HELLO,
-        proto::Hello{.protocolVersion = 2, .playerName = "Alice"}));
+        proto::Hello{.protocolVersion = WRONG_VERSION, .playerName = "Alice"}));
     EXPECT_EQ(fixture.sessions.size(), 0U);
     ASSERT_EQ(server_test::receive(fixture.client, 1).size(), 1U);
     fixture.now += 1s;
     fixture.send(datagram(from, proto::MessageType::HELLO,
-        proto::Hello{.protocolVersion = 2, .playerName = "Alice"}));
+        proto::Hello{.protocolVersion = WRONG_VERSION, .playerName = "Alice"}));
     const auto responses = server_test::receive(fixture.client, 1);
     ASSERT_EQ(responses.size(), 1U);
     EXPECT_EQ(readMessage<proto::Reject>(responses.front()).reason,

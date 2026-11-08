@@ -37,7 +37,8 @@ TEST_F(Collisions, ShipAndBydosOverlappingBothTakeDamage)
 
     moveTo(ship, {640.0F, 360.0F});
     tick();
-    EXPECT_EQ(healthOf(ship), 0);
+    EXPECT_EQ(healthOf(ship),
+        rules().playerHealth - rules().enemyCollisionDamage);
     EXPECT_EQ(healthOf(bydos), 0);
     EXPECT_EQ(component<LastHit>(ship).by, netIdOf(bydos));
     EXPECT_EQ(component<LastHit>(ship).byPlayerId, NO_PLAYER);
@@ -53,7 +54,7 @@ TEST_F(Collisions, InvulnerableShipAndBydosAreNotDamaged)
     moveTo(ship, {640.0F, 360.0F});
     component<PlayerShip>(ship).invulnerableFor = 1.0F;
     tick();
-    EXPECT_EQ(healthOf(ship), 1);
+    EXPECT_EQ(healthOf(ship), rules().playerHealth);
     EXPECT_EQ(healthOf(bydos), 1);
     EXPECT_FALSE(has<LastHit>(ship));
     EXPECT_FALSE(has<LastHit>(bydos));
@@ -81,7 +82,8 @@ TEST_F(Collisions, EnemyMissileDamagesShipAndIsSpent)
 
     moveTo(ship, {640.0F, 360.0F});
     tick();
-    EXPECT_EQ(healthOf(ship), 0);
+    EXPECT_EQ(healthOf(ship),
+        rules().playerHealth - rules().enemyMissileDamage);
     EXPECT_EQ(healthOf(missile), 0);
     EXPECT_EQ(healthOf(bydos), 1);
     EXPECT_EQ(component<LastHit>(ship).by, netIdOf(missile));
@@ -104,7 +106,7 @@ TEST_F(Collisions, SameSideAndFriendlyFireDealNoDamage)
     tick();
     for (const Entity entity:
         {first, second, playerMissile, bydosA, bydosB, enemyMissile})
-        EXPECT_EQ(healthOf(entity), 1);
+        EXPECT_EQ(healthOf(entity), component<Health>(entity).max);
     EXPECT_EQ(countOf<LastHit>(), 0U);
 }
 

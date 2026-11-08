@@ -38,7 +38,8 @@ NetId makePlayerShip(engine::ecs::Registry &registry,
             .halfSize = rules.playerHalfSize,
             .layer    = CollisionLayer::PLAYER,
         });
-    registry.addComponent(entity, Health{.current = 1, .max = 1});
+    registry.addComponent(entity,
+        Health{.current = rules.playerHealth, .max = rules.playerHealth});
     registry.addComponent(entity, Damage{.amount = 1});
     registry.addComponent(entity,
         Replicated{
@@ -83,7 +84,7 @@ NetId makeBydosSlave(engine::ecs::Registry &registry,
             .layer    = CollisionLayer::ENEMY,
         });
     registry.addComponent(entity, Health{.current = 1, .max = 1});
-    registry.addComponent(entity, Damage{.amount = 1});
+    registry.addComponent(entity, Damage{.amount = rules.enemyCollisionDamage});
     registry.addComponent(entity,
         Replicated{
             .netId   = netId,
@@ -180,7 +181,7 @@ NetId makeEnemyMissile(engine::ecs::Registry &registry,
             .layer    = CollisionLayer::ENEMY_SHOT,
         });
     registry.addComponent(entity, Health{.current = 1, .max = 1});
-    registry.addComponent(entity, Damage{.amount = 1});
+    registry.addComponent(entity, Damage{.amount = rules.enemyMissileDamage});
     registry.addComponent(entity,
         Replicated{
             .netId   = netId,

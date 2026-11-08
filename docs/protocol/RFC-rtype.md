@@ -1,9 +1,9 @@
-# RFC: R-Type network protocol, version 1
+# RFC: R-Type network protocol, version 2
 
 | | |
 | --- | --- |
 | Status | Draft for Part 1 |
-| Protocol version | 1 |
+| Protocol version | 2. Version 2 adds the movement rules to WELCOME (section 6.2) |
 | Transport | UDP, default server port 4242 |
 | Reference implementation | `rtype_protocol` (see [Appendix A](#appendix-a-reference-implementation)) |
 
@@ -73,7 +73,7 @@ Conventions:
 | Offset | Field | Type | Rules |
 | --- | --- | --- | --- |
 | 0 | `magic` | u16 | MUST be `0x5254`. Any other value: the datagram is dropped (section 4.2). |
-| 2 | `version` | u8 | Protocol version. MUST be `1`. |
+| 2 | `version` | u8 | Protocol version. MUST be `2`. |
 | 3 | `type` | u8 | Message type (section 5). |
 | 4 | `sequence` | u32 | Counter kept by the sender for this peer, starting at 1 and increasing by 1 for every datagram it sends. Used for loss statistics and to discard duplicates. |
 | 8 | payload | | Exactly the bytes the message type defines. No more, no less. |
@@ -105,7 +105,7 @@ The client's 1500th datagram, carrying input number 812 with UP and FIRE held:
 
 ```text
 offset:  0  1    2    3    4  5  6  7    8  9 10 11    12
-bytes:  54 52   01   02   DC 05 00 00   2C 03 00 00    11
+bytes:  54 52   02   02   DC 05 00 00   2C 03 00 00    11
         magic   ver  type  sequence     inputSequence  buttons
         |----------- header, 8 bytes ---------|  |-- payload, 5 bytes --|
 ```
@@ -113,7 +113,7 @@ bytes:  54 52   01   02   DC 05 00 00   2C 03 00 00    11
 | Bytes | Field | Value |
 | --- | --- | --- |
 | `54 52` | `magic` | `0x5254` |
-| `01` | `version` | 1 |
+| `02` | `version` | 2 |
 | `02` | `type` | INPUT |
 | `DC 05 00 00` | `sequence` | 1500 |
 | `2C 03 00 00` | `inputSequence` | 812 |
@@ -130,9 +130,9 @@ Client-to-server types are below `0x80`; server-to-client types are `0x80` and a
 | `0x01` | HELLO | C → S | Every 0.5 s until WELCOME or REJECT arrives | 2 – 18 |
 | `0x02` | INPUT | C → S | Every client tick (60 Hz) while in game | 5 |
 | `0x03` | DISCONNECT | C → S | 3 times when the player quits | 1 |
-| `0x81` | WELCOME | S → C | In reply to every HELLO from an accepted client | 8 |
+| `0x81` | WELCOME | S → C | In reply to every HELLO from an accepted client | 20 |
 | `0x82` | REJECT | S → C | In reply to a HELLO that can't be accepted | 1 |
-| `0x83` | SNAPSHOT | S → C | 30 times per second, in one or more chunks | 14 – 1182 |
+| `0x83` | SNAPSHOT | S → C | 30 times per second, in one or more chunks | 14 – 1190 |
 | `0x84` | EVENT | S → C | When something happens; important events 3 times | 21 |
 | `0x85` | SHUTDOWN | S → C | 3 times when the server stops | 0 |
 | `0x86` | KICK | S → C | 3 times, when the server kicks this client | 1 |
@@ -157,8 +157,13 @@ The client sends HELLO every 0.5 s until it receives WELCOME or REJECT. After 5 
 | 0 | `playerId` | u8 | 0–3. The client's player slot. It also picks the ship's colour. |
 | 1 | `tickRate` | u8 | Simulation rate in Hz (60) |
 | 2 | `snapshotRate` | u8 | SNAPSHOT rate in Hz (30) |
-| 3 | `maxPlayers` | u8 | 4 |
+| 3 | `maxPlayers` | u8 | 1–4, from the server's rules |
 | 4 | `serverTick` | u32 | The current server tick |
+| 8 | `playerSpeed` | f32 | Ship speed in units per second (320 by default). Finite and > 0 |
+| 12 | `playerHalfWidth` | f32 | Half the ship's hitbox width (16). Finite and > 0 |
+| 16 | `playerHalfHeight` | f32 | Half the ship's hitbox height (7). Finite and > 0 |
+
+The last three fields are the rules the client needs to predict its own ship: it moves it with the same function as the server, so it must use the same speed and hitbox. The server reads them from its rules file (`config/rules.json`), so they can differ from the defaults. The playfield is not sent: it is always 1280 × 720 units, and each client scales it to its window. A WELCOME with a value that is not finite or not above 0 is malformed.
 
 The server answers **every** HELLO from an accepted client with WELCOME, so a lost WELCOME is repaired by the client's next HELLO. The client finds its own ship through the roster in each SNAPSHOT (section 6.5).
 
@@ -192,13 +197,15 @@ One snapshot describes the whole game at one server tick. If it doesn't fit in o
 | 10 | `roster` | list<PlayerInfo> | 4 entries in chunk 0, one per player slot, slots 0 to 3 in order. Empty (count 0) in every other chunk |
 | … | `entities` | list<EntityState> | 0–48 entries |
 
-**PlayerInfo** (12 to 28 bytes):
+**PlayerInfo** (14 to 30 bytes):
 
 | Field | Type | Rules |
 | --- | --- | --- |
 | `playerId` | u8 | 0–3 |
 | `state` | u8 | 0 = EMPTY, 1 = ALIVE, 2 = RESPAWNING, 3 = OUT (no lives left) |
-| `lives` | u8 | 0–3 |
+| `lives` | u8 | 0–99 |
+| `health` | u8 | The ship's health, 0 when the state is not ALIVE. ≤ `maxHealth` |
+| `maxHealth` | u8 | The server's `playerHealth` rule (100 by default). 0 when the state is EMPTY |
 | `score` | u32 | |
 | `shipNetId` | u32 | The player's current ship, or 0 when the state is not ALIVE |
 | `name` | string<16> | Empty when the state is EMPTY |
@@ -213,7 +220,7 @@ One snapshot describes the whole game at one server tick. If it doesn't fit in o
 | `x`, `y` | f32, f32 | Position |
 | `vx`, `vy` | f32, f32 | Velocity |
 
-A chunk is at most 8 (header) + 10 + (2 + 4 × 28) + (2 + 48 × 22) = 1190 bytes, so it always fits in one datagram.
+A chunk is at most 8 (header) + 10 + (2 + 4 × 30) + (2 + 48 × 22) = 1198 bytes, so it always fits in one datagram.
 
 **Rules for the client:**
 
@@ -351,7 +358,7 @@ Every receiver, server and client, runs the checks in this order. The first fail
 4. **Type and direction:** the type must be known, or `UNKNOWN_TYPE`, and travel the right way: HELLO, INPUT and DISCONNECT to the server, the others to the client (section 5). Otherwise `WRONG_DIRECTION`.
 5. **Payload:** decode the message. Running out of bytes gives `TRUNCATED`, a field out of range `OUT_OF_RANGE`, and bytes left after the last field `TRAILING_BYTES`.
 
-The version is checked before the type because a later version may define types that version 1 doesn't know. A client from that version sends nothing wrong, so it is not counted as an offence.
+The version is checked before the type because a later version may define types that an older version doesn't know. A client from that version sends nothing wrong, so it is not counted as an offence.
 
 The session checks (unknown address, rate limit, offence count, kick) come after these steps, on the server only.
 
@@ -374,7 +381,7 @@ A receiver MUST run these checks before using any field. None of them may crash 
 | `version` ≠ 1 | Drop. If it is a HELLO, the server replies REJECT(VERSION_MISMATCH), at most once per second per address |
 | `type` unknown, or travelling in the wrong direction | Drop, count as an offence |
 | Payload shorter than the type needs, or bytes left over after decoding | Drop, count as an offence |
-| A field out of range: button bits 5–7, an unknown enum value, `chunkIndex` ≥ `chunkCount`, `chunkCount` of 0 or more than 16, more than 48 entities or a roster that is neither 0 nor 4 entries, a roster in chunk 0 missing or one in another chunk, a roster whose `playerId`s aren't 0, 1, 2, 3 in order, a PlayerInfo whose state is EMPTY with a name or isn't ALIVE with a `shipNetId`, an EntityState with `netId` 0 or a `variant` that doesn't match its `kind` (section 6.5), a list count larger than the bytes left, a string longer than its maximum | Drop, count as an offence |
+| A field out of range: button bits 5–7, an unknown enum value, `chunkIndex` ≥ `chunkCount`, `chunkCount` of 0 or more than 16, more than 48 entities or a roster that is neither 0 nor 4 entries, a roster in chunk 0 missing or one in another chunk, a roster whose `playerId`s aren't 0, 1, 2, 3 in order, a PlayerInfo whose state is EMPTY with a name or a `maxHealth`, isn't ALIVE with a `shipNetId` or a `health`, or has `health` above `maxHealth`, or `lives` above 99, an EntityState with `netId` 0 or a `variant` that doesn't match its `kind` (section 6.5), a list count larger than the bytes left, a string longer than its maximum | Drop, count as an offence |
 | A non-HELLO datagram from an address with no session | Drop, no reply |
 | More than 240 datagrams in one second from one address | Drop the excess |
 | More than 10 offences in one second from one session | Kick: KICK(PROTOCOL_ERROR) to the offender (section 6.8), EVENT PLAYER_LEFT(KICKED) to the others, then forget the session |

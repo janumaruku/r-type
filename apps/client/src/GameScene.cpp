@@ -78,7 +78,8 @@ GameScene::GameScene(std::unique_ptr<ServerLink> link,
     _world(context.sprites), _adapter(*_link, _world, _events),
     _sounds(context.sounds),
     _audioReactor(_events, context.audio, _sounds, _world),
-    _effectsReactor(_events, _world.registry(), context.settings)
+    _effectsReactor(_events, _world.registry(), context.settings),
+    _rules(predictionRules(welcome))
 {
     _world.setLocalPlayer(_playerId);
     setResources(_world.registry());

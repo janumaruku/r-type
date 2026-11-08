@@ -69,6 +69,8 @@ enum class Phase : std::uint8_t { PLAYING, GAME_OVER };
 struct FloatRange {
     float min = 0.0F;
     float max = 0.0F;
+
+    bool operator==(const FloatRange &) const = default;
 };
 
 /**

@@ -8,6 +8,8 @@
 #include "ServerConfig.hpp"
 
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <initializer_list>
 #include <limits>
@@ -56,6 +58,7 @@ TEST(ServerConfigTests, OnlyTheSeedUsesDefaults)
     EXPECT_EQ(config.port, 4242);
     EXPECT_EQ(config.seed, 3U);
     EXPECT_EQ(config.logLevel, Level::EG_INFO);
+    EXPECT_FALSE(config.rulesPath.has_value());
 }
 
 TEST(ServerConfigTests, OptionsWithoutTheSeedAreAnError)
@@ -157,6 +160,28 @@ TEST(ServerConfigTests, HelpWorksAfterValidOptions)
     EXPECT_THROW((void)parseArgs({"-p", "5000", "--help"}), HelpRequested);
 }
 
+TEST(ServerConfigTests, RulesTakesAnExistingFileWithEitherFlag)
+{
+    const std::filesystem::path path =
+        std::filesystem::temp_directory_path() / "rtype_server_rules.json";
+
+    std::ofstream(path) << "{}";
+    for (const std::string_view flag: {"-r", "--rules"}) {
+        const ServerConfig config =
+            parseArgs({"--seed", "1", flag, path.string()});
+
+        ASSERT_TRUE(config.rulesPath.has_value()) << flag;
+        EXPECT_EQ(*config.rulesPath, path) << flag;
+    }
+    std::filesystem::remove(path);
+}
+
+TEST(ServerConfigTests, RulesFileThatDoesNotExistIsAnError)
+{
+    expectConfigError({"--seed", "1", "--rules", "no/such/rules.json"},
+        "--rules");
+}
+
 TEST(ServerConfigTests, UsageNamesProgramAndOptions)
 {
     const std::string usage = ServerConfig::usage("r-type_server");
@@ -164,7 +189,7 @@ TEST(ServerConfigTests, UsageNamesProgramAndOptions)
     EXPECT_NE(usage.find("r-type_server"), std::string::npos);
 
     for (const std::string_view option:
-        {"--port", "--seed", "--log-level", "--help"}) {
+        {"--port", "--seed", "--log-level", "--rules", "--help"}) {
         EXPECT_NE(usage.find(option), std::string::npos) << option;
     }
 }

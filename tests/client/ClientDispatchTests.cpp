@@ -117,11 +117,11 @@ TEST_F(Dispatch, DatagramFromAnotherAddressIsDroppedWithoutALog)
     EXPECT_EQ(droppedLines(), 0U);
 }
 
-TEST_F(Dispatch, VersionOtherThanOneIsDroppedWithoutALog)
+TEST_F(Dispatch, AnotherVersionIsDroppedWithoutALog)
 {
     auto bytes = welcomeBytes();
 
-    bytes[VERSION_BYTE] = 2;
+    bytes[VERSION_BYTE] = rtype::protocol::Header::VERSION + 1;
     EXPECT_FALSE(check(datagramOf(bytes)).has_value());
     EXPECT_EQ(droppedLines(), 0U);
 }

@@ -33,6 +33,10 @@ constexpr float LABEL_OFFSET = 36.0F; // label centre, above the ship centre
 constexpr float HELP_X       = MARGIN;
 constexpr float HELP_GAP_LINES = 1.0F; // blank lines between the slots and the help
 constexpr unsigned MAX_CHARACTER_SIZE = 255;
+constexpr float HEALTH_BAR_WIDTH  = 4.0F; // in font sizes
+constexpr float HEALTH_BAR_HEIGHT = 0.6F; // in font sizes
+constexpr float HEALTH_BAR_GAP    = 0.5F; // in font sizes, before the text
+constexpr float LOW_HEALTH        = 0.25F; // the bar turns red at or below
 
 struct Banner {
     std::string text;
@@ -67,6 +71,18 @@ struct HudState {
 
 [[nodiscard]] std::string playerLabel(std::uint8_t playerId);
 [[nodiscard]] std::string slotLine(const protocol::PlayerInfo &slot);
+/*
+** The share of the health bar to fill, in [0, 1]: health / maxHealth for an
+** ALIVE slot, 0 otherwise.
+*/
+[[nodiscard]] float healthFraction(const protocol::PlayerInfo &slot) noexcept;
+
+/*
+** The x where a slot line's text starts: right of the health bar, so every
+** slot line starts at the same x, with or without a bar.
+*/
+[[nodiscard]] float slotTextX(std::uint8_t size) noexcept;
+
 [[nodiscard]] std::uint32_t teamScore(const std::array<protocol::PlayerInfo, 4>
         &roster) noexcept;
 

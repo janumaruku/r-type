@@ -7,6 +7,7 @@
 
 #include "rtype/protocol/Messages.hpp"
 
+#include <cmath>
 #include <format>
 
 #include "rtype/protocol/ProtocolError.hpp"
@@ -28,13 +29,27 @@ void deserialize(net::Packet &packet, Hello &message)
 void serialize(net::Packet &packet, const Welcome &message)
 {
     packet << message.playerId << message.tickRate << message.snapshotRate
-           << message.maxPlayers << message.serverTick;
+           << message.maxPlayers << message.serverTick << message.playerSpeed
+           << message.playerHalfWidth << message.playerHalfHeight;
 }
+
+namespace {
+/*
+** The client predicts its ship with these values: a NaN, an infinity or a
+** value <= 0 would freeze it or send it off the playfield.
+*/
+void checkMovementRule(float value, const char *what)
+{
+    if (!std::isfinite(value) || value <= 0.0F)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE, what);
+}
+} // namespace
 
 void deserialize(net::Packet &packet, Welcome &message)
 {
     packet >> message.playerId >> message.tickRate >> message.snapshotRate >>
-        message.maxPlayers >> message.serverTick;
+        message.maxPlayers >> message.serverTick >> message.playerSpeed >>
+        message.playerHalfWidth >> message.playerHalfHeight;
 
     if (message.playerId >= MAX_PLAYERS)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
@@ -48,6 +63,11 @@ void deserialize(net::Packet &packet, Welcome &message)
     if (message.snapshotRate == 0)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
             "WELCOME: snapshotRate out of range");
+    checkMovementRule(message.playerSpeed, "WELCOME: playerSpeed out of range");
+    checkMovementRule(message.playerHalfWidth,
+        "WELCOME: playerHalfWidth out of range");
+    checkMovementRule(message.playerHalfHeight,
+        "WELCOME: playerHalfHeight out of range");
 }
 
 void serialize(net::Packet &packet, const Reject &message)

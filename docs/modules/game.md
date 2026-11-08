@@ -34,10 +34,10 @@ Every component is a plain aggregate with no methods and no pointers. Entities a
 
 | Kind | Transform | Velocity | Collider | Health | Damage | Replicated | Extra |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| PLAYER_SHIP | yes | yes | PLAYER, 32 × 14 | 1 | 1 | yes | `PlayerShip`, `Weapon`, `ConfinedToPlayfield` |
-| BYDOS_SLAVE | yes | yes | ENEMY, 21 × 24 | 1 | 1 | yes | `StraightMover` or `SineMover`, `AimedShooter`, `Weapon`, `DespawnOutsidePlayfield`, `ScoreValue(100)` |
+| PLAYER_SHIP | yes | yes | PLAYER, 32 × 14 | `playerHealth` (100) | 1 | yes | `PlayerShip`, `Weapon`, `ConfinedToPlayfield` |
+| BYDOS_SLAVE | yes | yes | ENEMY, 21 × 24 | 1 | `enemyCollisionDamage` (20) | yes | `StraightMover` or `SineMover`, `AimedShooter`, `Weapon`, `DespawnOutsidePlayfield`, `ScoreValue(100)` |
 | PLAYER_MISSILE | yes | yes | PLAYER_SHOT, 12 × 4 | 1 | 1 | yes | `Projectile`, `Lifetime(2 s)`, `DespawnOutsidePlayfield` |
-| ENEMY_MISSILE | yes | yes | ENEMY_SHOT, 7 × 6 | 1 | 1 | yes | `Projectile`, `Lifetime(4 s)`, `DespawnOutsidePlayfield` |
+| ENEMY_MISSILE | yes | yes | ENEMY_SHOT, 7 × 6 | 1 | `enemyMissileDamage` (5) | yes | `Projectile`, `Lifetime(4 s)`, `DespawnOutsidePlayfield` |
 
 **Which layers collide** (anything not listed never collides):
 
@@ -67,6 +67,8 @@ classDiagram
         +roster() PlayerRoster const&
         +phase() Phase
         +tick() uint32_t
+        +rules() Rules const&
+        +shipHealth(uint8_t playerId) std::optional~Health~
         -handle(JoinPlayer const&) void
         -handle(LeavePlayer const&) void
         -handle(SetInput const&) void
@@ -360,10 +362,10 @@ Builders are free functions in `rtype/game/Builders.hpp`. Each one turns an **al
 
 | Builder | Components and values |
 | --- | --- |
-| `makePlayerShip` | `Transform{playerSpawn[playerId]}`, `Velocity{0, 0}`, `Collider{playerHalfSize, PLAYER}`, `Health{1, 1}`, `Damage{1}`, `PlayerShip{playerId, {}, respawnInvulnerability}` (every spawn starts protected), `Weapon{playerFireCooldown, 0, playerMuzzleOffset, playerMissileSpeed, (1, 0), false}`, `ConfinedToPlayfield`. `variant = playerId` |
-| `makeBydosSlave` | `Transform{position}`, `Velocity{−speed, 0}`, `Collider{enemyHalfSize, ENEMY}`, `Health{1, 1}`, `Damage{1}`, `StraightMover{speed}` **or** `SineMover{speed, position.y, amplitude, frequency, 0}`, `AimedShooter{enemyFireInterval, timer}`, `Weapon{0, 0, enemyMuzzleOffset, enemyMissileSpeed, (−1, 0), false}`, `ScoreValue{killScore}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant` = the pattern's value |
+| `makePlayerShip` | `Transform{playerSpawn[playerId]}`, `Velocity{0, 0}`, `Collider{playerHalfSize, PLAYER}`, `Health{playerHealth, playerHealth}`, `Damage{1}`, `PlayerShip{playerId, {}, respawnInvulnerability}` (every spawn starts protected), `Weapon{playerFireCooldown, 0, playerMuzzleOffset, playerMissileSpeed, (1, 0), false}`, `ConfinedToPlayfield`. `variant = playerId` |
+| `makeBydosSlave` | `Transform{position}`, `Velocity{−speed, 0}`, `Collider{enemyHalfSize, ENEMY}`, `Health{1, 1}`, `Damage{enemyCollisionDamage}`, `StraightMover{speed}` **or** `SineMover{speed, position.y, amplitude, frequency, 0}`, `AimedShooter{enemyFireInterval, timer}`, `Weapon{0, 0, enemyMuzzleOffset, enemyMissileSpeed, (−1, 0), false}`, `ScoreValue{killScore}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant` = the pattern's value |
 | `makePlayerMissile` | `Transform{position}`, `Velocity{playerMissileSpeed, 0}`, `Collider{playerMissileHalfSize, PLAYER_SHOT}`, `Health{1, 1}`, `Damage{1}`, `Projectile{owner, ownerPlayerId}`, `Lifetime{playerMissileLifetime}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant = 0` |
-| `makeEnemyMissile` | `Transform{position}`, `Velocity{direction.normalized() × enemyMissileSpeed}`, `Collider{enemyMissileHalfSize, ENEMY_SHOT}`, `Health{1, 1}`, `Damage{1}`, `Projectile{owner, NO_PLAYER}`, `Lifetime{enemyMissileLifetime}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant = 0` |
+| `makeEnemyMissile` | `Transform{position}`, `Velocity{direction.normalized() × enemyMissileSpeed}`, `Collider{enemyMissileHalfSize, ENEMY_SHOT}`, `Health{1, 1}`, `Damage{enemyMissileDamage}`, `Projectile{owner, NO_PLAYER}`, `Lifetime{enemyMissileLifetime}`, `DespawnOutsidePlayfield{despawnMargin}`. `variant = 0` |
 
 - **Randomness.** `makeBydosSlave` draws every random value from `Rng`, always in the same order: `speed` in `enemySpeed`, then `amplitude` and `frequency` in their ranges for a SINE, then the first fire `timer` in `enemyFireInterval`. With the same seed, the same builder calls give the same components.
 - **A zero `direction`** for `makeEnemyMissile` is a bug: it asserts in Debug, and fires straight left, (−1, 0), in Release.
@@ -381,11 +383,12 @@ Every gameplay number lives in `struct Rules` with these defaults. Nothing in a 
 
 | Rule | Default | Notes |
 | --- | --- | --- |
-| `playfield` | 1280 × 720 | Logical units. The client letterboxes it to its window. |
+| `playfield` | 1280 × 720 | Logical units, fixed: not in `rules.json`. Every client draws this same playfield, letterboxed to its window, so no player sees more of the world than another. |
 | `maxPlayers` | 4 |  |
 | `playerSpeed` | 320 u/s |  |
 | `playerSpawn[0..3]` | (120, 144), (120, 288), (120, 432), (120, 576) | One lane per player |
-| `playerLives` | 3 |  |
+| `playerLives` | 3 | At most 99, the most a SNAPSHOT carries |
+| `playerHealth` | 100 | A ship's health on every spawn. Each hit takes the hitter's damage; at 0 the ship dies and loses a life. There is no protection after a hit, only after a respawn |
 | `respawnDelay` / `respawnInvulnerability` | 2 s / 2 s |  |
 | `playerFireCooldown` | 0.20 s | 5 shots per second while held |
 | `playerMissileSpeed` / `playerMissileLifetime` | 900 u/s / 2 s | Fired straight right |
@@ -394,6 +397,7 @@ Every gameplay number lives in `struct Rules` with these defaults. Nothing in a 
 | `sineChance` | 0.5 | Half of the spawned Bydos get `SineMover` |
 | `enemyFireInterval` | random 1.5–3.0 s | Aimed at the nearest ship |
 | `enemyMissileSpeed` / `enemyMissileLifetime` | 420 u/s / 4 s |  |
+| `enemyMissileDamage` / `enemyCollisionDamage` | 5 / 20 | Health a ship loses to an enemy missile / to running into a Bydos (which dies). A ship survives 20 missiles or 5 collisions |
 | `spawnIntervalStart` / `spawnIntervalStep` / `spawnIntervalStepEvery` / `spawnIntervalMin` | 1.6 s / 0.05 s / 10 s / 0.5 s | Starts at 1.6 s, 0.05 s shorter every 10 s, never below 0.5 s |
 | `enemySpawnX` / `enemySpawnY` | 1312 / random 40–680 | Just off the right edge |
 | `maxEnemies` | 30 |  |
@@ -406,6 +410,44 @@ Every gameplay number lives in `struct Rules` with these defaults. Nothing in a 
 | `enemyMuzzleOffset` | (−10.5, 0) | Minus the Bydos's half width: its shots leave from its left edge |
 
 Each default is checked by `RulesTests.cpp`, so changing a number is a deliberate change to both this table and the test.
+
+### Loading the rules from JSON
+
+`Rules::load(path)` reads a JSON file, and `Rules::fromJson(json)` does the work: it starts from the defaults above and overrides each key it finds. The server loads `config/rules.json`, or the file given with `--rules` ([server.md](server.md#command-line)). The repository's `config/rules.json` lists every rule at its default, and `RulesLoadTests` checks that it loads back to exactly `Rules{}`.
+
+```json
+{
+  "playerSpeed": 400,
+  "playerHalfSize": [16, 7],
+  "enemySpeed": {"min": 160, "max": 240},
+  "playerSpawn": [[120, 144], [120, 288], [120, 432], [120, 576]]
+}
+```
+
+- **Keys** are the field names, except `playfield`, which is fixed (`playfield: unknown rule`). Every key is optional; a missing one keeps its default.
+- **Shapes.** A vector is `[x, y]`, a range is `{"min": a, "max": b}` with `min ≤ max`, and `playerSpawn` is an array of 4 vectors. Whole-number rules refuse `2.5`.
+- **Limits.**
+
+  | Rules | Accepted values |
+  | --- | --- |
+  | `maxPlayers` | 1–4: the roster, `playerSpawn` and the protocol have 4 slots |
+  | `playerLives` | 1–99 |
+  | `playerHealth`, `enemyMissileDamage`, `enemyCollisionDamage` | 1–255: the health travels as a u8 in each SNAPSHOT |
+  | `maxEnemies` | 0–255 |
+  | `killScore` | 0–4294967295 |
+  | `playerSpeed`, `playerFireCooldown`, the missile speeds and lifetimes, `spawnIntervalStart`, `spawnIntervalStepEvery`, `spawnIntervalMin` | > 0 |
+  | `respawnDelay`, `respawnInvulnerability`, `spawnIntervalStep`, `gameOverResetDelay`, `despawnMargin` | ≥ 0 |
+  | `sineChance` | 0–1 |
+  | The ranges | ≥ 0; `enemyFireInterval.min` > 0 |
+  | The half sizes | both components > 0 |
+  | `playerSpawn` | ≥ 0 and inside the playfield |
+  | `enemySpawnX`, the muzzle offsets | any finite number |
+
+- **Rules that must agree,** checked once every key is read: `spawnIntervalMin` ≤ `spawnIntervalStart`, every `playerSpawn` point inside the playfield, and `enemySpawnY.max` ≤ the playfield height.
+- **Errors.** Anything else throws `engine::core::ConfigError` naming the key: an unknown key (`playerSped: unknown rule`), a wrong type, an out-of-range value, a number too large for a float, or a top level that isn't an object. `load` adds the path in front, and also throws when the file can't be opened or isn't valid JSON.
+- **The client** never reads this file. It gets `playerSpeed` and `playerHalfSize` from WELCOME: with the fixed playfield, they are the only rules its prediction uses.
+
+`maxPlayers` is read and sent in WELCOME, but the roster still has 4 slots whatever its value.
 
 ### Sizes follow the sprite frames
 

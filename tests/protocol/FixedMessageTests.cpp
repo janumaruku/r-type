@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <gtest/gtest.h>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -37,7 +38,10 @@ TEST(FixedMessageTests, EveryMessageRoundTrips)
         .tickRate                            = 120,
         .snapshotRate                        = 20,
         .maxPlayers                          = 2,
-        .serverTick                          = 0xFFFFFFFF});
+        .serverTick                          = 0xFFFFFFFF,
+        .playerSpeed                         = 450.5F,
+        .playerHalfWidth                     = 20.0F,
+        .playerHalfHeight                    = 9.5F});
     expectRoundTrip(proto::Reject{.reason = proto::RejectReason::SERVER_FULL});
     expectRoundTrip(proto::Reject{
         .reason = proto::RejectReason::VERSION_MISMATCH});
@@ -62,7 +66,7 @@ TEST(FixedMessageTests, PayloadSizesMatchTheRfc)
 {
     EXPECT_EQ(encode(proto::Hello{}).size(), 2U);
     EXPECT_EQ(encode(proto::Hello{.playerName = SIXTEEN_BYTES}).size(), 18U);
-    EXPECT_EQ(encode(proto::Welcome{}).size(), 8U);
+    EXPECT_EQ(encode(proto::Welcome{}).size(), 20U);
     EXPECT_EQ(encode(proto::Reject{}).size(), 1U);
     EXPECT_EQ(encode(proto::Input{}).size(), 5U);
     EXPECT_EQ(encode(proto::Disconnect{}).size(), 1U);
@@ -104,6 +108,23 @@ TEST(FixedMessageTests, AnInvalidWelcomeIsRejected)
     expectOutOfRange(proto::Welcome{.maxPlayers = 5});
     expectOutOfRange(proto::Welcome{.tickRate = 0});
     expectOutOfRange(proto::Welcome{.snapshotRate = 0});
+}
+
+/*
+** The client predicts its ship with the movement rules: a value <= 0, an
+** infinity or a NaN would freeze it or throw it out of bounds.
+*/
+TEST(FixedMessageTests, AWelcomeWithABadMovementRuleIsRejected)
+{
+    constexpr float NOT_A_NUMBER = std::numeric_limits<float>::quiet_NaN();
+    constexpr float INFINITE     = std::numeric_limits<float>::infinity();
+
+    expectOutOfRange(proto::Welcome{.playerSpeed = 0.0F});
+    expectOutOfRange(proto::Welcome{.playerSpeed = NOT_A_NUMBER});
+    expectOutOfRange(proto::Welcome{.playerSpeed = INFINITE});
+    expectOutOfRange(proto::Welcome{.playerHalfWidth = -16.0F});
+    expectOutOfRange(proto::Welcome{.playerHalfWidth = 0.0F});
+    expectOutOfRange(proto::Welcome{.playerHalfHeight = NOT_A_NUMBER});
 }
 
 TEST(FixedMessageTests, AnUnknownRejectReasonIsRejected)

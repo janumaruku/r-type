@@ -120,6 +120,7 @@ ClientApp::ClientApp(ClientConfig config, ClientSettings settings):
 {
     FrameContext context = frameContext();
 
+    _renderer.setBarsColor(engine::core::Color::WHITE);
     _scenes.change(std::make_unique<ConnectingScene>(), context);
 }
 

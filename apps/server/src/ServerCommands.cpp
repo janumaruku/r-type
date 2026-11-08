@@ -27,8 +27,7 @@ bool HelloCommand::execute(ServerNetworkAdapter &adapter,
     }
     if (message.session != nullptr) {
         adapter.sendTo(*message.session, protocol::MessageType::WELCOME,
-            protocol::Welcome{.playerId = message.session->playerId,
-                .serverTick             = adapter.world().tick()});
+            welcomeFor(message.session->playerId, adapter.world()));
         return true;
     }
 
@@ -43,8 +42,7 @@ bool HelloCommand::execute(ServerNetworkAdapter &adapter,
     auto &session   = adapter.sessions().add(message.from, *playerId, name,
         message.receivedAt);
     adapter.sendTo(session, protocol::MessageType::WELCOME,
-        protocol::Welcome{
-            .playerId = *playerId, .serverTick = adapter.world().tick()});
+        welcomeFor(*playerId, adapter.world()));
     adapter.world().apply(game::JoinPlayer{
         .playerId = *playerId, .name = name});
     return true;
