@@ -217,12 +217,14 @@ One snapshot describes the whole game at one server tick. If it doesn't fit in o
 | Field | Type | Rules |
 | --- | --- | --- |
 | `netId` | u32 | ≠ 0 |
-| `kind` | u8 | 1 = PLAYER_SHIP, 2 = BYDOS_SLAVE, 3 = PLAYER_MISSILE, 4 = ENEMY_MISSILE |
-| `variant` | u8 | PLAYER_SHIP: the owner's `playerId`. BYDOS_SLAVE: movement pattern, 0 = STRAIGHT, 1 = SINE. Missiles: 0 |
+| `kind` | u8 | 1 = PLAYER_SHIP, 2 = BYDOS_SLAVE, 3 = PLAYER_MISSILE, 4 = ENEMY_MISSILE, 5 = GENERIC_PLAYER, 6 = GENERIC_ENEMY |
+| `variant` | u8 | PLAYER_SHIP: the owner's `playerId`. BYDOS_SLAVE: movement pattern, 0 = STRAIGHT, 1 = SINE. Missiles: 0. GENERIC_PLAYER and GENERIC_ENEMY: application-defined |
 | `x`, `y` | f32, f32 | Position |
 | `vx`, `vy` | f32, f32 | Velocity |
 
 A chunk is at most 8 (header) + 11 + (2 + 4 × 30) + (2 + 48 × 22) = 1199 bytes, so it always fits in one datagram.
+
+`GENERIC_PLAYER` and `GENERIC_ENEMY` are extension kinds for applications that reuse the engine's snapshot encoding for a different game. The R-Type server never emits these kinds. Their `variant` byte belongs to that application; an R-Type client has no presentation for them.
 
 **Rules for the client:**
 
