@@ -166,6 +166,7 @@ protected:
         .fonts = _fonts,
         .sprites = _sprites,
         .whitePixel = {},
+        .sounds = {},
         .config = _config,
         .settings = _settings,
         .now = Clock::now()};

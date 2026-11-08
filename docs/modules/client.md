@@ -33,6 +33,7 @@ classDiagram
         -render::TextureId _whitePixel
         -render::RaylibRenderer _renderer
         -std::unique_ptr~audio::IAudio~ _audio
+        -SoundBank _sounds
         -input::InputState _input
         -input::ActionMap~Action~ _actions
         -render::RenderQueue _queue
@@ -70,6 +71,7 @@ classDiagram
         +render::FontCache& fonts
         +SpriteCatalog const& sprites
         +render::TextureId whitePixel
+        +SoundBank sounds
         +ClientConfig const& config
         +ClientSettings const& settings
         +runtime::TimePoint now
@@ -216,7 +218,7 @@ classDiagram
 
 - **`SceneManager`** holds the current scene. `change` calls `onExit` on the old scene, if there is one, then `onEnter` on the new one. `change(nullptr)` only exits the current scene, which `ClientApp::run` does on the way out so the last scene's `onExit` runs. `update` runs the current scene's `update` and applies the `SceneRequest` it returns: `STAY` keeps the scene, `CHANGE` switches to `next` once the scene's `update` has returned, and `QUIT` makes `update` return `false` so the client loop stops. It also returns `false` when there is no scene. `draw` draws the current scene, if there is one.
 - **`SceneRequest`** is built with `stay()`, `change(next)` or `quit()`. `change(nullptr)` gives `stay()`, so a scene can't switch to nothing.
-- **`FrameContext`** is what a scene gets each frame: the input state and action map, audio, the texture and font caches, the sprite catalog, the starfield's white pixel (loaded by `ClientApp` next to the catalog, since loading a texture needs the window), the command-line config, the settings, and the frame's time.
+- **`FrameContext`** is what a scene gets each frame: the input state and action map, audio, the texture and font caches, the sprite catalog, the starfield's white pixel (loaded by `ClientApp` next to the catalog, since loading a texture needs the window), the `SoundBank` (loaded by `ClientApp` right after audio starts, so a missing sound file stops the client at start-up), the command-line config, the settings, and the frame's time.
 - **`ConnectingScene`** opens its link in `onEnter`, not in its constructor, so building the scene never throws: `resolveServer` resolves `-h`/`-p` to an IPv4 endpoint with `asio::ip::udp::resolver`, then it starts a `ServerLink` on a free local port and sends HELLO, again every 0.5 s. An unknown host or an unavailable port (`NetworkError`) is kept and shown by the first `update` as "Can't reach the server". Its `WelcomeCommand` and `RejectCommand` call back into it; only the first WELCOME counts, since every HELLO gets one. On WELCOME it moves the `ServerLink` into a new `GameScene`, so the socket is never recreated. On REJECT, or after 5 s with no answer, it switches to a `MessageScene` with the reason. Meanwhile it draws "Connecting to host:port..." with the seconds waited.
 - **`GameScene`** is the game itself (next sections). It switches to a `MessageScene` when the server sends SHUTDOWN or stays silent for 5 s.
 - **`MessageScene`** shows a title and a detail line ("Server full", "Connection lost", "Server closed"), sized from the `hudFontSize` setting (the title at twice the size), with a hint for the keys. CONFIRM (ENTER) reconnects through a new `ConnectingScene` when the message allows it, which a version mismatch does not. QUIT (ESCAPE) quits.

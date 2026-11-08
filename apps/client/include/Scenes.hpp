@@ -23,6 +23,7 @@
 #include "engine/render/TextureCache.hpp"
 #include "engine/render/DrawCommand.hpp"
 #include "engine/runtime/Clock.hpp"
+#include "SoundBank.hpp"
 #include "SpriteCatalog.hpp"
 
 namespace rtype::client {
@@ -36,6 +37,7 @@ struct FrameContext {
     engine::render::FontCache &fonts;
     const SpriteCatalog &sprites;
     engine::render::TextureId whitePixel;
+    SoundBank sounds;
     const ClientConfig &config;
     const ClientSettings &settings;
     engine::runtime::TimePoint now;
