@@ -111,10 +111,11 @@ classDiagram
         -bool _leftByChoice
         -bool _serverGone
         -Starfield _starfield
-        -Hud _hud
         +GameScene(std::unique_ptr~ServerLink~ link, protocol::Welcome welcome, FrameContext const& context)
         +playerId() uint8_t
         -leaveFor(LeaveCause cause) SceneRequest
+        -setHudResources(FrameContext const& context) void
+        -updateHudState(FrameContext const& context) void
     }
     class MessageScene {
         -std::string _title
@@ -302,7 +303,7 @@ The `GameScene` constructor registers these systems in `ClientWorld`'s registry,
 | `UPDATE` | `effectSystem` | `TransientEffect` | Registered (RTP-128) |
 | `UPDATE` | `starfieldSystem` | `Transform`, `const Star`, the `Rng` resource | Registered (RTP-128) |
 | `RENDER` | `renderSystem` | `const Transform`, `const Sprite`, the `ClientSettings` resource | Registered (RTP-128) |
-| `RENDER` | `hudSystem` | | RTP-130 |
+| `RENDER` | `hudSystem` | `PlayerLabel` and `Transform` through a view, the HUD resources below | Registered last, so the HUD draws over the sprites (RTP-130) |
 
 The registry also holds these resources:
 
@@ -314,7 +315,11 @@ The registry also holds these resources:
 | `Correction` | `GameScene`'s constructor; `target` set by `GameScene` on each new server sample of our ship | `std::optional<Vec2f> target`, the corrected position *C* that `predictionSystem` eases our ship towards |
 | `engine::ecs::DeltaTime` | `GameScene`'s constructor, then every frame | The frame's `dt` |
 | `engine::core::Rng` | `GameScene`'s constructor, seeded with `Rng::randomSeed()` | Client-side randomness: `spawnStarfield` and `starfieldSystem` place the stars with it |
-| `ClientSettings` | `GameScene`'s constructor, then copied from the `FrameContext` before each `RENDER` stage | `renderSystem` reads `highContrast` |
+| `ClientSettings` | `GameScene`'s constructor, then copied from the `FrameContext` before each `RENDER` stage | `renderSystem` reads `highContrast`, `hudSystem` reads `hudFontSize` |
+| `HudReactor` | `GameScene`'s constructor, subscribed to `_events` | The banners and the GAME OVER countdown that `hudSystem` draws and advances by `dt` |
+| `HudState` | `GameScene`'s constructor, then every frame before `UPDATE` | `showHelp`, flipped when TOGGLE_HUD_HELP (F1) `wasTriggered`, and `ping`, from `prediction.averagePing(now)` |
+| `ActionMap<Action>` | `GameScene`'s constructor, a copy of the `FrameContext`'s map | The keys the F1 help lists for each action. The bindings don't change during a game |
+| `const ClientWorld *` | `GameScene`'s constructor | The roster, for the slot lines and the team score |
 
 `renderSystem` is the only system that creates `DrawCommand`s for entities. It reads `Transform` and `Sprite` and nothing else, which matches the subject's point that the renderer needs only appearance and position.
 
@@ -326,7 +331,8 @@ Each frame of `GameScene`, with `dt = frameClock.restart()` capped at 0.25 s:
 2. `for (auto& d : link.socket.receiveAll()) adapter.handle(d, now)`.
 3. `inputStep.advance(dt)` returns *n*. For each of the *n* steps, sample the buttons from the action map, `sendInput(++sequence, buttons)`, `prediction.record(...)`, and move the local ship with `movePlayer(...)`. INPUT therefore goes out at exactly 60 Hz whatever the frame rate.
 4. If the server sent SHUTDOWN or KICK, switch to the `MessageScene` for that cause ("Server closed" or "Kicked"). If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
-5. Set the `DeltaTime` resource, run the `UPDATE` stage then the `RENDER` stage (which fills the `RenderQueue`), then `renderer.beginFrame / submit / endFrame`, and `audio.update()`.
+5. Update `HudState`: flip `showHelp` if TOGGLE_HUD_HELP was triggered, and set `ping` from `prediction.averagePing(now)`.
+6. Set the `DeltaTime` resource, run the `UPDATE` stage then the `RENDER` stage (which fills the `RenderQueue`), then `renderer.beginFrame / submit / endFrame`, and `audio.update()`.
 
 `GameScene::onExit` sends DISCONNECT (3 times, since UDP can lose it) when the player quits or the window closes. It doesn't after SHUTDOWN, KICK or a timeout: the server has already forgotten us, or can't be reached.
 

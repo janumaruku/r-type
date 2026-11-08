@@ -40,6 +40,8 @@ private:
     void advanceRenderClock(float dt);
     void stepLocalShip(std::uint8_t buttons);
     void reconcileLocalShip(TimePoint now);
+    void setHudResources(const FrameContext &context);
+    void updateHudState(const FrameContext &context);
 
     std::unique_ptr<ServerLink> _link;
     std::uint8_t _playerId;

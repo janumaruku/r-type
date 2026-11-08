@@ -20,12 +20,6 @@
 #include "RenderSystems.hpp"
 #include "rtype/game/Components.hpp"
 
-// Explicit declaration: RenderSystems.hpp currently declares this
-// outside the rtype::client namespace, whereas Hud.cpp defines it inside.
-namespace rtype::client {
-void hudSystem(engine::ecs::Registry &registry);
-}
-
 namespace rtype::client {
 namespace {
 

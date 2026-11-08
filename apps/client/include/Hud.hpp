@@ -9,10 +9,16 @@
 #define HUD_HPP
 
 #include <algorithm>
+#include <array>
+#include <chrono>
+#include <cstdint>
+#include <deque>
+#include <optional>
 #include <string>
 
 #include "ClientWorld.hpp"
 #include "GameEventBus.hpp"
+#include "engine/ecs/Registry.hpp"
 
 namespace rtype::client {
 
@@ -63,6 +69,15 @@ struct HudState {
 [[nodiscard]] std::string slotLine(const protocol::PlayerInfo &slot);
 [[nodiscard]] std::uint32_t teamScore(const std::array<protocol::PlayerInfo, 4>
         &roster) noexcept;
+
+/*
+** Runs last in RENDER. Reads the HudReactor, HudState, ClientSettings,
+** ActionMap<Action>, const ClientWorld *, RenderQueue and DeltaTime
+** resources, and pushes the slots, the team score, the ping, the banners,
+** the GAME OVER countdown, the player labels and, when showHelp is set,
+** the help.
+*/
+void hudSystem(engine::ecs::Registry &registry);
 
 } // namespace rtype::client
 
