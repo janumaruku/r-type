@@ -64,25 +64,30 @@ void setResources(engine::ecs::Registry &registry)
 }
 }
 
+/*
+** The reactors are declared after _events and _world, so they are destroyed
+** first and unsubscribe while the bus still exists.
+*/
 GameScene::GameScene(std::unique_ptr<ServerLink> link,
-    protocol::Welcome welcome, const SpriteCatalog &sprites):
+    protocol::Welcome welcome, const FrameContext &context):
     _link(std::move(link)), _playerId(welcome.playerId),
-    _world(sprites), _adapter(*_link, _world, _events)
+    _world(context.sprites), _adapter(*_link, _world, _events),
+    _sounds(context.sounds),
+    _audioReactor(_events, context.audio, _sounds, _world),
+    _effectsReactor(_events, _world.registry(), context.settings)
 {
     _world.setLocalPlayer(_playerId);
     setResources(_world.registry());
     addSystems(_world.registry());
 }
 
-/*
-** TODO(RTP-129): starts the looping stage1.ogg music.
-*/
 void GameScene::onEnter(FrameContext &context)
 {
     auto &registry = _world.registry();
 
     spawnStarfield(registry, registry.getResource<engine::core::Rng>(),
         context.whitePixel);
+    context.audio.playMusic(_sounds.stage1, true);
 }
 
 /*
@@ -141,10 +146,11 @@ void GameScene::draw(engine::render::RenderQueue &queue,
 ** Says goodbye unless the server already forgot us: after QUIT
 ** (_leftByChoice) or when the window closes (ClientApp's change(nullptr)),
 ** but not after SHUTDOWN, KICK or a timeout, which set _serverGone.
-** TODO(RTP-129): stops the music.
+** The music stops in every case.
 */
-void GameScene::onExit([[maybe_unused]] FrameContext &context)
+void GameScene::onExit(FrameContext &context)
 {
+    context.audio.stopMusic();
     if (!_serverGone)
         _adapter.sendDisconnect();
 }

@@ -8,6 +8,7 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <filesystem>
 #include <cstdint>
 #include <memory>
 #include <thread>
@@ -16,13 +17,16 @@
 #include "Actions.hpp"
 #include "GameScene.hpp"
 #include "LoopbackHelpers.hpp"
-#include "engine/audio/NullAudio.hpp"
+#include "engine/audio/IAudio.hpp"
+#include "engine/audio/Volume.hpp"
 #include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
 
 using client_tests::loopbackOf;
 using client_tests::waitForDatagrams;
+using engine::audio::MusicId;
+using engine::audio::SoundId;
 using engine::input::InputEvent;
 using engine::input::Key;
 using rtype::client::Action;
@@ -31,10 +35,63 @@ using rtype::client::GameScene;
 using rtype::client::MessageScene;
 using rtype::client::SceneRequest;
 using rtype::client::ServerLink;
+using rtype::protocol::EventType;
 using rtype::protocol::MessageType;
 
 namespace {
 constexpr auto QUIET = std::chrono::milliseconds(100);
+constexpr SoundId JOIN_SOUND{4};
+constexpr MusicId STAGE_MUSIC{1};
+
+/** An IAudio that records the sounds and music the scene plays. */
+class RecordingAudio final: public engine::audio::IAudio {
+public:
+    SoundId loadSound(const std::filesystem::path &) override
+    {
+        return SoundId{};
+    }
+    MusicId loadMusic(const std::filesystem::path &) override
+    {
+        return MusicId{};
+    }
+    void playSound(SoundId id, float) override
+    {
+        sounds.push_back(id);
+    }
+    void playMusic(MusicId id, bool loop) override
+    {
+        music     = id;
+        looping   = loop;
+        ++musicStarts;
+    }
+    void stopMusic() override
+    {
+        ++musicStops;
+    }
+    void setMasterVolume(float) override
+    {}
+    void setSfxVolume(float) override
+    {}
+    void setMusicVolume(float) override
+    {}
+    void setMuted(bool) override
+    {}
+    [[nodiscard]] const engine::audio::Volume &volumes() const override
+    {
+        return _volumes;
+    }
+    void update() override
+    {}
+
+    std::vector<SoundId> sounds;
+    MusicId music;
+    bool looping    = false;
+    int musicStarts = 0;
+    int musicStops  = 0;
+
+private:
+    engine::audio::Volume _volumes;
+};
 
 [[nodiscard]] MessageType typeOf(const net::Datagram &datagram)
 {
@@ -85,8 +142,10 @@ protected:
         link->socket.start();
         link->lastHeard = Clock::now();
         _client = loopbackOf(link->socket);
+        _context.sounds.join   = JOIN_SOUND;
+        _context.sounds.stage1 = STAGE_MUSIC;
         _scene = std::make_unique<GameScene>(std::move(link),
-            rtype::protocol::Welcome{.playerId = 0}, _sprites);
+            rtype::protocol::Welcome{.playerId = 0}, _context);
         _scene->onEnter(_context);
     }
 
@@ -108,6 +167,17 @@ protected:
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
         return SceneRequest::stay();
+    }
+
+    /* Updates the scene for `duration`, so it reads what the server sent. */
+    void updateFor(std::chrono::milliseconds duration)
+    {
+        const auto deadline = Clock::now() + duration;
+
+        while (Clock::now() < deadline) {
+            EXPECT_EQ(update(0.0F).kind, SceneRequest::Kind::STAY);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
     }
 
     template <class Message>
@@ -153,7 +223,7 @@ protected:
     std::unique_ptr<GameScene> _scene;
     engine::input::InputState _input;
     engine::input::ActionMap<Action> _actions;
-    engine::audio::NullAudio _audio;
+    RecordingAudio _audio;
     engine::render::TextureCache _textures;
     engine::render::FontCache _fonts;
     rtype::client::SpriteCatalog _sprites;
@@ -230,4 +300,48 @@ TEST_F(Game, ShutdownThenKickShowsServerClosedAndNoDisconnect)
     _scene->onExit(_context);
     EXPECT_EQ(countOf(waitForDatagrams(_server, 1, QUIET),
         MessageType::DISCONNECT), 0U);
+}
+
+TEST_F(Game, EnteringStartsTheLoopingStageMusic)
+{
+    EXPECT_EQ(_audio.musicStarts, 1);
+    EXPECT_EQ(_audio.music, STAGE_MUSIC);
+    EXPECT_TRUE(_audio.looping);
+}
+
+TEST_F(Game, LeavingStopsTheMusic)
+{
+    _scene->onExit(_context);
+    EXPECT_EQ(_audio.musicStops, 1);
+}
+
+TEST_F(Game, LeavingAfterTheServerIsGoneStillStopsTheMusic)
+{
+    _context.now = Clock::now() + std::chrono::seconds(6);
+    ASSERT_EQ(_scene->update(_context, 0.0F).kind,
+        SceneRequest::Kind::CHANGE);
+
+    _scene->onExit(_context);
+    EXPECT_EQ(_audio.musicStops, 1);
+}
+
+TEST_F(Game, AnEventFromTheServerPlaysItsSound)
+{
+    send(MessageType::EVENT, rtype::protocol::Event{.eventId = 1,
+        .type = EventType::PLAYER_JOINED, .a = 1});
+    updateFor(QUIET);
+
+    EXPECT_EQ(_audio.sounds, std::vector<SoundId>{JOIN_SOUND});
+}
+
+TEST_F(Game, TheSameEventReceivedThreeTimesPlaysOneSound)
+{
+    const rtype::protocol::Event joined{.eventId = 7,
+        .type = EventType::PLAYER_JOINED, .a = 1};
+
+    for (int copy = 0; copy < 3; ++copy)
+        send(MessageType::EVENT, joined);
+    updateFor(QUIET);
+
+    EXPECT_EQ(_audio.sounds, std::vector<SoundId>{JOIN_SOUND});
 }

@@ -75,7 +75,7 @@ SceneRequest ConnectingScene::update(FrameContext &context, float dt)
     if (_welcome)
         return SceneRequest::change(
             std::make_unique<GameScene>(std::move(_link), *_welcome,
-                context.sprites));
+                context));
     if (_rejected)
         return showRejection(*_rejected);
     _elapsed += dt;
