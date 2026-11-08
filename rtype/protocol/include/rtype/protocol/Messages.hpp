@@ -42,6 +42,9 @@ struct Welcome {
     std::uint8_t snapshotRate = 30;
     std::uint8_t maxPlayers   = MAX_PLAYERS;
     std::uint32_t serverTick  = 0;
+    float playerSpeed         = 320.0F;
+    float playerHalfWidth     = 16.0F;
+    float playerHalfHeight    = 7.0F;
 
     bool operator==(const Welcome &) const = default;
 };

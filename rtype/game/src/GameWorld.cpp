@@ -115,6 +115,19 @@ std::uint32_t GameWorld::tick() const noexcept
     return _tick;
 }
 
+const Rules &GameWorld::rules() const
+{
+    return _registry.getResource<Rules>();
+}
+
+std::optional<Health> GameWorld::shipHealth(std::uint8_t playerId) const
+{
+    for (auto &&[ship, health]: _registry.view<const PlayerShip, const Health>())
+        if (ship.playerId == playerId)
+            return health;
+    return std::nullopt;
+}
+
 void GameWorld::handle(const JoinPlayer &command)
 {
     auto &roster = _registry.getResource<PlayerRoster>();

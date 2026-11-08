@@ -10,6 +10,8 @@
 
 #include <cstdint>
 #include <exception>
+#include <filesystem>
+#include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -20,6 +22,7 @@
 namespace rtype::server {
 
 constexpr int EPITECH_EXIT_FAIL = 84;
+constexpr std::string_view DEFAULT_RULES_PATH = "config/rules.json";
 
 /**
  * @brief An invalid command line. what() names the option at fault.
@@ -39,6 +42,7 @@ struct ServerConfig {
     std::uint16_t port                = 4242;
     std::uint32_t seed                = 0;
     engine::core::log::Level logLevel = engine::core::log::Level::EG_INFO;
+    std::optional<std::filesystem::path> rulesPath;
 
     /**
      * @brief Reads the options of `server.md` § Command line.
@@ -48,8 +52,8 @@ struct ServerConfig {
      * @param args The arguments without the program name.
      * @throw HelpRequested on `-h` or `--help`.
      * @throw ConfigError on an unknown option, a missing value, no
-     * `--seed`, a port outside 1-65535, a seed outside 0-4294967295 or an
-     * unknown log level.
+     * `--seed`, a port outside 1-65535, a seed outside 0-4294967295, an
+     * unknown log level or a `--rules` file that doesn't exist.
      */
     [[nodiscard]] static ServerConfig parse(std::span<const std::string_view>
             args);

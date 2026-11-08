@@ -32,6 +32,24 @@ void expectDeserializes(const Message &message, const Message &expected)
 
 } // namespace
 
+TEST(ConversionsTests, WelcomeCarriesTheMovementRules)
+{
+    game::Rules rules;
+
+    rules.maxPlayers     = 2;
+    rules.playerSpeed    = 450.0F;
+    rules.playerHalfSize = {20.0F, 9.0F};
+    const game::GameWorld world(rules, 1);
+    const proto::Welcome welcome = server::welcomeFor(3, world);
+
+    EXPECT_EQ(welcome.playerId, 3);
+    EXPECT_EQ(welcome.maxPlayers, 2);
+    EXPECT_EQ(welcome.serverTick, world.tick());
+    EXPECT_FLOAT_EQ(welcome.playerSpeed, 450.0F);
+    EXPECT_FLOAT_EQ(welcome.playerHalfWidth, 20.0F);
+    EXPECT_FLOAT_EQ(welcome.playerHalfHeight, 9.0F);
+}
+
 TEST(ConversionsTests, StaticAssertionsCompile)
 {
     SUCCEED();
@@ -117,17 +135,21 @@ TEST(ConversionsTests, ConvertsFiredForBothSides)
     EXPECT_EQ(enemy.event.type, proto::EventType::ENEMY_FIRED);
 }
 
+/*
+** Alice joins and gets her ship on the next step; Bob joins after it, so he
+** is still waiting for his. Slot 2 is reserved but nobody joined it.
+*/
 TEST(ConversionsTests, ConvertsRosterAndEveryEntryDeserializes)
 {
-    game::PlayerRoster roster;
-    ASSERT_EQ(roster.reserve(), 0);
-    ASSERT_EQ(roster.reserve(), 1);
-    ASSERT_EQ(roster.reserve(), 2);
-    ASSERT_TRUE(roster.join(0, "Alice", 3));
-    ASSERT_TRUE(roster.onShipSpawned(0, 100));
-    ASSERT_TRUE(roster.join(1, "Bob", 2));
+    game::GameWorld world(game::Rules{}, 1);
+    ASSERT_EQ(world.reserveSlot(), 0);
+    ASSERT_EQ(world.reserveSlot(), 1);
+    ASSERT_EQ(world.reserveSlot(), 2);
+    world.apply(game::JoinPlayer{.playerId = 0, .name = "Alice"});
+    world.step(1.0F / 60.0F);
+    world.apply(game::JoinPlayer{.playerId = 1, .name = "Bob"});
 
-    const auto converted = server::rosterToProtocol(roster);
+    const auto converted = server::rosterToProtocol(world);
     const std::array expectedStates{proto::PlayerState::ALIVE,
         proto::PlayerState::RESPAWNING, proto::PlayerState::EMPTY,
         proto::PlayerState::EMPTY};
@@ -135,6 +157,27 @@ TEST(ConversionsTests, ConvertsRosterAndEveryEntryDeserializes)
         EXPECT_EQ(converted[i].state, expectedStates[i]);
         expectDeserializes(converted[i], converted[i]);
     }
+}
+
+TEST(ConversionsTests, TheRosterCarriesEachShipsHealth)
+{
+    game::Rules rules;
+    rules.playerHealth = 80;
+    game::GameWorld world(rules, 1);
+    ASSERT_EQ(world.reserveSlot(), 0);
+    ASSERT_EQ(world.reserveSlot(), 1);
+    world.apply(game::JoinPlayer{.playerId = 0, .name = "Alice"});
+    world.step(1.0F / 60.0F);
+    world.apply(game::JoinPlayer{.playerId = 1, .name = "Bob"});
+
+    const auto converted = server::rosterToProtocol(world);
+
+    EXPECT_EQ(converted[0].health, 80);
+    EXPECT_EQ(converted[0].maxHealth, 80);
+    EXPECT_EQ(converted[1].health, 0) << "no ship yet";
+    EXPECT_EQ(converted[1].maxHealth, 80);
+    EXPECT_EQ(converted[2].health, 0);
+    EXPECT_EQ(converted[2].maxHealth, 0) << "an EMPTY slot";
 }
 
 TEST(ConversionsTests, ConvertsEveryReplicatedEntityKindAndDeserializes)

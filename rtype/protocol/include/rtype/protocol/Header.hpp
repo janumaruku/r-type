@@ -17,7 +17,7 @@
 namespace rtype::protocol {
 struct Header {
     static constexpr std::uint16_t MAGIC  = 0x5254;
-    static constexpr std::uint8_t VERSION = 1;
+    static constexpr std::uint8_t VERSION = 2;
     static constexpr std::size_t SIZE     = 8;
 
     std::uint16_t magic  = MAGIC;

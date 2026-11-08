@@ -19,7 +19,7 @@
 namespace rtype::protocol {
 inline constexpr std::size_t MAX_ENTITIES_PER_CHUNK = 48;
 inline constexpr std::uint8_t MAX_CHUNKS            = 16;
-inline constexpr std::uint8_t MAX_LIVES             = 3;
+inline constexpr std::uint8_t MAX_LIVES             = 99;
 
 enum class PlayerState : std::uint8_t {
     EMPTY      = 0,
@@ -32,6 +32,8 @@ struct PlayerInfo {
     std::uint8_t playerId   = 0;
     PlayerState state       = PlayerState::EMPTY;
     std::uint8_t lives      = 0;
+    std::uint8_t health     = 0;
+    std::uint8_t maxHealth  = 0;
     std::uint32_t score     = 0;
     std::uint32_t shipNetId = 0;
     std::string name{};

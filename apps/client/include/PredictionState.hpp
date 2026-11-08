@@ -18,6 +18,7 @@
 #include "engine/core/Vec2.hpp"
 #include "engine/runtime/Clock.hpp"
 #include "rtype/game/Rules.hpp"
+#include "rtype/protocol/Messages.hpp"
 
 namespace rtype::client {
 struct PendingInput {
@@ -63,6 +64,14 @@ private:
     _pings;
     std::uint32_t _lastPinged = 0;
 };
+
+/**
+ * @brief The rules `PredictionState::step` needs, from the server's WELCOME:
+ * playerSpeed and playerHalfSize. So prediction moves our ship exactly as
+ * the server does. The playfield is fixed, and the other rules keep their
+ * defaults, since only the server uses them.
+ */
+[[nodiscard]] game::Rules predictionRules(const protocol::Welcome &welcome);
 }
 
 #endif //R_TYPE_PREDICTION_STATE_HPP

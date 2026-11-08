@@ -3,6 +3,9 @@
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <string>
 #include <gtest/gtest.h>
 #include <thread>
 
@@ -40,6 +43,11 @@ struct ServerAppTestAccess {
         return app._ticks;
     }
 
+    [[nodiscard]] static const game::Rules &rules(const ServerApp &app)
+    {
+        return app._world.rules();
+    }
+
     [[nodiscard]] static net::SocketStats socketStats(const ServerApp &app)
     {
         return app._socket.stats();
@@ -62,6 +70,41 @@ rtype::server::ServerConfig testConfig()
     config.port = 0;
     config.seed = 1;
     return config;
+}
+
+/* Writes `content` to a rules file named after the current test. */
+std::filesystem::path rulesFile(const std::string &content)
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() /
+        ("rtype_server_app_" +
+            std::string(
+                testing::UnitTest::GetInstance()->current_test_info()->name()) +
+            ".json");
+
+    std::ofstream(path) << content;
+    return path;
+}
+
+TEST(ServerAppTests, TheWorldUsesTheRulesFile)
+{
+    const std::atomic<bool> stopRequested{false};
+    auto config      = testConfig();
+    config.rulesPath = rulesFile(R"({"playerSpeed": 500, "playerLives": 5})");
+    const ServerApp app(config, stopRequested);
+
+    EXPECT_FLOAT_EQ(ServerAppTestAccess::rules(app).playerSpeed, 500.0F);
+    EXPECT_EQ(ServerAppTestAccess::rules(app).playerLives, 5);
+    std::filesystem::remove(*config.rulesPath);
+}
+
+TEST(ServerAppTests, ARefusedRulesFileStopsTheServer)
+{
+    const std::atomic<bool> stopRequested{false};
+    auto config      = testConfig();
+    config.rulesPath = rulesFile(R"({"playerSpeed": -1})");
+
+    EXPECT_THROW(ServerApp(config, stopRequested), engine::core::ConfigError);
+    std::filesystem::remove(*config.rulesPath);
 }
 
 TEST(ServerAppTests, StopsCleanly)

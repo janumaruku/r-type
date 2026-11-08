@@ -60,8 +60,13 @@ template <typename Enum>
 
 [[nodiscard]] protocol::EntityState toProtocol(const game::ReplicatedEntity
         &entity) noexcept;
+/**
+ * @brief The world's roster, with each ship's health: `health` is the
+ * ship's current health, clamped to 0-255, and 0 without a ship.
+ * `maxHealth` is the rules' playerHealth for every slot but EMPTY ones.
+ */
 [[nodiscard]] std::array<protocol::PlayerInfo, MAX_PLAYERS> rosterToProtocol(
-    const game::PlayerRoster &roster);
+    const game::GameWorld &world);
 
 struct OutgoingEvent {
     protocol::Event event;
@@ -69,6 +74,14 @@ struct OutgoingEvent {
 };
 
 [[nodiscard]] OutgoingEvent toProtocol(const game::GameEvent &event);
+
+/**
+ * @brief The WELCOME for `playerId`: the world's tick, its maxPlayers, and
+ * the movement rules the client predicts its ship with (playerSpeed and
+ * playerHalfSize). The playfield is fixed, so it isn't sent.
+ */
+[[nodiscard]] protocol::Welcome welcomeFor(std::uint8_t playerId,
+    const game::GameWorld &world);
 
 } // namespace rtype::server
 

@@ -15,6 +15,7 @@
 #include "engine/core/Vec2.hpp"
 #include "engine/ecs/Registry.hpp"
 #include "rtype/game/Commands.hpp"
+#include "rtype/game/Components.hpp"
 #include "rtype/game/Events.hpp"
 #include "rtype/game/PlayerRoster.hpp"
 #include "rtype/game/Rules.hpp"
@@ -54,6 +55,14 @@ public:
     [[nodiscard]] Phase phase() const;
 
     [[nodiscard]] std::uint32_t tick() const noexcept;
+
+    [[nodiscard]] const Rules &rules() const;
+
+    /**
+     * @brief The Health of `playerId`'s ship, or nothing while the player
+     * has no ship (EMPTY, RESPAWNING or OUT).
+     */
+    [[nodiscard]] std::optional<Health> shipHealth(std::uint8_t playerId) const;
 
 private:
     friend struct GameWorldTestAccess;

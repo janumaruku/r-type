@@ -237,7 +237,9 @@ TEST(IntegrationTests, VersionMismatchIsRejected)
     ServerFixture server;
     server_test::TestClient client(server.port());
     net::Packet packet;
-    packet << rtype::protocol::Header{.version = 2, .type = MessageType::HELLO}
+    packet << rtype::protocol::Header{
+                  .version = rtype::protocol::Header::VERSION + 1,
+                  .type    = MessageType::HELLO}
            << Hello{.playerName = "bad"};
     client.sendRaw(packet.bytes());
 

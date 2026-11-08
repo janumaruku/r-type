@@ -7,6 +7,8 @@
 
 #include "Conversions.hpp"
 
+#include <algorithm>
+
 #include "rtype/protocol/Event.hpp"
 
 namespace rtype::server {
@@ -83,19 +85,32 @@ protocol::EntityState toProtocol(const game::ReplicatedEntity &entity) noexcept
 }
 
 std::array<protocol::PlayerInfo, MAX_PLAYERS> rosterToProtocol(const game::
-        PlayerRoster &roster)
+        GameWorld &world)
 {
+    constexpr int MAX_WIRE_HEALTH = 255;
+    const auto maxHealth = static_cast<std::uint8_t>(
+        std::clamp<int>(world.rules().playerHealth, 0, MAX_WIRE_HEALTH));
     std::array<protocol::PlayerInfo, MAX_PLAYERS> protocolRoster{};
+
     for (size_t i = 0; i != MAX_PLAYERS; ++i) {
-        const auto *const p = roster.get(static_cast<std::uint8_t>(i));
-        if (p == nullptr) {
-            protocolRoster[i].playerId = static_cast<std::uint8_t>(i);
+        const auto playerId = static_cast<std::uint8_t>(i);
+        const auto *const p = world.roster().get(playerId);
+        if (p == nullptr || p->state == game::SlotState::EMPTY) {
+            protocolRoster[i].playerId = playerId;
             continue;
         }
+        const auto health = world.shipHealth(playerId);
+        const bool alive  = p->state == game::SlotState::ALIVE &&
+            health.has_value();
+
         protocolRoster[i] = {
             .playerId  = p->playerId,
             .state     = toProtocol(p->state),
             .lives     = p->lives,
+            .health    = alive ? static_cast<std::uint8_t>(std::clamp<int>(
+                                     health->current, 0, maxHealth))
+                               : std::uint8_t{0},
+            .maxHealth = maxHealth,
             .score     = p->score,
             .shipNetId = p->shipNetId,
             .name      = p->name,
@@ -107,6 +122,18 @@ std::array<protocol::PlayerInfo, MAX_PLAYERS> rosterToProtocol(const game::
 [[nodiscard]] OutgoingEvent toProtocol(const game::GameEvent &event)
 {
     return std::visit(EventConverter{}, event);
+}
+
+protocol::Welcome welcomeFor(std::uint8_t playerId, const game::GameWorld &world)
+{
+    const game::Rules &rules = world.rules();
+
+    return protocol::Welcome{.playerId = playerId,
+        .maxPlayers                    = rules.maxPlayers,
+        .serverTick                    = world.tick(),
+        .playerSpeed                   = rules.playerSpeed,
+        .playerHalfWidth               = rules.playerHalfSize.x(),
+        .playerHalfHeight              = rules.playerHalfSize.y()};
 }
 
 } // namespace rtype::server

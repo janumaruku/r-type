@@ -1,6 +1,7 @@
 #include "ServerApp.hpp"
 
 #include <chrono>
+#include <filesystem>
 #include <thread>
 #include <utility>
 
@@ -10,12 +11,34 @@ namespace rtype::server {
 
 namespace {
 constexpr std::chrono::milliseconds SEND_TIMEOUT{200};
+
+/*
+** --rules names a file that exists, checked by ServerConfig::parse. Without
+** it, config/rules.json is read when it exists, and the built-in defaults
+** are used otherwise. A file the loader refuses throws ConfigError, which
+** main turns into exit 84.
+*/
+game::Rules loadRules(const ServerConfig &config)
+{
+    engine::core::log::Logger logger("ServerApp");
+    const std::filesystem::path path =
+        config.rulesPath.value_or(DEFAULT_RULES_PATH);
+
+    if (!config.rulesPath && !std::filesystem::exists(path)) {
+        logger.info("{}: not found, using the built-in rules", path.string());
+        return {};
+    }
+    game::Rules rules = game::Rules::load(path);
+
+    logger.info("rules loaded from {}", path.string());
+    return rules;
+}
 }
 
 ServerApp::ServerApp(ServerConfig config,
     const std::atomic<bool> &stopRequested):
     _config(std::move(config)), _socket(_config.port),
-    _world(game::Rules{}, _config.seed), _adapter(_socket, _world, _sessions),
+    _world(loadRules(_config), _config.seed), _adapter(_socket, _world, _sessions),
     _ticker(TICK_PERIOD), _stopRequested(stopRequested)
 {
     engine::core::log::setLevel(_config.logLevel);

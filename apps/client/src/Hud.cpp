@@ -138,6 +138,21 @@ std::string slotLine(const protocol::PlayerInfo &slot)
     return player + " -";
 }
 
+float healthFraction(const protocol::PlayerInfo &slot) noexcept
+{
+    if (slot.state != protocol::PlayerState::ALIVE || slot.maxHealth == 0)
+        return 0.0F;
+    return std::clamp(static_cast<float>(slot.health) /
+            static_cast<float>(slot.maxHealth),
+        0.0F, 1.0F);
+}
+
+float slotTextX(std::uint8_t size) noexcept
+{
+    return MARGIN +
+        ((HEALTH_BAR_WIDTH + HEALTH_BAR_GAP) * static_cast<float>(size));
+}
+
 std::uint32_t teamScore(const std::array<protocol::PlayerInfo, 4> &roster)
     noexcept
 {
@@ -157,6 +172,42 @@ static engine::render::TextCmd text(std::string value, std::uint8_t size,
         .color         = engine::core::Color::WHITE,
         .layer         = layers::HUD,
         .align         = align};
+}
+
+/*
+** A dark frame with a white outline, then the filled share on top: green,
+** or red at LOW_HEALTH or below. An EMPTY slot has no bar; a player waiting
+** to respawn or out shows an empty frame.
+*/
+static void pushHealthBar(engine::render::RenderQueue &queue,
+    const protocol::PlayerInfo &slot, std::uint8_t size, float lineTop)
+{
+    if (slot.state == protocol::PlayerState::EMPTY)
+        return;
+    const float sizeF    = static_cast<float>(size);
+    const float width    = HEALTH_BAR_WIDTH * sizeF;
+    const float height   = HEALTH_BAR_HEIGHT * sizeF;
+    const engine::core::Vec2f corner{MARGIN,
+        lineTop + ((sizeF - height) / 2.0F)};
+    const float fraction = healthFraction(slot);
+    const engine::core::Color frame{40, 40, 40, 255};
+    const engine::core::Color full{60, 200, 80, 255};
+    const engine::core::Color low{220, 60, 60, 255};
+
+    queue.push(engine::render::RectCmd{
+        .rect             = engine::core::FloatRect(corner, width, height),
+        .fill             = frame,
+        .outline          = engine::core::Color::WHITE,
+        .outlineThickness = 1.0F,
+        .layer            = layers::HUD});
+    if (fraction <= 0.0F)
+        return;
+    queue.push(engine::render::RectCmd{
+        .rect = engine::core::FloatRect(corner, width * fraction, height),
+        .fill = fraction <= LOW_HEALTH ? low : full,
+        .outline          = engine::core::Color::CLEAR,
+        .outlineThickness = 0.0F,
+        .layer            = layers::HUD});
 }
 
 static std::string keyList(const std::vector<engine::input::Key> &keys)
@@ -192,9 +243,12 @@ void hudSystem(engine::ecs::Registry &registry)
     reactor.update(dt);
 
     for (std::size_t slot = 0; slot < roster.size(); ++slot) {
+        const float lineTop =
+            MARGIN + (static_cast<float>(slot) * lineHeight);
+
+        pushHealthBar(queue, roster[slot], size, lineTop);
         queue.push(text(slotLine(roster[slot]), size,
-            {MARGIN, MARGIN + (static_cast<float>(slot) * lineHeight)},
-            engine::render::TextAlign::LEFT));
+            {slotTextX(size), lineTop}, engine::render::TextAlign::LEFT));
     }
 
     queue.push(text(std::format("team {}", teamScore(roster)), size,

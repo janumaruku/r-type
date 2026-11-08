@@ -546,7 +546,8 @@ TEST(HudSystemTests, TheHelpStartsBelowTheSlotLinesAtFontSize32)
     for (const auto &text: texts) {
         const float top = text.position.y();
 
-        if (text.text.starts_with("P") && text.position.x() == MARGIN)
+        if (text.text.starts_with("P") &&
+            text.position.x() == slotTextX(text.characterSize))
             slotsBottom = std::max(slotsBottom,
                 top + static_cast<float>(text.characterSize));
         if (text.text.find(": ") != std::string::npos)
@@ -554,6 +555,85 @@ TEST(HudSystemTests, TheHelpStartsBelowTheSlotLinesAtFontSize32)
     }
     ASSERT_GT(slotsBottom, 0.0F);
     EXPECT_GE(helpTop, slotsBottom);
+}
+
+// -----------------------------------------------------------------------------
+// Health bars
+// -----------------------------------------------------------------------------
+
+TEST(HudTests, HealthFractionIsHealthOverMaxForALiveShip)
+{
+    EXPECT_FLOAT_EQ(healthFraction({.state = PlayerState::ALIVE,
+                        .health                 = 25,
+                        .maxHealth              = 100}),
+        0.25F);
+    EXPECT_FLOAT_EQ(healthFraction({.state = PlayerState::RESPAWNING,
+                        .maxHealth              = 100}),
+        0.0F);
+    EXPECT_FLOAT_EQ(healthFraction({.state = PlayerState::ALIVE}), 0.0F);
+}
+
+/*
+** At size 32 a bar is 128 wide. A full ship gets a frame and a full green
+** fill, a ship at 20% a frame and a red fifth, a respawning player only the
+** frame, and an EMPTY slot no bar.
+*/
+TEST(HudSystemTests, EachJoinedSlotHasAHealthBarFilledToItsHealth)
+{
+    GameEventBus bus;
+    ClientWorld world{SpriteCatalog{}};
+    Registry registry;
+    auto roster = makeRoster();
+
+    roster[0].health    = 100;
+    roster[0].maxHealth = 100;
+    roster[1].health    = 20;
+    roster[1].maxHealth = 100;
+    roster[2].state     = PlayerState::RESPAWNING;
+    roster[2].maxHealth = 100;
+    roster[3]           = {.playerId = 3};
+    world.applyRoster(roster);
+    setupHudRegistry(registry, bus, world);
+
+    hudSystem(registry);
+
+    std::vector<engine::render::RectCmd> rects;
+    for (const auto &command:
+        registry.getResource<engine::render::RenderQueue>().commands())
+        if (const auto *rect = std::get_if<engine::render::RectCmd>(&command))
+            rects.push_back(*rect);
+
+    ASSERT_EQ(rects.size(), 5U);
+    EXPECT_FLOAT_EQ(rects[0].rect.width(), 128.0F);
+    EXPECT_FLOAT_EQ(rects[1].rect.width(), 128.0F);
+    EXPECT_EQ(rects[1].fill, engine::core::Color(60, 200, 80, 255));
+    EXPECT_FLOAT_EQ(rects[3].rect.width(), 128.0F * 0.2F);
+    EXPECT_EQ(rects[3].fill, engine::core::Color(220, 60, 60, 255));
+    EXPECT_FLOAT_EQ(rects[4].rect.width(), 128.0F);
+    EXPECT_GT(rects[4].rect.origin().y(), rects[3].rect.origin().y());
+    for (const auto &rect: rects)
+        EXPECT_FLOAT_EQ(rect.rect.origin().x(), MARGIN);
+}
+
+TEST(HudSystemTests, SlotTextStartsRightOfTheBar)
+{
+    GameEventBus bus;
+    ClientWorld world{SpriteCatalog{}};
+    Registry registry;
+
+    world.applyRoster(makeRoster());
+    setupHudRegistry(registry, bus, world);
+
+    hudSystem(registry);
+
+    const auto texts =
+        textCommands(registry.getResource<engine::render::RenderQueue>());
+    const auto alice = std::ranges::find_if(texts,
+        [](const auto &text) { return text.text.starts_with("P1 Alice"); });
+
+    ASSERT_NE(alice, texts.end());
+    EXPECT_FLOAT_EQ(alice->position.x(),
+        MARGIN + ((HEALTH_BAR_WIDTH + HEALTH_BAR_GAP) * 32.0F));
 }
 
 } // namespace rtype::client
