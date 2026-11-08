@@ -50,7 +50,7 @@ void HudReactor::onEvent(const protocol::Event &event)
     case protocol::EventType::PLAYER_KILLED: {
         const auto &roster = _world.roster();
 
-        const auto *const found = std::ranges::find_if(roster,
+        const auto found = std::ranges::find_if(roster,
             [&event](const protocol::PlayerInfo &slot) {
                 return slot.state != protocol::PlayerState::EMPTY &&
                     slot.shipNetId == event.b;
