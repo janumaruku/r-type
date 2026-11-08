@@ -500,4 +500,36 @@ TEST(HudSystemTests, ShowHelpDisplaysEveryActionAndItsKeys)
     EXPECT_NE(moveUp->text.find("W"), std::string::npos);
 }
 
+/*
+** At hudFontSize 32 a fixed help position overlapped the 4th slot line: the
+** help must start below the bottom of the last slot line, whatever the size.
+*/
+TEST(HudSystemTests, TheHelpStartsBelowTheSlotLinesAtFontSize32)
+{
+    GameEventBus bus;
+    ClientWorld world{SpriteCatalog{}};
+    Registry registry;
+
+    setupHudRegistry(registry, bus, world, true);
+
+    hudSystem(registry);
+
+    const auto texts =
+        textCommands(registry.getResource<engine::render::RenderQueue>());
+    float slotsBottom = 0.0F;
+    float helpTop     = SCREEN_HEIGHT;
+
+    for (const auto &text: texts) {
+        const float top = text.position.y();
+
+        if (text.text.starts_with("P") && text.position.x() == MARGIN)
+            slotsBottom = std::max(slotsBottom,
+                top + static_cast<float>(text.characterSize));
+        if (text.text.find(": ") != std::string::npos)
+            helpTop = std::min(helpTop, top);
+    }
+    ASSERT_GT(slotsBottom, 0.0F);
+    EXPECT_GE(helpTop, slotsBottom);
+}
+
 } // namespace rtype::client

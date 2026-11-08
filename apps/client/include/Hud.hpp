@@ -25,7 +25,7 @@ constexpr float LINE_SPACING =
     1.4F; // line height, as a multiple of the font size
 constexpr float LABEL_OFFSET = 36.0F; // label centre, above the ship centre
 constexpr float HELP_X       = MARGIN;
-constexpr float HELP_Y       = 160.0F; // below the four slot lines
+constexpr float HELP_GAP_LINES = 1.0F; // blank lines between the slots and the help
 constexpr unsigned MAX_CHARACTER_SIZE = 255;
 
 struct Banner {

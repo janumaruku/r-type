@@ -228,13 +228,15 @@ void hudSystem(engine::ecs::Registry &registry)
     }
 
     if (state.showHelp) {
-        const auto last = static_cast<std::uint8_t>(Action::CONFIRM);
+        const auto last    = static_cast<std::uint8_t>(Action::CONFIRM);
+        const float helpTop = MARGIN +
+            ((static_cast<float>(roster.size()) + HELP_GAP_LINES) * lineHeight);
         for (std::uint8_t value = 0; value <= last; ++value) {
             const auto action = static_cast<Action>(value);
             queue.push(text(std::format("{}: {}", toString(action),
                                 keyList(actions.keysFor(action))),
                 size,
-                {HELP_X, HELP_Y + (static_cast<float>(value) * lineHeight)},
+                {HELP_X, helpTop + (static_cast<float>(value) * lineHeight)},
                 engine::render::TextAlign::LEFT));
         }
     }
