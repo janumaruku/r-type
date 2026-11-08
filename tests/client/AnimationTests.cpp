@@ -14,6 +14,7 @@
 #include <string_view>
 #include <utility>
 
+#include "DisplayHelpers.hpp"
 #include "engine/core/Color.hpp"
 #include "engine/core/Rect2.hpp"
 #include "engine/core/Vec2.hpp"
@@ -88,6 +89,8 @@ class AnimationFixture: public ::testing::Test {
 protected:
     void SetUp() override
     {
+        if (!client_tests::hasDisplay())
+            GTEST_SKIP() << "no display: loading a sprite sheet needs a window";
         SetConfigFlags(FLAG_WINDOW_HIDDEN);
         SetTraceLogLevel(LOG_NONE);
         InitWindow(64, 64, "r-type animation tests");
