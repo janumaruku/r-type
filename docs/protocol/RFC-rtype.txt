@@ -1,0 +1,1082 @@
+Epitech R-Type Group                                         R-Type Team
+Request for Comments: 4242                                       Epitech
+Category: Informational                                    November 2026
+
+                   R-Type Network Protocol, Version 2
+
+Status of This Memo
+
+   This document specifies the network protocol of the Epitech R-Type
+   project, a multiplayer shoot'em up.  It describes version 2 of the
+   protocol.  Distribution of this memo is unlimited.
+
+Abstract
+
+   This document specifies the binary, UDP-based protocol spoken
+   between an R-Type game server and its clients.  The protocol is
+   state-based: the server periodically sends the whole game state, so
+   that a lost datagram is repaired by the next one instead of being
+   resent.  The document is complete enough to write a compatible
+   client or server without reading the reference implementation.
+
+Copyright Notice
+
+   Copyright (c) 2026 Epitech R-Type Group.  All rights reserved.
+
+Table of Contents
+
+   1.  Introduction .................................................. 3
+      1.1.  Requirements Language .................................... 3
+      1.2.  Terminology .............................................. 3
+   2.  Transport ..................................................... 3
+      2.1.  Absence of a Length Field ................................ 4
+      2.2.  Datagram Size Limit ...................................... 4
+   3.  Data Types .................................................... 4
+   4.  Packet Header ................................................. 5
+      4.1.  Magic Versus Type ........................................ 6
+      4.2.  Example .................................................. 6
+   5.  Message Types ................................................. 7
+   6.  Message Formats ............................................... 7
+      6.1.  HELLO (0x01, Client to Server) ........................... 7
+      6.2.  WELCOME (0x81, Server to Client) ......................... 8
+      6.3.  REJECT (0x82, Server to Client) .......................... 8
+      6.4.  INPUT (0x02, Client to Server) ........................... 9
+      6.5.  SNAPSHOT (0x83, Server to Client) ........................ 9
+      6.6.  EVENT (0x84, Server to Client) .......................... 11
+      6.7.  DISCONNECT (0x03, Client to Server) ..................... 12
+      6.8.  SHUTDOWN (0x85, Server to Client) ....................... 12
+      6.9.  KICK (0x86, Server to Client) ........................... 12
+   7.  Notification of Game Events .................................. 13
+   8.  Connection Lifecycle ......................................... 13
+      8.1.  Game Phases ............................................. 14
+   9.  Disconnection and Crash Handling ............................. 14
+   10.  Error Handling .............................................. 14
+      10.1.  Why Errors Are Not Answered ............................ 15
+
+R-Type Team                    Informational                    [Page 1]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+      10.2.  Error Codes ............................................ 15
+      10.3.  Processing Order ....................................... 15
+      10.4.  Receiver Actions ....................................... 16
+      10.5.  Field Validation ....................................... 17
+   11.  Bandwidth ................................................... 17
+   12.  Security Considerations ..................................... 18
+   13.  References .................................................. 18
+   Appendix A.  Reference Implementation ............................ 18
+   Authors' Address ................................................. 19
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+R-Type Team                    Informational                    [Page 2]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+1.  Introduction
+
+   This document specifies the binary protocol between an R-Type server
+   and its clients.  Up to four players connect to one server and fight
+   together against waves of enemies.  The server runs the whole
+   simulation; the clients send the buttons their player holds and
+   display what the server describes.
+
+   The protocol is state-based.  Every snapshot the server sends
+   describes the whole game: every entity and every player slot.  A
+   client that loses packets catches up on the next snapshot, 33 ms
+   later.  There are no acknowledgements and no resends.  The few
+   messages that matter beyond a single snapshot are repeated instead
+   (Sections 6.2 and 6.6).
+
+1.1.  Requirements Language
+
+   The key words "MUST", "MUST NOT", "SHOULD" and "MAY" in this
+   document are to be interpreted as described in RFC 2119.
+
+1.2.  Terminology
+
+   Server:  The program that runs the game simulation and is the only
+      authority on the game state.
+
+   Client:  The program a player runs.  It sends inputs and displays
+      the state received from the server.
+
+   Session:  The server's record of one accepted client, identified by
+      the client's source IP address and UDP port.
+
+   Tick:  One step of the server's simulation.  The server runs 60
+      ticks per second.
+
+   Entity:  An object of the game world: a ship, an enemy or a missile.
+
+   NetId:  The identifier the server gives to an entity (Section 3).
+
+   Offence:  A datagram from an established session that fails
+      validation (Section 10).
+
+2.  Transport
+
+   o  All messages travel over UDP.  There is no TCP connection.
+
+   o  One datagram carries exactly one message: an 8-byte header
+      followed by the message payload.
+
+   o  A datagram MUST NOT exceed 1200 bytes, header included.
+
+
+
+R-Type Team                    Informational                    [Page 3]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+   o  The server listens on port 4242 by default.  A client sends from
+      any port.  The server answers to the source address and port of
+      the datagrams it receives.
+
+2.1.  Absence of a Length Field
+
+   On TCP, data is a stream of bytes: one read can return half a
+   message, or one and a half messages glued together.  A TCP protocol
+   therefore needs a length field to find where each message ends.
+
+   UDP keeps message boundaries instead.  One receive always returns
+   exactly one whole datagram, never part of one and never two merged
+   together.  The length of the datagram is therefore the length of the
+   message, and a length field would only repeat it.
+
+   UDP loses datagrams because nothing resends them.  A router with a
+   full queue, radio interference or a full receive buffer drops a
+   datagram silently.  This protocol copes with that through
+   state-based snapshots (Section 6.5) rather than by resending data.
+
+2.2.  Datagram Size Limit
+
+   The 1200-byte limit avoids IP fragmentation.  A network link carries
+   frames of limited size, about 1500 bytes on Ethernet and Wi-Fi.  A
+   larger UDP datagram is split by IP into fragments, and if any one
+   fragment is lost, the whole datagram is lost.  Some routers and
+   firewalls drop fragments on purpose.
+
+   1200 bytes, once the IP and UDP headers are added, stays below the
+   1280-byte minimum that every IPv6 link must carry, so each datagram
+   travels as a single piece on any network.
+
+   A large snapshot is therefore sent as several chunks that are each
+   usable on their own (Section 6.5).  The receiver never reassembles
+   datagrams.
+
+3.  Data Types
+
+   All multi-byte values are little-endian: the least significant byte
+   comes first.
+
+
+
+
+
+
+
+
+
+
+
+
+R-Type Team                    Informational                    [Page 4]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+   +-----------+-------------+---------------------------------------+
+   | Type      | Size        | Encoding                              |
+   +-----------+-------------+---------------------------------------+
+   | u8        | 1 byte      | Unsigned integer                      |
+   | u16       | 2 bytes     | Unsigned integer                      |
+   | u32       | 4 bytes     | Unsigned integer                      |
+   | f32       | 4 bytes     | IEEE 754 binary32                     |
+   | string<N> | 1 + n bytes | A u8 length n, with n <= N, followed  |
+   |           |             | by n bytes.  No terminator.           |
+   | list<T>   | 2 + n * T   | A u16 count n, followed by n          |
+   |           |             | elements of type T                    |
+   +-----------+-------------+---------------------------------------+
+
+   The bytes of a string SHOULD be printable ASCII (0x20 to 0x7E).  A
+   receiver MUST NOT reject other bytes; Section 6.1 says how the
+   server handles them.
+
+   Conventions:
+
+   NetId:  A u32 the server assigns to each entity.  0 means "none".  A
+      NetId is never reused during one run of the server.
+
+   Coordinates:  f32 logical units.  The playfield is 1280 x 720 units,
+      with the origin at the top-left corner and y pointing down.
+      Velocities are in units per second.
+
+   Ticks:  u32 counters of the server's 60 Hz simulation.
+
+4.  Packet Header
+
+   Every datagram starts with this 8-byte header:
+
+    0                   1                   2                   3
+    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |             Magic             |    Version    |     Type      |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                           Sequence                            |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+   |                          Payload ...                          |
+   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+   Magic (u16):  MUST be 0x5254, stored as the bytes 54 52.  Any other
+      value: the datagram is dropped.  It is the same in every datagram
+      of every type, in both directions.
+
+   Version (u8):  The protocol version.  MUST be 2.  It lets the server
+      tell an outdated client apart from a broken one and answer it
+      with REJECT(VERSION_MISMATCH).
+
+   Type (u8):  The message type (Section 5).
+
+R-Type Team                    Informational                    [Page 5]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+   Sequence (u32):  A counter kept by the sender for this peer.  It
+      starts at 1 and increases by 1 for every datagram sent to that
+      peer.  UDP may deliver a datagram twice or out of order; the
+      counter lets a receiver discard duplicates and stale datagrams,
+      and measure loss.
+
+   Payload:  Exactly the bytes the message type defines, no more and
+      no less.  There is no length field (Section 2.1): the payload is
+      everything after byte 8.
+
+4.1.  Magic Versus Type
+
+   The Type field answers "which of our messages is this?".  The Magic
+   field answers "is this one of our messages at all?".
+
+   Any program can send bytes to an open UDP port: port scanners,
+   misconfigured tools, or another client pointed at the wrong server.
+   Without Magic, the byte after the version would be read as a type;
+   with 9 valid types out of 256 values, about 1 junk datagram in 28
+   would reach a message handler.  With Magic, a junk datagram must also
+   start with exactly 54 52, a 1 in 65536 chance, and it is rejected
+   after reading 2 bytes.
+
+   Magic is a cheap early filter, not a security barrier.  Every
+   message is still fully validated (Section 10).
+
+4.2.  Example
+
+   The 1500th datagram of a client, carrying input number 812 with UP
+   and FIRE held:
+
+     Offset: 0  1   2   3   4  5  6  7   8  9  10 11  12
+     Bytes:  54 52  02  02  DC 05 00 00  2C 03 00 00  11
+             |      |   |   |            |            |
+             |      |   |   Sequence     |            Buttons
+             |      |   Type             InputSequence
+             |      Version
+             Magic
+
+   o  54 52: Magic 0x5254.
+
+   o  02: Version 2.
+
+   o  02: Type INPUT.
+
+   o  DC 05 00 00: Sequence 1500 (0x000005DC).
+
+   o  2C 03 00 00: InputSequence 812 (0x0000032C).
+
+   o  11: Buttons 0x11, bit 0 (UP) and bit 4 (FIRE).
+
+
+R-Type Team                    Informational                    [Page 6]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+5.  Message Types
+
+   Client-to-server types are below 0x80; server-to-client types are
+   0x80 and above.
+
+   +------+------------+-----+-----------------------------+---------+
+   | Type | Name       | Dir | When it is sent             | Payload |
+   +------+------------+-----+-----------------------------+---------+
+   | 0x01 | HELLO      | C>S | Every 0.5 s until WELCOME   | 2-18    |
+   |      |            |     | or REJECT arrives           |         |
+   | 0x02 | INPUT      | C>S | Every client tick (60 Hz)   | 5       |
+   |      |            |     | while in game               |         |
+   | 0x03 | DISCONNECT | C>S | 3 times when the player     | 1       |
+   |      |            |     | quits                       |         |
+   | 0x81 | WELCOME    | S>C | In reply to every HELLO     | 21      |
+   |      |            |     | from an accepted client     |         |
+   | 0x82 | REJECT     | S>C | In reply to a HELLO that    | 1       |
+   |      |            |     | cannot be accepted          |         |
+   | 0x83 | SNAPSHOT   | S>C | 30 times per second, in one | 15-1191 |
+   |      |            |     | or more chunks              |         |
+   | 0x84 | EVENT      | S>C | When something happens;     | 21      |
+   |      |            |     | important events 3 times    |         |
+   | 0x85 | SHUTDOWN   | S>C | 3 times when the server     | 0       |
+   |      |            |     | stops                       |         |
+   | 0x86 | KICK       | S>C | 3 times when the server     | 1       |
+   |      |            |     | kicks this client           |         |
+   +------+------------+-----+-----------------------------+---------+
+
+   Payload sizes are in bytes.  C>S is client to server, S>C is server
+   to client.
+
+6.  Message Formats
+
+   Offsets are relative to the start of the payload.
+
+6.1.  HELLO (0x01, Client to Server)
+
+   +--------+-----------------+------------+--------------------------+
+   | Offset | Field           | Type       | Rules                    |
+   +--------+-----------------+------------+--------------------------+
+   | 0      | protocolVersion | u8         | MUST be 2                |
+   | 1      | playerName      | string<16> | See below                |
+   +--------+-----------------+------------+--------------------------+
+
+   The server replaces any byte of playerName outside 0x20 to 0x7E with
+   "?".  An empty name becomes "Player N", where N is playerId + 1:
+   "Player 1" for slot 0.
+
+   The client sends HELLO every 0.5 s until it receives WELCOME or
+   REJECT.  After 5 s without either, it gives up and reports that the
+   server is unreachable.
+
+R-Type Team                    Informational                    [Page 7]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+6.2.  WELCOME (0x81, Server to Client)
+
+   +--------+------------------+------+------------------------------+
+   | Offset | Field            | Type | Rules                        |
+   +--------+------------------+------+------------------------------+
+   | 0      | playerId         | u8   | 0-3, the client's slot       |
+   | 1      | tickRate         | u8   | Simulation rate in Hz, > 0   |
+   | 2      | snapshotRate     | u8   | SNAPSHOT rate in Hz, > 0     |
+   | 3      | maxPlayers       | u8   | 1-4                          |
+   | 4      | playersToStart   | u8   | 1 to maxPlayers              |
+   | 5      | serverTick       | u32  | The current server tick      |
+   | 9      | playerSpeed      | f32  | Units per second             |
+   | 13     | playerHalfWidth  | f32  | Half the ship hitbox width   |
+   | 17     | playerHalfHeight | f32  | Half the ship hitbox height  |
+   +--------+------------------+------+------------------------------+
+
+   playerId:  The client's player slot.  It also picks the colour of
+      the ship.
+
+   tickRate, snapshotRate:  60 and 30 by default.
+
+   playersToStart:  How many players must join before the game starts
+      (4 by default).  The client shows it on its waiting screen.
+
+   playerSpeed, playerHalfWidth, playerHalfHeight:  The rules the
+      client needs to predict the movement of its own ship with the
+      same function as the server: 320, 16 and 7 by default.  The
+      server reads them from its rules file, so they can differ.  Each
+      MUST be finite and greater than 0.
+
+   The playfield size is not sent: it is always 1280 x 720 units, and
+   each client scales it to its window.
+
+   The server answers every HELLO from an accepted client with WELCOME,
+   so a lost WELCOME is repaired by the client's next HELLO.  The
+   client finds its own ship through the roster of each SNAPSHOT.
+
+6.3.  REJECT (0x82, Server to Client)
+
+   +--------+--------+------+----------------------------------------+
+   | Offset | Field  | Type | Rules                                  |
+   +--------+--------+------+----------------------------------------+
+   | 0      | reason | u8   | 1 = SERVER_FULL, 2 = VERSION_MISMATCH  |
+   +--------+--------+------+----------------------------------------+
+
+   The server sends at most one REJECT per second to the same address.
+
+
+
+
+
+
+R-Type Team                    Informational                    [Page 8]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+6.4.  INPUT (0x02, Client to Server)
+
+   +--------+---------------+------+---------------------------------+
+   | Offset | Field         | Type | Rules                           |
+   +--------+---------------+------+---------------------------------+
+   | 0      | inputSequence | u32  | Increases by 1 for every INPUT  |
+   | 4      | buttons       | u8   | Bit field, see below            |
+   +--------+---------------+------+---------------------------------+
+
+     0 1 2 3 4 5 6 7
+    +-+-+-+-+-+-+-+-+
+    |U|D|L|R|F|  0  |
+    +-+-+-+-+-+-+-+-+
+
+   Bit 0 is UP, bit 1 DOWN, bit 2 LEFT, bit 3 RIGHT and bit 4 FIRE,
+   bit 0 being the least significant.  Bits 5 to 7 MUST be 0.
+
+   INPUT carries the buttons held at that moment, not key presses.
+   Losing one is harmless: the next one, 16 ms later, carries the same
+   state.  The server ignores an INPUT whose inputSequence is lower
+   than or equal to the last one it applied.  INPUT also tells the
+   server that the client is still alive.
+
+6.5.  SNAPSHOT (0x83, Server to Client)
+
+   One snapshot describes the whole game at one server tick.  If it
+   does not fit in one datagram, the server splits it into chunks.
+   Every chunk of a tick has the same serverTick and chunkCount.
+
+   +--------+--------------------+-------------------+---------------+
+   | Offset | Field              | Type              | Rules         |
+   +--------+--------------------+-------------------+---------------+
+   | 0      | serverTick         | u32               | Tick of this  |
+   |        |                    |                   | snapshot      |
+   | 4      | lastProcessedInput | u32               | See below     |
+   | 8      | chunkIndex         | u8                | < chunkCount  |
+   | 9      | chunkCount         | u8                | 1-16          |
+   | 10     | phase              | u8                | 0-2           |
+   | 11     | roster             | list<PlayerInfo>  | 0 or 4        |
+   | ...    | entities           | list<EntityState> | 0-48          |
+   +--------+--------------------+-------------------+---------------+
+
+   lastProcessedInput:  The highest inputSequence the server has
+      applied for this client.
+
+   phase:  0 = PLAYING, 1 = GAME_OVER, 2 = WAITING.  The same in every
+      chunk of a tick.  In WAITING, fewer than playersToStart players
+      have joined and nobody has a ship.
+
+   roster:  4 entries in chunk 0, one per player slot, slots 0 to 3 in
+      order.  Empty (count 0) in every other chunk.
+
+R-Type Team                    Informational                    [Page 9]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+   PlayerInfo (14 to 30 bytes):
+
+   +-----------+------------+----------------------------------------+
+   | Field     | Type       | Rules                                  |
+   +-----------+------------+----------------------------------------+
+   | playerId  | u8         | 0-3                                    |
+   | state     | u8         | 0 = EMPTY, 1 = ALIVE, 2 = RESPAWNING,  |
+   |           |            | 3 = OUT (no lives left)                |
+   | lives     | u8         | 0-99                                   |
+   | health    | u8         | <= maxHealth; 0 unless ALIVE           |
+   | maxHealth | u8         | 100 by default; 0 when EMPTY           |
+   | score     | u32        |                                        |
+   | shipNetId | u32        | The current ship; 0 unless ALIVE       |
+   | name      | string<16> | Empty when EMPTY                       |
+   +-----------+------------+----------------------------------------+
+
+   EntityState (22 bytes):
+
+   +---------+----------+--------------------------------------------+
+   | Field   | Type     | Rules                                      |
+   +---------+----------+--------------------------------------------+
+   | netId   | u32      | Not 0                                      |
+   | kind    | u8       | 1 = PLAYER_SHIP, 2 = BYDOS_SLAVE,          |
+   |         |          | 3 = PLAYER_MISSILE, 4 = ENEMY_MISSILE,     |
+   |         |          | 5 = GENERIC_PLAYER, 6 = GENERIC_ENEMY      |
+   | variant | u8       | Depends on kind, see below                 |
+   | x, y    | f32, f32 | Position                                   |
+   | vx, vy  | f32, f32 | Velocity                                   |
+   +---------+----------+--------------------------------------------+
+
+   The variant of a PLAYER_SHIP is its owner's playerId, 0 to 3.  The
+   variant of a BYDOS_SLAVE is its movement pattern: 0 = STRAIGHT,
+   1 = SINE.  The variant of a missile is 0.
+
+   GENERIC_PLAYER and GENERIC_ENEMY are extension kinds for applications
+   that reuse this snapshot encoding for another game.  Their variant
+   belongs to that application.  An R-Type server never sends them.
+
+   A chunk is at most 8 (header) + 11 + (2 + 4 * 30) + (2 + 48 * 22) =
+   1199 bytes, so it always fits in one datagram.
+
+   Rules for the client:
+
+   1.  Ignore any chunk whose serverTick is lower than the last
+       complete tick (rule 4).
+
+   2.  For each entity of a chunk: if the NetId is unknown, create the
+       entity with that kind, variant, position and velocity.
+       Otherwise, add the position and velocity as a new sample for
+       that tick.  In both cases, record serverTick as the entity's
+       last-seen tick.
+
+R-Type Team                   Informational                    [Page 10]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+   3.  Chunk 0 replaces the client's copy of the roster and the phase.
+       A new client is in WAITING until its first chunk 0.  In WAITING,
+       the client shows a waiting screen with the number of slots that
+       are not EMPTY.
+
+   4.  A tick is complete once all chunkCount chunks of it have
+       arrived.  When a tick T completes and T is newer than the last
+       complete tick, the client deletes every entity whose last-seen
+       tick is lower than T: those entities no longer exist on the
+       server.
+
+   5.  A tick that never completes, because a chunk was lost, is
+       skipped.  Its positions are still used; only deletions wait for
+       a complete tick.
+
+6.6.  EVENT (0x84, Server to Client)
+
+   Events tell clients why something changed, so that they can play a
+   sound, show an explosion or display a banner.  The game state itself
+   always comes from SNAPSHOT: a client that misses an event still has
+   a correct world.
+
+   +--------+---------+----------+------------------------------------+
+   | Offset | Field   | Type     | Rules                              |
+   +--------+---------+----------+------------------------------------+
+   | 0      | eventId | u32      | Server-wide counter; repeated      |
+   |        |         |          | copies of one event share the id   |
+   | 4      | type    | u8       | See the table below                |
+   | 5      | a       | u32      | Depends on type                    |
+   | 9      | b       | u32      | Depends on type                    |
+   | 13     | x, y    | f32, f32 | Where it happened, or 0            |
+   +--------+---------+----------+------------------------------------+
+
+   +------+----------------+-------------------+-------------+-------+
+   | Type | Name           | a                 | b           | Sent  |
+   +------+----------------+-------------------+-------------+-------+
+   | 1    | PLAYER_FIRED   | Shooter ship      | Missile     | Once  |
+   |      |                | NetId             | NetId       |       |
+   | 2    | ENEMY_FIRED    | Enemy NetId       | Missile     | Once  |
+   |      |                |                   | NetId       |       |
+   | 3    | ENEMY_KILLED   | Killer ship NetId | Enemy NetId | Once  |
+   | 4    | PLAYER_KILLED  | Killer NetId      | Ship NetId  | 3x    |
+   | 5    | PLAYER_JOINED  | playerId          | 0           | 3x    |
+   | 6    | PLAYER_LEFT    | playerId          | Reason      | 3x    |
+   | 7    | GAME_OVER      | Team score        | 0           | 3x    |
+   | 8    | GAME_RESTARTED | 0                 | 0           | 3x    |
+   +------+----------------+-------------------+-------------+-------+
+
+   The reason of PLAYER_LEFT is 0 = QUIT, 1 = TIMEOUT (crash or network
+   loss) or 2 = KICKED.  The playerId of PLAYER_JOINED and PLAYER_LEFT
+   MUST be 0 to 3.
+
+R-Type Team                   Informational                    [Page 11]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+   The server sends "3x" events on three consecutive ticks.  The client
+   MUST keep the last 128 eventIds it has handled and ignore repeats.
+
+6.7.  DISCONNECT (0x03, Client to Server)
+
+   +--------+--------+------+----------------------------------------+
+   | Offset | Field  | Type | Rules                                  |
+   +--------+--------+------+----------------------------------------+
+   | 0      | reason | u8   | 0 = QUIT                               |
+   +--------+--------+------+----------------------------------------+
+
+   The client sends DISCONNECT 3 times, 20 ms apart, then closes its
+   socket.
+
+6.8.  SHUTDOWN (0x85, Server to Client)
+
+   SHUTDOWN has an empty payload.  The server sends it 3 times to every
+   client before exiting, so that clients can show "Server closed" at
+   once instead of waiting for a timeout.
+
+6.9.  KICK (0x86, Server to Client)
+
+   +--------+--------+------+----------------------------------------+
+   | Offset | Field  | Type | Rules                                  |
+   +--------+--------+------+----------------------------------------+
+   | 0      | reason | u8   | 1 = PROTOCOL_ERROR, 2 = RATE_LIMITED   |
+   +--------+--------+------+----------------------------------------+
+
+   PROTOCOL_ERROR:  The session sent too many invalid datagrams
+      (Section 10).
+
+   RATE_LIMITED:  The session keeps flooding the server.
+
+   The server sends KICK 3 times, on 3 consecutive ticks, then forgets
+   the session.  The other players receive EVENT PLAYER_LEFT(KICKED).
+   The client shows the reason at once instead of waiting 5 s and
+   reporting a lost connection.
+
+   KICK is sent once per session, never once per bad datagram, and the
+   datagram is 9 bytes long, so it cannot be used to amplify traffic.
+   Dropping the excess above 240 datagrams per second remains the first
+   answer to flooding; how long a session may stay above that limit
+   before it receives KICK(RATE_LIMITED) is up to the server.
+
+
+
+
+
+
+
+
+
+R-Type Team                   Informational                    [Page 12]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+7.  Notification of Game Events
+
+   The server notifies every client of the following happenings:
+
+   +--------------------------+--------------------------------------+
+   | Happening                | How the client learns it             |
+   +--------------------------+--------------------------------------+
+   | A monster spawns         | A new BYDOS_SLAVE NetId in SNAPSHOT  |
+   | A monster moves          | Its position in SNAPSHOT             |
+   | A monster is destroyed   | Its NetId is missing from the next   |
+   |                          | complete SNAPSHOT; EVENT             |
+   |                          | ENEMY_KILLED                         |
+   | A monster fires          | A new ENEMY_MISSILE in SNAPSHOT;     |
+   |                          | EVENT ENEMY_FIRED                    |
+   | A monster kills a player | EVENT PLAYER_KILLED; fewer lives in  |
+   |                          | the roster                           |
+   | Another player moves     | Its ship's position in SNAPSHOT      |
+   | Another player shoots    | A new PLAYER_MISSILE in SNAPSHOT;    |
+   |                          | EVENT PLAYER_FIRED                   |
+   | Another client crashes   | EVENT PLAYER_LEFT(TIMEOUT); the      |
+   |                          | roster slot becomes EMPTY            |
+   +--------------------------+--------------------------------------+
+
+8.  Connection Lifecycle
+
+   Client states:
+
+                +------------+
+                |   START    |
+                +------------+
+                      |
+                      v
+                +------------+  HELLO every 0.5 s
+                | CONNECTING |-------------------+
+                +------------+                   |
+                  |   ^   |                      |
+                  |   +---|----------------------+
+                  |       |
+       WELCOME    |       | REJECT, or 5 s without a reply
+                  v       v
+          +---------+   +--------+
+          | IN GAME |-->| CLOSED |
+          +---------+   +--------+
+             |   ^
+             +---+  INPUT at 60 Hz; SNAPSHOT at 30 Hz; EVENTs
+
+   A client in game goes to CLOSED when the player quits (it sends
+   DISCONNECT 3 times), when it receives SHUTDOWN or KICK, or when it
+   hears nothing from the server for 5 s.
+
+
+
+R-Type Team                   Informational                    [Page 13]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+   On the server, an address becomes a session only when it sends a
+   valid HELLO and a player slot is free.  There is no pending state.
+   Datagrams from an unknown address that are not HELLO are dropped
+   without a reply.
+
+8.1.  Game Phases
+
+   The server's game goes through three phases, carried in the phase
+   field of SNAPSHOT:
+
+   WAITING:  The world is empty.  When at least playersToStart players
+      have joined, the game starts and the phase becomes PLAYING.
+
+   PLAYING:  The game runs.  When no player has lives left, the phase
+      becomes GAME_OVER.  If every player leaves, the server clears the
+      world and goes back to WAITING.
+
+   GAME_OVER:  After a delay, the server restarts the game, sends EVENT
+      GAME_RESTARTED and goes back to WAITING.
+
+9.  Disconnection and Crash Handling
+
+   +-------------------+--------------------+-------------------------+
+   | Trigger           | Server reaction    | Other clients receive   |
+   +-------------------+--------------------+-------------------------+
+   | DISCONNECT        | Remove the         | EVENT PLAYER_LEFT(QUIT) |
+   | received          | session, free the  |                         |
+   |                   | slot, destroy the  |                         |
+   |                   | ship and its       |                         |
+   |                   | missiles           |                         |
+   | No datagram from  | The same           | EVENT                   |
+   | a client for 5 s  |                    | PLAYER_LEFT(TIMEOUT)    |
+   | Protocol abuse    | KICK 3 times, then | EVENT                   |
+   | (Section 10)      | the same, and a    | PLAYER_LEFT(KICKED)     |
+   |                   | log line naming    |                         |
+   |                   | the address        |                         |
+   +-------------------+--------------------+-------------------------+
+
+   In every case, the entities and the roster entry of the player
+   vanish from the following snapshots.  The server keeps running.
+   When the last player leaves, it stops spawning enemies and waits for
+   someone to connect.
+
+   A client that hears nothing from the server for 5 s considers the
+   connection lost.
+
+10.  Error Handling
+
+   This protocol does not answer a bad datagram.  The receiver drops
+   it, logs why and, for an established session, counts an offence.
+
+
+R-Type Team                   Informational                    [Page 14]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+10.1.  Why Errors Are Not Answered
+
+   Reflection:  UDP cannot prove where a datagram comes from.  If the
+      server answered every bad datagram, anyone could forge the source
+      address of a victim and make the server send answers there.
+
+   Amplification:  An answer bigger than the datagram that caused it
+      multiplies that traffic.
+
+   Probing:  A detailed error for each datagram would teach an attacker
+      how the parser works.
+
+   Usefulness:  A client that sends a broken INPUT has a bug that an
+      error message will not fix.  Its next valid INPUT, 16 ms later,
+      carries the full state of its buttons anyway.
+
+   The only two answers are REJECT, during the handshake, and KICK, to
+   an established session.  Both are 9 bytes long and rate-limited, and
+   neither is bigger than a HELLO (at least 10 bytes) or than the flood
+   that triggered it.
+
+10.2.  Error Codes
+
+   A receiver classifies each dropped datagram with one of these codes,
+   used for logs and for counting offences:
+
+   BAD_SIZE:  The datagram is shorter than 8 bytes or longer than 1200
+      bytes.
+
+   BAD_MAGIC:  Magic is not 0x5254.
+
+   UNKNOWN_TYPE:  The type is not one of Section 5.
+
+   WRONG_DIRECTION:  The type travels the wrong way, for example a
+      SHUTDOWN sent to the server.
+
+   TRUNCATED:  The payload is shorter than the type needs, or a list
+      count or string length is larger than the bytes left.
+
+   TRAILING_BYTES:  Bytes are left after the last field.
+
+   OUT_OF_RANGE:  A field is outside the range this document gives it.
+
+10.3.  Processing Order
+
+   Every receiver, server and client, runs the checks in this order.
+   The first failure ends the processing of the datagram, and its code
+   is the one logged and counted.
+
+   1.  Size: between 8 and 1200 bytes, or BAD_SIZE.
+
+   2.  Header: Magic MUST be 0x5254, or BAD_MAGIC.
+R-Type Team                   Informational                    [Page 15]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+   3.  Version: MUST be 2.  Otherwise the datagram is dropped without an
+       offence.  If it is a HELLO received by the server, the server
+       answers REJECT(VERSION_MISMATCH), at most once per second per
+       address.
+
+   4.  Type and direction: the type MUST be known, or UNKNOWN_TYPE, and
+       travel the right way (Section 5), or WRONG_DIRECTION.
+
+   5.  Payload: decode the message.  Running out of bytes gives
+       TRUNCATED, a field out of range OUT_OF_RANGE, and bytes left
+       after the last field TRAILING_BYTES.
+
+   The version is checked before the type because a later version may
+   define types an older one does not know.  A client of that version
+   sends nothing wrong, so it is not counted as an offence.
+
+   The session checks (unknown address, rate limit, offence count)
+   come after these steps, on the server only.
+
+10.4.  Receiver Actions
+
+   +-------------------------------------+---------------------------+
+   | Case                                | Action                    |
+   +-------------------------------------+---------------------------+
+   | BAD_SIZE or BAD_MAGIC               | Drop                      |
+   | Wrong version                       | Drop; REJECT(VERSION_     |
+   |                                     | MISMATCH) to a HELLO      |
+   | UNKNOWN_TYPE, WRONG_DIRECTION,      | Drop, count an offence    |
+   | TRUNCATED, TRAILING_BYTES or        |                           |
+   | OUT_OF_RANGE                        |                           |
+   | A non-HELLO from an address with no | Drop, no reply            |
+   | session                             |                           |
+   | Server full                         | REJECT(SERVER_FULL)       |
+   | More than 240 datagrams in one      | Drop the excess; KICK     |
+   | second from one address             | (RATE_LIMITED) if it goes |
+   |                                     | on                        |
+   | More than 10 offences in one second | KICK(PROTOCOL_ERROR) to   |
+   | from one session                    | the offender, EVENT       |
+   |                                     | PLAYER_LEFT(KICKED) to    |
+   |                                     | the others, then forget   |
+   |                                     | the session               |
+   +-------------------------------------+---------------------------+
+
+   Offences are counted only for an established session.  A datagram
+   from an address with no session is dropped without counting
+   anything, since there is no session to kick.
+
+   REJECT is sent at most once per second per address.
+
+   A receiver logs a dropped datagram with its error code, its message
+   type and the sender's address, at most once per second per address
+   and code, so that a flood of bad datagrams cannot flood the logs.
+R-Type Team                   Informational                    [Page 16]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+10.5.  Field Validation
+
+   A receiver MUST run these checks before using any field.  None of
+   them may crash the receiver, allocate more memory than the size of
+   the datagram, or stop the server.  Each failure is OUT_OF_RANGE,
+   except a count or length larger than the bytes left, which is
+   TRUNCATED.
+
+   o  HELLO: a playerName longer than 16 bytes.
+
+   o  WELCOME: a playerId above 3; a maxPlayers of 0 or above 4; a
+      playersToStart of 0 or above maxPlayers; a tickRate or
+      snapshotRate of 0; a playerSpeed, playerHalfWidth or
+      playerHalfHeight that is not finite or not greater than 0.
+
+   o  REJECT, DISCONNECT, KICK: an unknown reason.
+
+   o  INPUT: any of the button bits 5 to 7 set.
+
+   o  SNAPSHOT: a chunkCount of 0 or above 16; a chunkIndex not lower
+      than chunkCount; an unknown phase; a roster that is neither 0 nor
+      4 entries; a missing roster in chunk 0 or a roster in another
+      chunk; a roster whose playerIds are not 0, 1, 2, 3 in order;
+      more than 48 entities.
+
+   o  PlayerInfo: an unknown state; lives above 99; health above
+      maxHealth; an EMPTY slot with a name or a maxHealth; a slot that
+      is not ALIVE with a health or a shipNetId; a name longer than 16
+      bytes.
+
+   o  EntityState: a netId of 0; an unknown kind; a variant that does
+      not match the kind (Section 6.5).
+
+   o  EVENT: an unknown type; a PLAYER_JOINED or PLAYER_LEFT whose
+      playerId is above 3; a PLAYER_LEFT with an unknown reason.
+
+11.  Bandwidth
+
+   At the planned peak of 4 players, 30 enemies and 60 missiles, a
+   snapshot holds about 94 entities: 2 chunks totalling about 2.3 KB.
+   At 30 snapshots per second, that is about 70 KB/s from the server to
+   each client, or 280 KB/s for 4 clients.  Each client sends 60 INPUTs
+   of 13 bytes per second, under 1 KB/s.  Both fit easily on a home
+   connection.
+
+
+
+
+
+
+
+
+R-Type Team                   Informational                    [Page 17]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+12.  Security Considerations
+
+   UDP source addresses can be forged.  The protocol limits what a
+   forged datagram can achieve:
+
+   o  The server never sends more bytes in answer to an unknown address
+      than it received from it, and answers it at most once per second
+      (REJECT), so it cannot be used for reflection or amplification.
+
+   o  Every field is validated before use (Section 10.5), and every
+      allocation is bounded by the size of the datagram.
+
+   o  A session that floods the server or keeps sending invalid
+      datagrams is kicked.
+
+   The protocol has no authentication and no encryption.  Anyone who
+   can see the traffic can read it, and anyone who can forge the source
+   address and port of a client can send inputs in that client's name.
+   It is meant for games on trusted networks.
+
+13.  References
+
+   [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
+              Requirement Levels", BCP 14, RFC 2119, March 1997.
+
+   [RFC768]   Postel, J., "User Datagram Protocol", STD 6, RFC 768,
+              August 1980.
+
+   [RFC8200]  Deering, S. and R. Hinden, "Internet Protocol, Version 6
+              (IPv6) Specification", STD 86, RFC 8200, July 2017.
+
+   [IEEE754]  IEEE, "IEEE Standard for Floating-Point Arithmetic",
+              IEEE 754-2019.
+
+Appendix A.  Reference Implementation
+
+   The library rtype_protocol of the R-Type repository implements this
+   document.  Each message is a C++ struct with a serialize and a
+   deserialize function that read and write the fields in the order of
+   the tables above; deserialize validates every range this document
+   states.  A failed decode throws ProtocolError, which carries one of
+   the codes of Section 10.2.
+
+   Every message type has a round-trip test and a truncation test: each
+   prefix of a valid payload is rejected as TRUNCATED.  A malformed-
+   input suite runs the processing order of Section 10.3 on random
+   datagrams from a fixed seed, and decodes every valid payload with
+   each byte replaced in turn.
+
+
+
+
+R-Type Team                   Informational                    [Page 18]
+
+RFC 4242                R-Type Network Protocol          November 2026
+
+
+Authors' Address
+
+   Epitech R-Type Group
+   Epitech Paris
+   France
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+R-Type Team                   Informational                    [Page 19]
