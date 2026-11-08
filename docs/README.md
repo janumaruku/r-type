@@ -24,8 +24,10 @@ Read in this order if you are new to the project:
 | [modules/game.md](modules/game.md) | Components, systems, builders, rules, `GameWorld` |
 | [modules/server.md](modules/server.md) | `r-type_server`: threads, sessions, tick loop |
 | [modules/client.md](modules/client.md) | `r-type_client`: scenes, snapshot assembly, interpolation, prediction, presentation |
+| [modules/hollow-knight.md](modules/hollow-knight.md) | Standalone one-room action-platformer demo built on the shared engine |
 | [protocol/RFC-rtype.md](protocol/RFC-rtype.md) | The binary UDP protocol, byte by byte. Enough to write a new client |
 | [handbook/development.md](handbook/development.md) | Error handling, logging, configuration, testing, build, workflow |
+| [study/technology-choices.md](study/technology-choices.md) | D-04 comparison of graphics, networking, ECS, dependency management, storage and security choices |
 | [decisions/](decisions/) | Architecture decision records: why things are the way they are |
 | [reference/ECS_JOURNEY.md](reference/ECS_JOURNEY.md) | How the ECS design was built and measured, step by step, with its traps and tests (background for `engine_ecs`) |
 | [roadmap.md](roadmap.md) | Part 1 phases, gates and open decisions |

@@ -234,7 +234,7 @@ TEST(SnapshotTests, AnUnknownEntityKindIsRejected)
     expectOutOfRange(proto::EntityState{
         .netId = 1, .kind = static_cast<proto::EntityKind>(0)});
     expectOutOfRange(proto::EntityState{
-        .netId = 1, .kind = static_cast<proto::EntityKind>(5)});
+        .netId = 1, .kind = static_cast<proto::EntityKind>(7)});
 }
 
 TEST(SnapshotTests, APlayerShipOfAFifthPlayerIsRejected)
@@ -312,4 +312,16 @@ TEST(SnapshotTests, ARosterOutOfSlotOrderIsRejected)
 {
     expectOutOfRange(proto::Snapshot{.roster = rosterWithIds({1, 0, 2, 3})});
     expectOutOfRange(proto::Snapshot{.roster = rosterWithIds({0, 0, 1, 3})});
+}
+
+/*
+** The generic kinds belong to other games, which own their variant byte,
+** so any value decodes.
+*/
+TEST(SnapshotTests, GenericKindsRoundTripWithAnyVariant)
+{
+    expectRoundTrip(proto::EntityState{.netId = 1,
+        .kind = proto::EntityKind::GENERIC_PLAYER, .variant = 255});
+    expectRoundTrip(proto::EntityState{.netId = 2,
+        .kind = proto::EntityKind::GENERIC_ENEMY, .variant = 42});
 }
