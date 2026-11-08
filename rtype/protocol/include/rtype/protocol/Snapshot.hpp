@@ -59,6 +59,8 @@ enum class EntityKind : std::uint8_t {
     BYDOS_SLAVE    = 2,
     PLAYER_MISSILE = 3,
     ENEMY_MISSILE  = 4,
+    GENERIC_PLAYER = 5,
+    GENERIC_ENEMY  = 6,
 };
 
 namespace pattern {

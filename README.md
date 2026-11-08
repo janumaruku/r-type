@@ -43,6 +43,8 @@ Both binaries are written to the repository root: `r-type_server` and `r-type_cl
 
 The client build also writes `r-type_ecs_example`, a tiny R-Type made only of ECS entities, systems and resources, drawn with Raylib (`apps/ecs_example/`). Move with WASD or the arrows, fire with Space, restart with R after a hit, close with Esc.
 
+The client build also writes `hollow_knight`, a single-room action-platformer demo that reuses the engine ECS, input, runtime, renderer, and snapshot packet encoding. It draws the Knight and enemies from original Hollow Knight sprites and features endless, progressively harder enemy waves; see [sprite sources and copyright notes](assets/hollow_knight/ASSETS.md). Start it with `./hollow_knight` from the repository root. Move with A/D or the arrows, jump with Space, slash with J, dash with Shift, hold F to focus, use E at the bench, and press Esc to pause.
+
 `cmake --list-presets` shows the presets available on your platform:
 
 | Preset | Use |

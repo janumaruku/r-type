@@ -112,6 +112,9 @@ void deserialize(net::Packet &packet, EntityState &message)
             throw ProtocolError(DecodeError::OUT_OF_RANGE,
                 "ENTITY_STATE: variant must be 0 for a missile");
         return;
+    case EntityKind::GENERIC_PLAYER:
+    case EntityKind::GENERIC_ENEMY:
+        return;
     }
     throw ProtocolError(DecodeError::OUT_OF_RANGE,
         "ENTITY_STATE: kind out of range");
