@@ -16,6 +16,7 @@
 #include <utility>
 
 #include "ClientSettings.hpp"
+#include "DisplayHelpers.hpp"
 #include "engine/core/Color.hpp"
 #include "engine/core/Vec2.hpp"
 #include "engine/ecs/Registry.hpp"
@@ -101,6 +102,8 @@ class EffectsFixture: public ::testing::Test {
 protected:
     void SetUp() override
     {
+        if (!client_tests::hasDisplay())
+            GTEST_SKIP() << "no display: loading a sprite sheet needs a window";
         SetConfigFlags(FLAG_WINDOW_HIDDEN);
         SetTraceLogLevel(LOG_NONE);
         InitWindow(64, 64, "r-type effects tests");
