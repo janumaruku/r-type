@@ -64,8 +64,10 @@ protected:
     }
 };
 
+/* Both players are still connected, which is enough with playersToStart 2. */
 TEST_F(GameOverFlow, AllSlotsOutEndsTheGameThenRestartsItAfterFiveSeconds)
 {
+    rules().playersToStart    = 2;
     const Leftovers leftovers = loseTheGame();
 
     tick();
@@ -110,12 +112,35 @@ TEST_F(GameOverFlow, AllSlotsOutEndsTheGameThenRestartsItAfterFiveSeconds)
     EXPECT_EQ(countOf<PlayerShip>(), 2U);
 }
 
-TEST_F(GameOverFlow, NoPlayerAtAllNeverEndsTheGameNorSpawns)
+/* After the countdown, 2 players are not enough for playersToStart 4. */
+TEST_F(GameOverFlow, ARestartWithTooFewPlayersWaitsForMore)
 {
+    rules().playersToStart = 4;
+    (void)loseTheGame();
+
+    tick(301);
+    EXPECT_EQ(countOf<GameRestarted>(drainEvents()), 1U);
+    EXPECT_EQ(phase().phase(), Phase::WAITING);
+    expectRestartedSlot(0);
+    expectRestartedSlot(1);
+
+    tick(600);
+    EXPECT_EQ(phase().phase(), Phase::WAITING);
+    EXPECT_EQ(countOf<PlayerShip>(), 0U);
+    EXPECT_TRUE(bydos().empty());
+}
+
+TEST_F(GameOverFlow, NoPlayerAtAllGoesBackToWaitingAndNeverSpawns)
+{
+    const Entity bydos = spawnBydos({900.0F, 300.0F});
+
+    tick();
+    EXPECT_EQ(phase().phase(), Phase::WAITING);
+    EXPECT_FALSE(_registry.isAlive(bydos));
     tick(6000);
     EXPECT_EQ(countOf<GameOver>(drainEvents()), 0U);
-    EXPECT_EQ(phase().phase(), Phase::PLAYING);
-    EXPECT_TRUE(bydos().empty());
+    EXPECT_EQ(phase().phase(), Phase::WAITING);
+    EXPECT_TRUE(this->bydos().empty());
 }
 
 TEST_F(GameOverFlow, OnePlayerStillPlayingKeepsTheGameGoing)

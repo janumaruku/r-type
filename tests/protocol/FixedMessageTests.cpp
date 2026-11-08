@@ -38,6 +38,7 @@ TEST(FixedMessageTests, EveryMessageRoundTrips)
         .tickRate                            = 120,
         .snapshotRate                        = 20,
         .maxPlayers                          = 2,
+        .playersToStart                      = 2,
         .serverTick                          = 0xFFFFFFFF,
         .playerSpeed                         = 450.5F,
         .playerHalfWidth                     = 20.0F,
@@ -66,7 +67,7 @@ TEST(FixedMessageTests, PayloadSizesMatchTheRfc)
 {
     EXPECT_EQ(encode(proto::Hello{}).size(), 2U);
     EXPECT_EQ(encode(proto::Hello{.playerName = SIXTEEN_BYTES}).size(), 18U);
-    EXPECT_EQ(encode(proto::Welcome{}).size(), 20U);
+    EXPECT_EQ(encode(proto::Welcome{}).size(), 21U);
     EXPECT_EQ(encode(proto::Reject{}).size(), 1U);
     EXPECT_EQ(encode(proto::Input{}).size(), 5U);
     EXPECT_EQ(encode(proto::Disconnect{}).size(), 1U);
@@ -108,6 +109,12 @@ TEST(FixedMessageTests, AnInvalidWelcomeIsRejected)
     expectOutOfRange(proto::Welcome{.maxPlayers = 5});
     expectOutOfRange(proto::Welcome{.tickRate = 0});
     expectOutOfRange(proto::Welcome{.snapshotRate = 0});
+}
+
+TEST(FixedMessageTests, PlayersToStartOutsideOneToMaxPlayersIsRejected)
+{
+    expectOutOfRange(proto::Welcome{.playersToStart = 0});
+    expectOutOfRange(proto::Welcome{.maxPlayers = 2, .playersToStart = 3});
 }
 
 /*

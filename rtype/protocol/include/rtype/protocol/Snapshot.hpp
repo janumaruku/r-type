@@ -21,6 +21,15 @@ inline constexpr std::size_t MAX_ENTITIES_PER_CHUNK = 48;
 inline constexpr std::uint8_t MAX_CHUNKS            = 16;
 inline constexpr std::uint8_t MAX_LIVES             = 99;
 
+/**
+ * @brief The server's game phase. The values match game::Phase.
+ */
+enum class GamePhase : std::uint8_t {
+    PLAYING   = 0,
+    GAME_OVER = 1,
+    WAITING   = 2,
+};
+
 enum class PlayerState : std::uint8_t {
     EMPTY      = 0,
     ALIVE      = 1,
@@ -80,6 +89,7 @@ struct Snapshot {
     std::uint32_t lastProcessedInput = 0;
     std::uint8_t chunkIndex          = 0;
     std::uint8_t chunkCount          = 1;
+    GamePhase phase                  = GamePhase::PLAYING;
     std::vector<PlayerInfo> roster{};
     std::vector<EntityState> entities{};
 

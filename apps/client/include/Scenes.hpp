@@ -87,6 +87,15 @@ private:
 };
 
 /**
+ * @brief Pushes a centred message on the HUD layer: the title at twice
+ * `hudFontSize`, then the detail and the key hint. MessageScene draws with
+ * it, and GameScene while it waits for players.
+ */
+void pushMessage(engine::render::RenderQueue &queue, unsigned hudFontSize,
+    const std::string &title, const std::string &detail,
+    const std::string &hint);
+
+/**
  * @brief A title and a detail line ("Server full", "Connection lost"),
  * with a hint for the keys. CONFIRM reconnects through a new
  * ConnectingScene when @p canReconnect is true, QUIT quits.

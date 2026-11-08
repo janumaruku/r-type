@@ -40,6 +40,12 @@ public:
     virtual void endFrame() = 0;
 
     virtual void setLogicalSize(core::Vec2f size) = 0;
+
+    /*
+    ** The colour of the window outside the letterboxed playfield, black
+    ** until set. beginFrame's colour clears the playfield itself.
+    */
+    virtual void setBarsColor(core::Color color) = 0;
 };
 
 } // namespace engine::render

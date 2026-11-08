@@ -64,7 +64,7 @@ enum class SlotState : std::uint8_t {
     SLOT_OUT   = 3,
 };
 
-enum class Phase : std::uint8_t { PLAYING, GAME_OVER };
+enum class Phase : std::uint8_t { PLAYING, GAME_OVER, WAITING };
 
 struct FloatRange {
     float min = 0.0F;

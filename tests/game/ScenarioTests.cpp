@@ -70,8 +70,8 @@ constexpr float NO_SPAWN     = 1.0e9F;
 */
 class Scenario: public testing::Test {
 protected:
-    GameWorld _world{Rules{}, SEED};
-    Rules _rules{};
+    GameWorld _world{game_tests::soloRules(), SEED};
+    Rules _rules{game_tests::soloRules()};
     std::vector<std::pair<std::uint32_t, GameEvent>> _events;
     std::uint32_t _sequence = 0;
 

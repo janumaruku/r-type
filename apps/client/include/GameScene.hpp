@@ -42,6 +42,8 @@ private:
     void reconcileLocalShip(TimePoint now);
     void setHudResources(const FrameContext &context);
     void updateHudState(const FrameContext &context);
+    void drawWaiting(engine::render::RenderQueue &queue,
+        const FrameContext &context) const;
 
     std::unique_ptr<ServerLink> _link;
     std::uint8_t _playerId;
@@ -55,6 +57,7 @@ private:
     engine::runtime::FixedTimestep _inputStep{1.0 / 60.0, 15};
     std::uint32_t _inputSequence = 0;
     game::Rules _rules;
+    std::uint8_t _playersToStart;
     bool _leftByChoice = false;
     bool _serverGone = false;
     std::uint32_t _reconciledTick = 0;

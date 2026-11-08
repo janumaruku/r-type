@@ -7,6 +7,7 @@
 #include <thread>
 #include <vector>
 
+#include "rtype/game/Rules.hpp"
 #include "rtype/protocol/Decode.tpp"
 #include "rtype/protocol/Header.hpp"
 #include "ServerNetworkAdapter.hpp"
@@ -15,6 +16,14 @@ namespace server_test {
 
 using namespace std::chrono_literals;
 using rtype::server::TimePoint;
+
+/** @brief Default rules, but the game starts as soon as one player joins. */
+inline rtype::game::Rules soloRules()
+{
+    rtype::game::Rules rules;
+    rules.playersToStart = 1;
+    return rules;
+}
 
 inline asio::ip::udp::endpoint endpointFor(unsigned index)
 {
@@ -91,7 +100,7 @@ Message readMessage(const net::Datagram &datagram)
 
 struct Fixture {
     Fixture():
-        socket(0), world(rtype::game::Rules{}, 1),
+        socket(0), world(soloRules(), 1),
         adapter(socket, world, sessions),
         client(io, {asio::ip::address_v4::loopback(), 0})
     {

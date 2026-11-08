@@ -30,6 +30,14 @@ void expectDeserializes(const Message &message, const Message &expected)
     EXPECT_TRUE(packet.fullyRead());
 }
 
+/* Default rules, but the first join starts the game and spawns a ship. */
+game::Rules soloRules()
+{
+    game::Rules rules;
+    rules.playersToStart = 1;
+    return rules;
+}
+
 } // namespace
 
 TEST(ConversionsTests, WelcomeCarriesTheMovementRules)
@@ -141,7 +149,7 @@ TEST(ConversionsTests, ConvertsFiredForBothSides)
 */
 TEST(ConversionsTests, ConvertsRosterAndEveryEntryDeserializes)
 {
-    game::GameWorld world(game::Rules{}, 1);
+    game::GameWorld world(soloRules(), 1);
     ASSERT_EQ(world.reserveSlot(), 0);
     ASSERT_EQ(world.reserveSlot(), 1);
     ASSERT_EQ(world.reserveSlot(), 2);
@@ -161,7 +169,7 @@ TEST(ConversionsTests, ConvertsRosterAndEveryEntryDeserializes)
 
 TEST(ConversionsTests, TheRosterCarriesEachShipsHealth)
 {
-    game::Rules rules;
+    game::Rules rules  = soloRules();
     rules.playerHealth = 80;
     game::GameWorld world(rules, 1);
     ASSERT_EQ(world.reserveSlot(), 0);

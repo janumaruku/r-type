@@ -140,7 +140,7 @@ TEST(SnapshotTests, AFullChunkRoundTripsAndFitsInOneDatagram)
 
     expectRoundTrip(chunk);
     EXPECT_EQ(proto::makePacket(proto::MessageType::SNAPSHOT, 1, chunk).size(),
-        1198U);
+        1199U);
 }
 
 TEST(SnapshotTests, AnEmptyLaterChunkIsTheSmallestPayload)
@@ -149,7 +149,7 @@ TEST(SnapshotTests, AnEmptyLaterChunkIsTheSmallestPayload)
         .serverTick = 9, .chunkIndex = 1, .chunkCount = 2};
 
     expectRoundTrip(chunk);
-    EXPECT_EQ(encode(chunk).size(), 14U);
+    EXPECT_EQ(encode(chunk).size(), 15U);
 }
 
 TEST(SnapshotTests, AnEmptySlotRoundTrips)
@@ -261,6 +261,20 @@ TEST(SnapshotTests, AChunkCountOfZeroOrAboveSixteenIsRejected)
 {
     expectOutOfRange(proto::Snapshot{.chunkCount = 0, .roster = fullRoster()});
     expectOutOfRange(proto::Snapshot{.chunkCount = 17, .roster = fullRoster()});
+}
+
+TEST(SnapshotTests, EveryPhaseRoundTrips)
+{
+    for (const auto phase: {proto::GamePhase::PLAYING,
+             proto::GamePhase::GAME_OVER, proto::GamePhase::WAITING})
+        expectRoundTrip(proto::Snapshot{.phase = phase,
+            .roster = fullRoster()});
+}
+
+TEST(SnapshotTests, AnUnknownPhaseIsRejected)
+{
+    expectOutOfRange(proto::Snapshot{
+        .phase = static_cast<proto::GamePhase>(3), .roster = fullRoster()});
 }
 
 TEST(SnapshotTests, AChunkIndexPastTheCountIsRejected)

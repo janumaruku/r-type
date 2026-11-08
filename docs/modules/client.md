@@ -151,9 +151,13 @@ classDiagram
         -std::unordered_map~NetId, Entity~ _byNetId
         -std::array~protocol::PlayerInfo, 4~ _roster
         -uint32_t _latestServerTick
+        -protocol::GamePhase _phase = WAITING
         +applyEntity(uint32_t tick, protocol::EntityState const&) void
         +applyRoster(std::span~const protocol::PlayerInfo~) void
         +removeNotSeenSince(uint32_t tick) void
+        +setPhase(protocol::GamePhase) void
+        +phase() protocol::GamePhase
+        +joinedPlayers() size_t
         +find(NetId) std::optional~Entity~
         +setLocalPlayer(uint8_t playerId) void
         +localShip() std::optional~Entity~
@@ -224,7 +228,7 @@ classDiagram
 - **`SceneRequest`** is built with `stay()`, `change(next)` or `quit()`. `change(nullptr)` gives `stay()`, so a scene can't switch to nothing.
 - **`FrameContext`** is what a scene gets each frame: the input state and action map, audio, the texture and font caches, the sprite catalog, the starfield's white pixel (loaded by `ClientApp` next to the catalog, since loading a texture needs the window), the `SoundBank` (loaded by `ClientApp` right after audio starts, so a missing sound file stops the client at start-up), the command-line config, the settings, and the frame's time.
 - **`ConnectingScene`** opens its link in `onEnter`, not in its constructor, so building the scene never throws: `resolveServer` resolves `-h`/`-p` to an IPv4 endpoint with `asio::ip::udp::resolver`, then it starts a `ServerLink` on a free local port and sends HELLO, again every 0.5 s. An unknown host or an unavailable port (`NetworkError`) is kept and shown by the first `update` as "Can't reach the server". Its `WelcomeCommand` and `RejectCommand` call back into it; only the first WELCOME counts, since every HELLO gets one. On WELCOME it moves the `ServerLink` into a new `GameScene`, so the socket is never recreated. On REJECT, or after 5 s with no answer, it switches to a `MessageScene` with the reason. Meanwhile it draws "Connecting to host:port..." with the seconds waited.
-- **`GameScene`** is the game itself (next sections). It switches to a `MessageScene` when the server sends SHUTDOWN or stays silent for 5 s.
+- **`GameScene`** is the game itself (next sections). While the server's phase is WAITING (from the last SNAPSHOT, and before the first one), it draws only a message, through the same `pushMessage` layout as `MessageScene`: "Waiting for players", "*n* / *playersToStart* connected", where *n* counts the roster's slots that aren't EMPTY and *playersToStart* comes from WELCOME, and "ESC: quit". The game is drawn as soon as a SNAPSHOT says PLAYING. It switches to a `MessageScene` when the server sends SHUTDOWN or stays silent for 5 s.
 - **`MessageScene`** shows a title and a detail line ("Server full", "Connection lost", "Server closed"), sized from the `hudFontSize` setting (the title at twice the size), with a hint for the keys. CONFIRM (ENTER) reconnects through a new `ConnectingScene` when the message allows it, which a version mismatch does not. QUIT (ESCAPE) quits.
 
 ## Message commands
@@ -272,7 +276,7 @@ The scene then runs the command only if its type has one (`hasKey`), so a messag
 
 | Command | Message | Handling |
 | --- | --- |
-| `SnapshotCommand` | SNAPSHOT | Ignored if older than the assembler's last complete tick. Otherwise each `EntityState` goes to `world.applyEntity(tick, state)`: it creates the entity if the NetId is new (with components from the `SpriteCatalog` for its kind and variant) and adds a sample. Chunk 0's roster goes to `world.applyRoster()`. If `assembler.add(chunk)` reports tick T complete, `world.removeNotSeenSince(T)` deletes vanished entities. |
+| `SnapshotCommand` | SNAPSHOT | Ignored if older than the assembler's last complete tick. Otherwise each `EntityState` goes to `world.applyEntity(tick, state)`: it creates the entity if the NetId is new (with components from the `SpriteCatalog` for its kind and variant) and adds a sample. Chunk 0's roster goes to `world.applyRoster()`, and its phase to `world.setPhase()`. If `assembler.add(chunk)` reports tick T complete, `world.removeNotSeenSince(T)` deletes vanished entities. |
 | `EventCommand` | EVENT | Ignored if `seenEvents.firstTime(eventId)` is false. Otherwise pushed to the effect queue: sounds, explosions at (x, y), HUD banners. |
 | `ShutdownCommand` | SHUTDOWN | Switch to `MessageScene("Server closed")`. |
 
@@ -332,7 +336,7 @@ Each frame of `GameScene`, with `dt = frameClock.restart()` capped at 0.25 s:
 3. `inputStep.advance(dt)` returns *n*. For each of the *n* steps, sample the buttons from the action map, `sendInput(++sequence, buttons)`, `prediction.record(...)`, and move the local ship with `movePlayer(...)`. INPUT therefore goes out at exactly 60 Hz whatever the frame rate.
 4. If the server sent SHUTDOWN or KICK, switch to the `MessageScene` for that cause ("Server closed" or "Kicked"). If `now − link.lastHeard > 5 s`, switch to `MessageScene("Connection lost")`.
 5. Update `HudState`: flip `showHelp` if TOGGLE_HUD_HELP was triggered, and set `ping` from `prediction.averagePing(now)`.
-6. Set the `DeltaTime` resource, run the `UPDATE` stage then the `RENDER` stage (which fills the `RenderQueue`), then `renderer.beginFrame / submit / endFrame`, and `audio.update()`.
+6. Set the `DeltaTime` resource, run the `UPDATE` stage then the `RENDER` stage (which fills the `RenderQueue`; while WAITING, the waiting message replaces it), then `renderer.beginFrame / submit / endFrame`, and `audio.update()`.
 
 `GameScene::onExit` sends DISCONNECT (3 times, since UDP can lose it) when the player quits or the window closes. It doesn't after SHUTDOWN, KICK or a timeout: the server has already forgotten us, or can't be reached.
 

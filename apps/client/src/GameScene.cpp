@@ -79,7 +79,7 @@ GameScene::GameScene(std::unique_ptr<ServerLink> link,
     _sounds(context.sounds),
     _audioReactor(_events, context.audio, _sounds, _world),
     _effectsReactor(_events, _world.registry(), context.settings),
-    _rules(predictionRules(welcome))
+    _rules(predictionRules(welcome)), _playersToStart(welcome.playersToStart)
 {
     _world.setLocalPlayer(_playerId);
     setResources(_world.registry());
@@ -136,11 +136,16 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
 
 /*
 ** The settings are copied every frame, so a change to highContrast shows
-** at once.
+** at once. Until the server starts the game, only the waiting message is
+** drawn.
 */
 void GameScene::draw(engine::render::RenderQueue &queue,
     const FrameContext &context)
 {
+    if (_world.phase() == protocol::GamePhase::WAITING) {
+        drawWaiting(queue, context);
+        return;
+    }
     auto &stageQueue = _world.registry().getResource<
         engine::render::RenderQueue>();
 
@@ -250,6 +255,18 @@ void GameScene::updateHudState(const FrameContext &context)
     if (context.actions.wasTriggered(Action::TOGGLE_HUD_HELP, context.input))
         state.showHelp = !state.showHelp;
     state.ping = _prediction.averagePing(context.now);
+}
+
+/*
+** The count comes from the last roster, so it climbs as players join.
+*/
+void GameScene::drawWaiting(engine::render::RenderQueue &queue,
+    const FrameContext &context) const
+{
+    pushMessage(queue, context.settings.hudFontSize, "Waiting for players",
+        std::to_string(_world.joinedPlayers()) + " / " +
+            std::to_string(_playersToStart) + " connected",
+        "ESC: quit");
 }
 
 void GameScene::advanceRenderClock(float dt)

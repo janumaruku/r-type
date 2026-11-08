@@ -210,6 +210,24 @@ std::uint32_t ClientWorld::lastProcessedInput() const noexcept
     return _lastProcessedInput;
 }
 
+void ClientWorld::setPhase(protocol::GamePhase phase) noexcept
+{
+    _phase = phase;
+}
+
+protocol::GamePhase ClientWorld::phase() const noexcept
+{
+    return _phase;
+}
+
+std::size_t ClientWorld::joinedPlayers() const noexcept
+{
+    return static_cast<std::size_t>(std::ranges::count_if(_roster,
+        [](const protocol::PlayerInfo &slot) {
+            return slot.state != protocol::PlayerState::EMPTY;
+        }));
+}
+
 bool ClientWorld::rosterChangedSinceLastCall() noexcept
 {
     return std::exchange(_rosterChanged, false);

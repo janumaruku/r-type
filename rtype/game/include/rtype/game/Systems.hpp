@@ -63,6 +63,14 @@ void respawnSystem(engine::ecs::Registry &registry);
 void gameOverSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<Replicated> &replicated);
 
+/*
+** WAITING -> PLAYING once playersToStart players have joined, with a fresh
+** spawn director. Called by GameWorld after each join, so the ships of
+** the player who completes the count appear on the next step, and by
+** gameOverSystem after a restart.
+*/
+void startWhenReady(engine::ecs::Registry &registry);
+
 void netIdCleanupSystem(engine::ecs::Registry &registry);
 } // namespace rtype::game
 

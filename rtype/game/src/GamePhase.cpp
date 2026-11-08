@@ -38,8 +38,24 @@ bool GamePhase::update(const float dt)
     if (_untilReset > 0.0F)
         return false;
 
-    _phase      = Phase::PLAYING;
+    _phase      = Phase::WAITING;
     _untilReset = 0.0F;
+    return true;
+}
+
+bool GamePhase::start()
+{
+    if (_phase != Phase::WAITING)
+        return false;
+    _phase = Phase::PLAYING;
+    return true;
+}
+
+bool GamePhase::wait()
+{
+    if (_phase != Phase::PLAYING)
+        return false;
+    _phase = Phase::WAITING;
     return true;
 }
 } // namespace rtype::game

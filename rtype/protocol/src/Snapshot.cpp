@@ -120,8 +120,8 @@ void deserialize(net::Packet &packet, EntityState &message)
 void serialize(net::Packet &packet, const Snapshot &message)
 {
     packet << message.serverTick << message.lastProcessedInput
-           << message.chunkIndex << message.chunkCount << message.roster
-           << message.entities;
+           << message.chunkIndex << message.chunkCount << message.phase
+           << message.roster << message.entities;
 }
 
 static bool isRosterInSlotOrder(const std::vector<PlayerInfo> &roster)
@@ -136,8 +136,14 @@ static bool isRosterInSlotOrder(const std::vector<PlayerInfo> &roster)
 void deserialize(net::Packet &packet, Snapshot &message)
 {
     packet >> message.serverTick >> message.lastProcessedInput >>
-        message.chunkIndex >> message.chunkCount >> message.roster >>
-        message.entities;
+        message.chunkIndex >> message.chunkCount >> message.phase >>
+        message.roster >> message.entities;
+
+    if (message.phase != GamePhase::PLAYING &&
+        message.phase != GamePhase::GAME_OVER &&
+        message.phase != GamePhase::WAITING)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "SNAPSHOT: phase out of range");
 
     if (message.chunkCount == 0 || message.chunkCount > MAX_CHUNKS)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
@@ -193,6 +199,7 @@ std::vector<Snapshot> splitSnapshot(const Snapshot &full)
             .lastProcessedInput = full.lastProcessedInput,
             .chunkIndex         = static_cast<std::uint8_t>(index),
             .chunkCount         = static_cast<std::uint8_t>(count),
+            .phase              = full.phase,
             .roster = index == 0 ? full.roster : std::vector<PlayerInfo>{},
             .entities =
                 {

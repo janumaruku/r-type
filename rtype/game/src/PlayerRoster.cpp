@@ -181,6 +181,16 @@ std::size_t PlayerRoster::active() const noexcept
     return count;
 }
 
+std::size_t PlayerRoster::joined() const noexcept
+{
+    std::size_t count = 0;
+
+    for (const auto &slot: _slots)
+        if (slot.has_value() && slot->state != SlotState::EMPTY)
+            ++count;
+    return count;
+}
+
 bool PlayerRoster::allOut() const noexcept
 {
     bool anyJoined = false;

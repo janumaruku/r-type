@@ -53,7 +53,7 @@ protected:
         _registry.setResource(engine::ecs::DeltaTime{});
         _registry.emplaceResource<rtype::game::PlayerRoster>();
         _registry.emplaceResource<rtype::game::EventOutbox>();
-        _registry.setResource(rtype::game::GamePhase{});
+        (void)_registry.setResource(rtype::game::GamePhase{}).start();
         _registry.setResource(rtype::game::SpawnDirectorState{});
     }
 

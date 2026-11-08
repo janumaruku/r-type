@@ -72,7 +72,7 @@ TEST(RulesLoadTests, TheRepositoryFileHoldsEveryRuleAtItsDefault)
     std::ifstream file(path);
     const json content = json::parse(file);
 
-    EXPECT_EQ(content.size(), 35U) << "a rule is missing from rules.json";
+    EXPECT_EQ(content.size(), 36U) << "a rule is missing from rules.json";
     EXPECT_EQ(Rules::load(path), Rules{});
 }
 
@@ -133,6 +133,7 @@ TEST(RulesLoadTests, AnOutOfRangeValueIsRefusedNamingTheKey)
     expectRefused({{"respawnDelay", -1}}, "respawnDelay: must be a number >=");
     expectRefused({{"sineChance", 1.5}}, "sineChance: must be a number in");
     expectRefused({{"maxPlayers", 5}}, "maxPlayers: must be a whole number in");
+    expectRefused({{"playersToStart", 0}}, "playersToStart");
     expectRefused({{"playerLives", 0}}, "playerLives");
     expectRefused({{"playerLives", 100}}, "playerLives");
     expectRefused({{"playerHealth", 256}}, "playerHealth");
@@ -155,6 +156,8 @@ TEST(RulesLoadTests, ARangeWithMinAboveMaxIsRefused)
 TEST(RulesLoadTests, RulesThatDisagreeAreRefused)
 {
     expectRefused({{"spawnIntervalMin", 2.0}}, "spawnIntervalMin");
+    expectRefused({{"maxPlayers", 2}, {"playersToStart", 3}},
+        "playersToStart: 3 is above maxPlayers 2");
     expectRefused({{"playerSpawn", {{120, 144}, {120, 288}, {120, 432},
                                        {1300, 576}}}},
         "playerSpawn: point 3");

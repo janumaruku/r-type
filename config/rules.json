@@ -1,5 +1,6 @@
 {
   "maxPlayers": 4,
+  "playersToStart": 4,
   "playerSpeed": 320,
   "playerSpawn": [[120, 144], [120, 288], [120, 432], [120, 576]],
   "playerLives": 3,

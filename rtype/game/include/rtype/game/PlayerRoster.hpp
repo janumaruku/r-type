@@ -123,6 +123,12 @@ public:
     [[nodiscard]] std::size_t active() const noexcept;
 
     /**
+     * @brief The number of players who joined: every slot but EMPTY ones,
+     * whether ALIVE, RESPAWNING or OUT.
+     */
+    [[nodiscard]] std::size_t joined() const noexcept;
+
+    /**
      * @brief `true` when at least one slot has joined (any state but EMPTY)
      * and every joined slot is OUT: the game is over.
      */

@@ -31,6 +31,7 @@ public:
     void removeNotSeenSince(std::uint32_t tick);
     void setLocalPlayer(std::uint8_t playerId) noexcept;
     void setLastProcessedInput(std::uint32_t sequence) noexcept;
+    void setPhase(protocol::GamePhase phase) noexcept;
 
     void bindEntityComponents(std::uint32_t tick,
         const protocol::EntityState &state, SpriteCatalog &catalog,
@@ -44,6 +45,10 @@ public:
         const noexcept;
     [[nodiscard]] std::uint32_t latestServerTick() const noexcept;
     [[nodiscard]] std::uint32_t lastProcessedInput() const noexcept;
+    /** @brief The server's phase from the last SNAPSHOT, WAITING before. */
+    [[nodiscard]] protocol::GamePhase phase() const noexcept;
+    /** @brief The roster's slots that aren't EMPTY. */
+    [[nodiscard]] std::size_t joinedPlayers() const noexcept;
     [[nodiscard]] bool rosterChangedSinceLastCall() noexcept;
     [[nodiscard]] engine::ecs::Registry &registry() noexcept;
 
@@ -56,6 +61,7 @@ private:
     std::uint8_t _playerId            = 0;
     std::uint32_t _latestServerTick   = 0;
     std::uint32_t _lastProcessedInput = 0;
+    protocol::GamePhase _phase        = protocol::GamePhase::WAITING;
     bool _rosterChanged               = false;
 };
 } // namespace rtype::client

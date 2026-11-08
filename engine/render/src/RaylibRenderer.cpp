@@ -21,8 +21,10 @@
 namespace engine::render {
 
 namespace {
-constexpr ::Color BARS{.r = 0, .g = 0, .b = 0, .a = 255};
 constexpr ::Color NO_TINT{.r = 255, .g = 255, .b = 255, .a = 255};
+
+/* Opaque black, spelled out: raylib's BLACK macro hides core::Color::BLACK. */
+const core::Color DEFAULT_BARS{0, 0, 0, 255};
 
 RenderTexture2D createTarget(const core::Vec2f &size)
 {
@@ -99,6 +101,7 @@ struct RaylibRenderer::Impl {
     FontCache &fonts;
     core::Vec2f logicalSize;
     RenderTexture2D target;
+    core::Color bars;
     bool inFrame = false;
 };
 
@@ -109,6 +112,7 @@ RaylibRenderer::RaylibRenderer(Window &window, TextureCache &textures,
         .fonts                                = fonts,
         .logicalSize                          = logicalSize,
         .target                               = createTarget(logicalSize),
+        .bars                                 = DEFAULT_BARS,
         .inFrame                              = false}))
 {}
 
@@ -159,7 +163,7 @@ void RaylibRenderer::endFrame()
         letterbox(_impl->window.size(), _impl->logicalSize);
 
     BeginDrawing();
-    ClearBackground(BARS);
+    ClearBackground(detail::toRaylib(_impl->bars));
     if (destination.width() > 0.0F && destination.height() > 0.0F)
         DrawTexturePro(texture, source, detail::toRaylib(destination),
             Vector2{0.0F, 0.0F}, 0.0F, NO_TINT);
@@ -174,6 +178,11 @@ void RaylibRenderer::setLogicalSize(const core::Vec2f size)
     UnloadRenderTexture(_impl->target);
     _impl->target      = target;
     _impl->logicalSize = size;
+}
+
+void RaylibRenderer::setBarsColor(const core::Color color)
+{
+    _impl->bars = color;
 }
 
 } // namespace engine::render

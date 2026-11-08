@@ -425,6 +425,8 @@ void respawnSystem(engine::ecs::Registry &registry)
     const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
     auto &roster      = registry.getResource<PlayerRoster>();
 
+    if (registry.getResource<GamePhase>().phase() != Phase::PLAYING)
+        return;
     for (const std::uint8_t playerId: roster.advanceRespawns(delta.seconds)) {
         const NetId ship =
             makePlayerShip(registry, registry.spawnEntity(), playerId);
@@ -433,6 +435,20 @@ void respawnSystem(engine::ecs::Registry &registry)
     }
 }
 
+static void clearWorld(engine::ecs::Registry &registry)
+{
+    for (auto &&[entity, replicated]: registry.indexedView<const Replicated>())
+        registry.commands().kill(entity);
+    registry.getResource<SpawnDirectorState>() = {};
+}
+
+/*
+** WAITING: starts the game once playersToStart players have joined.
+** PLAYING: GAME_OVER once every joined player is out, or back to WAITING
+** when every player has left. GAME_OVER: after gameOverResetDelay, clears
+** the world, gives every joined slot its lives back and goes to WAITING,
+** which starts again at once if enough players are still there.
+*/
 void gameOverSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<Replicated> &)
 {
@@ -442,18 +458,39 @@ void gameOverSystem(engine::ecs::Registry &registry,
     auto &roster      = registry.getResource<PlayerRoster>();
     auto &outbox      = registry.getResource<EventOutbox>();
 
-    if (!phase.isOver()) {
+    switch (phase.phase()) {
+    case Phase::WAITING:
+        startWhenReady(registry);
+        return;
+
+    case Phase::PLAYING:
+        if (roster.joined() == 0 && phase.wait()) {
+            clearWorld(registry);
+            return;
+        }
         if (roster.allOut() && phase.enterGameOver(rules.gameOverResetDelay))
             outbox.push(GameOver{.teamScore = roster.teamScore()});
         return;
+
+    case Phase::GAME_OVER:
+        break;
     }
     if (!phase.update(delta.seconds))
         return;
-    for (auto &&[entity, replicated]: registry.indexedView<const Replicated>())
-        registry.commands().kill(entity);
+    clearWorld(registry);
     roster.onGameRestarted(rules.playerLives);
-    registry.getResource<SpawnDirectorState>() = {};
     outbox.push(GameRestarted{});
+    startWhenReady(registry);
+}
+
+void startWhenReady(engine::ecs::Registry &registry)
+{
+    const auto &rules   = registry.getResource<Rules>();
+    const auto &roster  = registry.getResource<PlayerRoster>();
+    auto &phase         = registry.getResource<GamePhase>();
+
+    if (roster.joined() >= rules.playersToStart && phase.start())
+        registry.getResource<SpawnDirectorState>() = {};
 }
 
 void netIdCleanupSystem(engine::ecs::Registry &registry)

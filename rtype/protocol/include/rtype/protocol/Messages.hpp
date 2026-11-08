@@ -41,6 +41,7 @@ struct Welcome {
     std::uint8_t tickRate     = 60;
     std::uint8_t snapshotRate = 30;
     std::uint8_t maxPlayers   = MAX_PLAYERS;
+    std::uint8_t playersToStart = MAX_PLAYERS;
     std::uint32_t serverTick  = 0;
     float playerSpeed         = 320.0F;
     float playerHalfWidth     = 16.0F;
