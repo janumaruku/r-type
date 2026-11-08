@@ -60,6 +60,10 @@ if (RTYPE_BUILD_CLIENT AND RTYPE_BUILD_EXAMPLES)
     add_subdirectory(apps/render_demo)
 endif ()
 
+if (RTYPE_BUILD_CLIENT)
+    add_subdirectory(apps/hollow_knight)
+endif ()
+
 if (RTYPE_BUILD_BENCHMARKS)
     add_subdirectory(benchmarks)
 endif ()

@@ -28,6 +28,10 @@ struct Window::Impl {
 };
 
 namespace {
+constexpr std::array<int, input::MOUSE_BUTTON_COUNT> MOUSE_BUTTON_TABLE{
+    MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT, MOUSE_BUTTON_MIDDLE,
+    MOUSE_BUTTON_SIDE, MOUSE_BUTTON_EXTRA, MOUSE_BUTTON_FORWARD,
+    MOUSE_BUTTON_BACK};
 
 void raylibTraceCallback(int logLevel, const char *text, va_list args)
 {
@@ -135,6 +139,17 @@ std::vector<input::InputEvent> Window::pollEvents()
             events.push_back({.type = InputEvent::Type::KEY_RELEASED,
                 .key                = key,
                 .size               = {}});
+    }
+
+    for (std::size_t i = 0; i < input::MOUSE_BUTTON_COUNT; ++i) {
+        const auto button      = static_cast<input::MouseButton>(i);
+        const int raylibButton = MOUSE_BUTTON_TABLE[i];
+        if (IsMouseButtonPressed(raylibButton))
+            events.push_back({.type = InputEvent::Type::MOUSE_BUTTON_PRESSED,
+                .mouseButton        = button});
+        if (IsMouseButtonReleased(raylibButton))
+            events.push_back({.type = InputEvent::Type::MOUSE_BUTTON_RELEASED,
+                .mouseButton        = button});
     }
 
     // Window close button

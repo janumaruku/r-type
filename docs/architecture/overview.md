@@ -2,6 +2,8 @@
 
 Part 1 delivers a playable, networked R-Type prototype for up to 4 players, built on an engine split into decoupled modules: Engine, Network, Protocol, Game and the two applications. This page fixes the module boundaries and the rules between them. Each module has its own page under [`modules/`](../modules/).
 
+The repository also builds a standalone `hollow_knight` demo when the client is enabled. It owns its game-specific ECS components and systems inside `apps/hollow_knight`, and reuses the shared engine and snapshot codec to demonstrate a second game. It is a local single-player example and does not change the R-Type server/client product.
+
 ## Goals for Part 1
 
 - A central `r-type_server` with final authority over the game; one `r-type_client` per player.
@@ -45,6 +47,7 @@ flowchart TB
     subgraph APPS["Applications: composition roots"]
         client["r-type_client<br/>scenes, ClientWorld, presentation,<br/>ClientNetworkAdapter, prediction"]
         server["r-type_server<br/>ServerApp, SessionManager, tick loop,<br/>ServerNetworkAdapter, SnapshotBuilder"]
+        hollow["hollow_knight<br/>title, room ECS, local checkpoint"]
     end
     subgraph RTYPE["R-Type layer: no Raylib, no sockets"]
         game["rtype_game<br/>components, systems, builders,<br/>rules, GameWorld"]
@@ -68,6 +71,7 @@ flowchart TB
 
     client --> game & proto & net & runtime & render & input & audio
     server --> game & proto & net & runtime
+    hollow --> proto & net & runtime & render & input & ecs & core
     game --> ecs & runtime & core
     proto --> net & core
     net --> core
@@ -127,6 +131,7 @@ Code review enforces these, backed by `target_link_libraries` scopes. Breaking o
 | `r-type_server` | `server_logic` (only `main.cpp` is compiled here) | — |
 | `server_logic` | `rtype_game`, `rtype_protocol`, `network`, `engine_runtime` | `CLI11::CLI11` |
 | `r-type_client` | — | `client_logic` (only `main.cpp` is compiled here) |
+| `hollow_knight` | engine targets, `network`, `rtype_protocol` | — |
 | `client_logic` | `rtype_game`, `rtype_protocol`, `network`, `engine_render`, `engine_input`, `engine_audio`, `engine_runtime` | — |
 | `<module>_tests` | — | the library under test, `GTest::gtest_main` |
 
