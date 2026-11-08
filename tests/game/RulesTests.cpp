@@ -52,13 +52,13 @@ TEST(Rules, EnemyDefaultsMatchTheSpec)
 {
     const Rules rules{};
 
-    expectRange(rules.enemySpeed, 160.0F, 240.0F);
-    expectRange(rules.sineAmplitude, 40.0F, 120.0F);
-    expectRange(rules.sineFrequency, 0.5F, 1.2F);
+    expectRange(rules.enemySpeed, 60.0F, 100.0F);
+    expectRange(rules.sineAmplitude, 15.0F, 40.0F);
+    expectRange(rules.sineFrequency, 0.2F, 0.5F);
     EXPECT_FLOAT_EQ(rules.sineChance, 0.5F);
-    expectRange(rules.enemyFireInterval, 1.5F, 3.0F);
-    EXPECT_FLOAT_EQ(rules.enemyMissileSpeed, 420.0F);
-    EXPECT_FLOAT_EQ(rules.enemyMissileLifetime, 4.0F);
+    expectRange(rules.enemyFireInterval, 2.5F, 5.0F);
+    EXPECT_FLOAT_EQ(rules.enemyMissileSpeed, 240.0F);
+    EXPECT_FLOAT_EQ(rules.enemyMissileLifetime, 6.0F);
 }
 
 TEST(Rules, SpawnAndGameDefaultsMatchTheSpec)
