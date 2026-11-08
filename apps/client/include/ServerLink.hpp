@@ -14,7 +14,7 @@
 #include "rtype/protocol/MessageType.hpp"
 
 namespace rtype::client {
-using Clock = std::chrono::steady_clock;
+using Clock     = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
 
 struct ServerLink {
@@ -29,6 +29,6 @@ struct ServerLink {
 
 [[nodiscard]] asio::ip::udp::endpoint resolveServer(const std::string &host,
     std::uint16_t port);
-}
+} // namespace rtype::client
 
-#endif //R_TYPE_SERVER_LINK_HPP
+#endif // R_TYPE_SERVER_LINK_HPP

@@ -5,10 +5,9 @@
 ** SerializersTests.cpp
 */
 
-#include <gtest/gtest.h>
-
 #include <array>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <limits>
 #include <string>
 #include <vector>
@@ -21,15 +20,15 @@ struct Record {
     std::uint32_t id;
     float value;
 
-    bool operator==(const Record&) const = default;
+    bool operator==(const Record &) const = default;
 };
 
-inline void serialize(net::Packet& packet, const Record& record)
+inline void serialize(net::Packet &packet, const Record &record)
 {
     packet << record.id << record.value;
 }
 
-inline void deserialize(net::Packet& packet, Record& record)
+inline void deserialize(net::Packet &packet, Record &record)
 {
     packet >> record.id >> record.value;
 }

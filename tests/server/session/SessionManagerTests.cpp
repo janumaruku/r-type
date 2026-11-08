@@ -5,15 +5,14 @@
 ** SessionManagerTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "Session.hpp"
 
 #include <asio.hpp>
 #include <chrono>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <string>
 #include <vector>
-
-#include "Session.hpp"
 
 namespace rtype::server::tests {
 
@@ -40,12 +39,8 @@ TEST(SessionManagerTests, AddsFindsAndRemovesFourSessions)
         const auto endpoint = endpointFor(i);
         endpoints.push_back(endpoint);
 
-        auto &session = manager.add(
-            endpoint,
-            static_cast<std::uint8_t>(i + 1),
-            "Player" + std::to_string(i + 1),
-            T0
-        );
+        auto &session = manager.add(endpoint, static_cast<std::uint8_t>(i + 1),
+            "Player" + std::to_string(i + 1), T0);
 
         EXPECT_EQ(session.endpoint, endpoint);
         EXPECT_EQ(session.playerId, i + 1);

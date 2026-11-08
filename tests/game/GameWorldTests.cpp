@@ -5,19 +5,20 @@
 ** GameWorldTests
 */
 
-#include <gtest/gtest.h>
+#include "ScriptedGame.hpp"
+#include "rtype/game/GameWorld.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include "GameWorldTestAccess.hpp"
 #include "engine/ecs/Registry.hpp"
+#include "GameWorldTestAccess.hpp"
 #include "rtype/game/Builders.hpp"
 #include "rtype/game/Components.hpp"
-#include "rtype/game/GameWorld.hpp"
 #include "rtype/game/NetIdAllocator.hpp"
 
 using engine::core::Vec2f;
@@ -43,13 +44,13 @@ using rtype::game::SlotState;
 using rtype::game::Stage;
 
 namespace {
-constexpr float DT = 1.0F / 60.0F;
+constexpr float DT           = 1.0F / 60.0F;
 constexpr std::uint32_t SEED = 7;
-}
+} // namespace
 
 class World: public testing::Test {
 protected:
-    GameWorld _world{Rules{}, SEED};
+    GameWorld _world{game_tests::soloRules(), SEED};
 
     engine::ecs::Registry &registry()
     {
@@ -77,8 +78,7 @@ protected:
 
     std::optional<Entity> find(const NetId netId)
     {
-        return registry().getResource<NetIdAllocator>().find(netId,
-            registry());
+        return registry().getResource<NetIdAllocator>().find(netId, registry());
     }
 
     Entity missileOf(const std::uint8_t playerId, const Vec2f position)
@@ -92,7 +92,8 @@ protected:
 
     InputButtons buttonsOf(const std::uint8_t playerId)
     {
-        return registry().getComponent<PlayerShip>(*find(shipOf(playerId)))
+        return registry()
+            .getComponent<PlayerShip>(*find(shipOf(playerId)))
             ->buttons;
     }
 
@@ -113,7 +114,56 @@ TEST_F(World, NewWorldIsEmptyAtTickZero)
     EXPECT_EQ(_world.roster().active(), 0U);
     for (std::uint8_t playerId = 0; playerId < 4; ++playerId)
         EXPECT_EQ(_world.roster().get(playerId), nullptr);
-    EXPECT_EQ(_world.phase(), Phase::PLAYING);
+    EXPECT_EQ(_world.phase(), Phase::WAITING);
+}
+
+/*
+** With playersToStart 2, the first player waits without a ship or an
+** enemy. The second join starts the game, and both ships appear on the
+** next step.
+*/
+TEST(WorldStart, TheGameStartsWhenEnoughPlayersJoined)
+{
+    Rules rules;
+    rules.playersToStart = 2;
+    GameWorld world{rules, SEED};
+    std::vector<rtype::game::ReplicatedEntity> entities;
+
+    world.apply(JoinPlayer{.playerId = world.reserveSlot().value(),
+        .name                        = "alice"});
+    for (int tick = 0; tick < 600; ++tick)
+        world.step(DT);
+    world.collectReplicated(entities);
+    EXPECT_EQ(world.phase(), Phase::WAITING);
+    EXPECT_TRUE(entities.empty());
+    EXPECT_EQ(world.roster().get(0)->state, SlotState::RESPAWNING);
+
+    world.apply(JoinPlayer{.playerId = world.reserveSlot().value(),
+        .name                        = "bob"});
+    EXPECT_EQ(world.phase(), Phase::PLAYING);
+    world.step(DT);
+    world.collectReplicated(entities);
+    EXPECT_EQ(entities.size(), 2U);
+    EXPECT_EQ(world.roster().get(0)->state, SlotState::ALIVE);
+    EXPECT_EQ(world.roster().get(1)->state, SlotState::ALIVE);
+}
+
+TEST(WorldStart, APlayerLeavingMidGameDoesNotStopIt)
+{
+    Rules rules;
+    rules.playersToStart = 2;
+    GameWorld world{rules, SEED};
+
+    world.apply(JoinPlayer{.playerId = world.reserveSlot().value(),
+        .name                        = "alice"});
+    world.apply(JoinPlayer{.playerId = world.reserveSlot().value(),
+        .name                        = "bob"});
+    world.step(DT);
+    world.apply(rtype::game::LeavePlayer{.playerId = 1,
+        .reason = rtype::game::LeaveReason::QUIT});
+    world.step(DT);
+    EXPECT_EQ(world.phase(), Phase::PLAYING);
+    EXPECT_EQ(world.roster().get(0)->state, SlotState::ALIVE);
 }
 
 TEST_F(World, StageRunsTheFourteenSystemsInTickOrder)
@@ -176,10 +226,10 @@ TEST_F(World, LeaveRemovesTheShipAndOnlyThatPlayersMissiles)
 {
     const std::uint8_t leaver = joinedPlayer("alice");
     const std::uint8_t stayer = joinedPlayer("bob");
-    const Entity ship = *find(shipOf(leaver));
-    const Entity first = missileOf(leaver, {400.0F, 200.0F});
-    const Entity second = missileOf(leaver, {500.0F, 200.0F});
-    const Entity other = missileOf(stayer, {400.0F, 400.0F});
+    const Entity ship         = *find(shipOf(leaver));
+    const Entity first        = missileOf(leaver, {400.0F, 200.0F});
+    const Entity second       = missileOf(leaver, {500.0F, 200.0F});
+    const Entity other        = missileOf(stayer, {400.0F, 400.0F});
 
     _world.apply(LeavePlayer{.playerId = leaver, .reason = LeaveReason::QUIT});
     EXPECT_FALSE(registry().isAlive(ship));
@@ -205,7 +255,7 @@ TEST_F(World, CollectingTwiceIntoTheSameVectorKeepsItsCapacity)
     _world.collectReplicated(out);
 
     const std::vector<ReplicatedEntity> first = out;
-    const std::size_t capacity = out.capacity();
+    const std::size_t capacity                = out.capacity();
 
     ASSERT_FALSE(first.empty());
     _world.collectReplicated(out);

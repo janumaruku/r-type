@@ -6,13 +6,13 @@
 */
 
 #ifndef R_TYPE_VIEW_HPP
-#define R_TYPE_VIEW_HPP
+    #define R_TYPE_VIEW_HPP
 
-#include <array>
-#include <type_traits>
+    #include <array>
+    #include <type_traits>
 
-#include "engine/ecs/SparseSetBase.hpp"
-#include "engine/ecs/ViewIterator.hpp"
+    #include "engine/ecs/SparseSetBase.hpp"
+    #include "engine/ecs/ViewIterator.hpp"
 
 namespace engine::ecs {
 namespace detail {
@@ -33,7 +33,7 @@ class BasicView {
 public:
     using iterator = ViewIterator<WithEntity, Components...>; // NOLINT
 
-    explicit BasicView(StorageFor<Components> &... containers);
+    explicit BasicView(StorageFor<Components> &...containers);
 
     iterator begin() const;
 
@@ -51,13 +51,13 @@ private:
     std::size_t _driverIndex;
     const SparseSetBase *_driver;
 };
-}
+} // namespace detail
 
 template <ViewComponentConcept... Components>
 using View = detail::BasicView<false, Components...>;
-} // ecs
+} // namespace engine::ecs
 // engine
 
-#endif //R_TYPE_VIEW_HPP
+#endif // R_TYPE_VIEW_HPP
 
 #include "engine/ecs/View.tpp"

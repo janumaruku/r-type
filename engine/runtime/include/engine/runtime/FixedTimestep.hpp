@@ -24,6 +24,6 @@ private:
     double _accumulator;
     int _maxSteps;
 };
-}
+} // namespace engine::runtime
 
 #endif

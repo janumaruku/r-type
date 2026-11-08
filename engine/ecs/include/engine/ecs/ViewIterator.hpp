@@ -6,18 +6,18 @@
 */
 
 #ifndef R_TYPE_VIEWITERATOR_HPP
-#define R_TYPE_VIEWITERATOR_HPP
+    #define R_TYPE_VIEWITERATOR_HPP
 
-#include <cstddef>
-#include <iterator>
-#include <type_traits>
-#include <tuple>
-#include <utility>
+    #include <cstddef>
+    #include <iterator>
+    #include <tuple>
+    #include <type_traits>
+    #include <utility>
 
-#include "engine/ecs/Component.hpp"
-#include "engine/ecs/Entity.hpp"
-#include "engine/ecs/SparseSet.hpp"
-#include "engine/ecs/SparseSetBase.hpp"
+    #include "engine/ecs/Component.hpp"
+    #include "engine/ecs/Entity.hpp"
+    #include "engine/ecs/SparseSet.hpp"
+    #include "engine/ecs/SparseSetBase.hpp"
 
 namespace engine::ecs {
 template <class Component>
@@ -41,18 +41,18 @@ struct StorageForT<const Component> {
 
 template <class Component>
 using StorageFor = StorageForT<Component>::Type;
-}
+} // namespace detail
 
 template <bool WithEntity, ViewComponentConcept... Components>
 class ViewIterator {
 public:
-    using value_type = std::conditional_t<WithEntity, // NOLINT
+    using value_type        = std::conditional_t<WithEntity, // NOLINT
         std::tuple<Entity, Components &...>, std::tuple<Components &...>>;
-    using reference = value_type; // NOLINT
-    using pointer = void; // NOLINT
-    using difference_type = std::ptrdiff_t; // NOLINT
-    using iterator_category = std::input_iterator_tag; // NOLINT
-    using iterator_concept = std::forward_iterator_tag; // NOLINT
+    using reference         = value_type;                // NOLINT
+    using pointer           = void;                      // NOLINT
+    using difference_type   = std::ptrdiff_t;            // NOLINT
+    using iterator_category = std::input_iterator_tag;   // NOLINT
+    using iterator_concept  = std::forward_iterator_tag; // NOLINT
 
     using SetsTuple = std::tuple<detail::StorageFor<Components> *...>;
 
@@ -83,14 +83,15 @@ private:
 
     SetsTuple _sets{};
     const SparseSetBase *_driver = nullptr;
-    std::size_t _driverIndex = 0;
-    std::size_t _remaining = 0;
+    std::size_t _driverIndex     = 0;
+    std::size_t _remaining       = 0;
     std::tuple<Components *...> _current{};
-    static constexpr std::index_sequence_for<Components...> _sequence{}; // NOLINT
+    static constexpr std::index_sequence_for<Components...>
+        _sequence{}; // NOLINT
 };
-} // ecs
+} // namespace engine::ecs
 // engine
 
-#endif //R_TYPE_VIEWITERATOR_HPP
+#endif // R_TYPE_VIEWITERATOR_HPP
 
 #include "engine/ecs/ViewIterator.tpp"

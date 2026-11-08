@@ -1,11 +1,14 @@
-#include <gtest/gtest.h>
+#include "ServerApp.hpp"
 
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <string>
+#include <gtest/gtest.h>
 #include <thread>
 
-#include "ServerApp.hpp"
 #include "engine/core/Errors.hpp"
 
 namespace rtype::server {
@@ -40,12 +43,17 @@ struct ServerAppTestAccess {
         return app._ticks;
     }
 
+    [[nodiscard]] static const game::Rules &rules(const ServerApp &app)
+    {
+        return app._world.rules();
+    }
+
     [[nodiscard]] static net::SocketStats socketStats(const ServerApp &app)
     {
         return app._socket.stats();
     }
 };
-}
+} // namespace rtype::server
 
 namespace {
 
@@ -64,6 +72,41 @@ rtype::server::ServerConfig testConfig()
     return config;
 }
 
+/* Writes `content` to a rules file named after the current test. */
+std::filesystem::path rulesFile(const std::string &content)
+{
+    const std::filesystem::path path = std::filesystem::temp_directory_path() /
+        ("rtype_server_app_" +
+            std::string(
+                testing::UnitTest::GetInstance()->current_test_info()->name()) +
+            ".json");
+
+    std::ofstream(path) << content;
+    return path;
+}
+
+TEST(ServerAppTests, TheWorldUsesTheRulesFile)
+{
+    const std::atomic<bool> stopRequested{false};
+    auto config      = testConfig();
+    config.rulesPath = rulesFile(R"({"playerSpeed": 500, "playerLives": 5})");
+    const ServerApp app(config, stopRequested);
+
+    EXPECT_FLOAT_EQ(ServerAppTestAccess::rules(app).playerSpeed, 500.0F);
+    EXPECT_EQ(ServerAppTestAccess::rules(app).playerLives, 5);
+    std::filesystem::remove(*config.rulesPath);
+}
+
+TEST(ServerAppTests, ARefusedRulesFileStopsTheServer)
+{
+    const std::atomic<bool> stopRequested{false};
+    auto config      = testConfig();
+    config.rulesPath = rulesFile(R"({"playerSpeed": -1})");
+
+    EXPECT_THROW(ServerApp(config, stopRequested), engine::core::ConfigError);
+    std::filesystem::remove(*config.rulesPath);
+}
+
 TEST(ServerAppTests, StopsCleanly)
 {
     std::atomic<bool> stopRequested{false};
@@ -73,7 +116,7 @@ TEST(ServerAppTests, StopsCleanly)
 
     std::this_thread::sleep_for(100ms);
     const auto stopAt = Clock::now();
-    stopRequested = true;
+    stopRequested     = true;
     server.join();
 
     EXPECT_LT(Clock::now() - stopAt, 500ms);
@@ -87,9 +130,9 @@ TEST(ServerAppTests, RejectsBusyPort)
 
     rtype::server::ServerConfig secondConfig;
     secondConfig.port = first.port();
-    EXPECT_THROW({
-        ServerApp second(secondConfig, stopRequested);
-    }, engine::core::NetworkError);
+    EXPECT_THROW(
+        { ServerApp second(secondConfig, stopRequested); },
+        engine::core::NetworkError);
 }
 
 /*
@@ -127,18 +170,18 @@ TEST(ServerAppTests, OneSecondWithoutClientsTicksSixtyTimesAndSendsNothing)
 {
     std::atomic<bool> stopRequested{false};
     ServerApp app(testConfig(), stopRequested);
-    int result = -1;
+    int result       = -1;
     const auto start = Clock::now();
     std::thread server([&] { result = app.run(); });
 
     std::this_thread::sleep_for(1s);
     const auto ran = Clock::now() - start;
-    stopRequested = true;
+    stopRequested  = true;
     server.join();
 
     const auto expected = static_cast<std::int64_t>(ran / PERIOD);
-    const auto ticks = static_cast<std::int64_t>(
-        ServerAppTestAccess::ticks(app));
+    const auto ticks =
+        static_cast<std::int64_t>(ServerAppTestAccess::ticks(app));
     EXPECT_GE(ticks, expected - 3) << "ran " << ran / 1ms << " ms";
     EXPECT_LE(ticks, expected + 2) << "ran " << ran / 1ms << " ms";
     EXPECT_GE(ticks, 55);
@@ -148,4 +191,4 @@ TEST(ServerAppTests, OneSecondWithoutClientsTicksSixtyTimesAndSendsNothing)
     EXPECT_EQ(result, 0);
 }
 
-}
+} // namespace

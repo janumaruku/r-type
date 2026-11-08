@@ -15,12 +15,12 @@
 namespace rtype::game {
 [[nodiscard]] engine::core::Vec2f inputDirection(InputButtons buttons) noexcept;
 
-[[nodiscard]] engine::core::Vec2f confineToPlayfield(
-    engine::core::Vec2f position, engine::core::Vec2f halfSize,
-    const Rules &rules) noexcept;
+[[nodiscard]] engine::core::Vec2f confineToPlayfield(engine::core::Vec2f
+                                                         position,
+    engine::core::Vec2f halfSize, const Rules &rules) noexcept;
 
 [[nodiscard]] engine::core::Vec2f movePlayer(engine::core::Vec2f position,
     InputButtons buttons, float dt, const Rules &rules);
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_MOTION_HPP
+#endif // R_TYPE_MOTION_HPP

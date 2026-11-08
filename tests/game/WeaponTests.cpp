@@ -6,7 +6,6 @@
 */
 
 #include <gtest/gtest.h>
-
 #include <set>
 
 #include "GameSystemsFixture.hpp"
@@ -42,7 +41,7 @@ protected:
 
 TEST_F(Weapons, FireHeldOneSecondFiresFiveMissiles)
 {
-    const Entity ship = spawnAliveShip();
+    const Entity ship  = spawnAliveShip();
     const Vec2f muzzle = _rules.playerSpawn[0] + _rules.playerMuzzleOffset;
 
     addPlayerInputSystem();
@@ -55,7 +54,7 @@ TEST_F(Weapons, FireHeldOneSecondFiresFiveMissiles)
 
     ASSERT_EQ(fired.size(), 5U);
     EXPECT_EQ(countOf<Projectile>(), 5U);
-    for (const Fired &event : fired) {
+    for (const Fired &event: fired) {
         expectPlayerMissile(event, ship, muzzle);
         missiles.insert(event.missile);
     }
@@ -79,7 +78,7 @@ TEST_F(Weapons, EnemyFiresOnceInItsAimedDirection)
     const Vec2f aim{-0.6F, 0.8F};
 
     addWeaponSystem();
-    component<Weapon>(bydos).aim = aim;
+    component<Weapon>(bydos).aim       = aim;
     component<Weapon>(bydos).triggered = true;
     tick();
 
@@ -92,8 +91,7 @@ TEST_F(Weapons, EnemyFiresOnceInItsAimedDirection)
 
     const Entity missile = entityOf(fired[0].missile);
 
-    EXPECT_EQ(component<Replicated>(missile).kind,
-        EntityKind::ENEMY_MISSILE);
+    EXPECT_EQ(component<Replicated>(missile).kind, EntityKind::ENEMY_MISSILE);
     EXPECT_FLOAT_EQ(component<Velocity>(missile).value.x(),
         aim.x() * _rules.enemyMissileSpeed);
     EXPECT_FLOAT_EQ(component<Velocity>(missile).value.y(),

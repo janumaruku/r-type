@@ -5,24 +5,24 @@
 ** ClientDispatchTests
 */
 
-#include <gtest/gtest.h>
+#include "ClientDispatch.hpp"
 
 #include <chrono>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <iostream>
 #include <optional>
 #include <sstream>
 #include <string>
 #include <vector>
 
-#include "ClientDispatch.hpp"
-#include "LoopbackHelpers.hpp"
-#include "ServerLink.hpp"
 #include "engine/core/Errors.hpp"
 #include "engine/core/Logger.hpp"
+#include "LoopbackHelpers.hpp"
 #include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
+#include "ServerLink.hpp"
 
 using client_tests::occurrences;
 using client_tests::rawPacket;
@@ -37,14 +37,14 @@ using rtype::protocol::Welcome;
 
 namespace {
 constexpr std::uint16_t SERVER_PORT = 4242;
-constexpr std::size_t VERSION_BYTE = 2;
-constexpr std::size_t TYPE_BYTE = 3;
-const std::string DROPPED = "Dropped a datagram";
+constexpr std::size_t VERSION_BYTE  = 2;
+constexpr std::size_t TYPE_BYTE     = 3;
+const std::string DROPPED           = "Dropped a datagram";
 
-const asio::ip::udp::endpoint SERVER{asio::ip::address_v4::loopback(),
-    SERVER_PORT};
-const asio::ip::udp::endpoint STRANGER{asio::ip::address_v4::loopback(),
-    SERVER_PORT + 1};
+const asio::ip::udp::endpoint SERVER{
+    asio::ip::address_v4::loopback(), SERVER_PORT};
+const asio::ip::udp::endpoint STRANGER{
+    asio::ip::address_v4::loopback(), SERVER_PORT + 1};
 
 std::vector<std::uint8_t> bytesOf(const net::Packet &packet)
 {
@@ -64,7 +64,7 @@ std::vector<std::uint8_t> welcomeBytes()
     return bytesOf(rtype::protocol::makePacket(MessageType::WELCOME, 7,
         Welcome{.playerId = 2}));
 }
-}
+} // namespace
 
 /*
 ** The log output is process-wide: each test captures it and gives
@@ -117,18 +117,18 @@ TEST_F(Dispatch, DatagramFromAnotherAddressIsDroppedWithoutALog)
     EXPECT_EQ(droppedLines(), 0U);
 }
 
-TEST_F(Dispatch, VersionOtherThanOneIsDroppedWithoutALog)
+TEST_F(Dispatch, AnotherVersionIsDroppedWithoutALog)
 {
     auto bytes = welcomeBytes();
 
-    bytes[VERSION_BYTE] = 2;
+    bytes[VERSION_BYTE] = rtype::protocol::Header::VERSION + 1;
     EXPECT_FALSE(check(datagramOf(bytes)).has_value());
     EXPECT_EQ(droppedLines(), 0U);
 }
 
 TEST_F(Dispatch, EachKindOfBadDatagramIsDroppedAndLogged)
 {
-    auto badMagic = welcomeBytes();
+    auto badMagic    = welcomeBytes();
     auto unknownType = welcomeBytes();
     const auto hello = bytesOf(rtype::protocol::makePacket(MessageType::HELLO,
         1, Hello{.playerName = "alice"}));
@@ -155,9 +155,8 @@ TEST_F(Dispatch, TwentyBadDatagramsInOneSecondLogOneLinePerCode)
         EXPECT_FALSE(check(datagramOf(hello), now).has_value());
     }
     EXPECT_EQ(droppedLines(), 2U);
-    EXPECT_FALSE(
-        check(datagramOf({1, 2, 3}), start + std::chrono::seconds(1))
-        .has_value());
+    EXPECT_FALSE(check(datagramOf({1, 2, 3}), start + std::chrono::seconds(1))
+            .has_value());
     EXPECT_EQ(droppedLines(), 3U);
 }
 
@@ -196,5 +195,6 @@ TEST(ResolveServer, LocalhostGivesAnIpv4Address)
 TEST(ResolveServer, UnknownHostThrowsNetworkError)
 {
     EXPECT_THROW((void)rtype::client::resolveServer("no.such.host.invalid",
-        4242), engine::core::NetworkError);
+                     4242),
+        engine::core::NetworkError);
 }

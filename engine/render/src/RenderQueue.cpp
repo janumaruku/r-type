@@ -5,11 +5,12 @@
 ** RenderQueue.cpp
 */
 
+#include "../include/engine/render/RenderQueue.hpp"
+
 #include <algorithm>
 #include <utility>
 #include <variant>
 
-#include "../include/engine/render/RenderQueue.hpp"
 #include "../include/engine/render/DrawCommand.hpp"
 
 namespace engine::render {

@@ -10,10 +10,10 @@
 
 #include <memory>
 
+#include "engine/render/Window.hpp"
 #include "FontCache.hpp"
 #include "IRenderer.hpp"
 #include "TextureCache.hpp"
-#include "engine/render/Window.hpp"
 
 namespace engine::render {
 
@@ -22,7 +22,7 @@ namespace engine::render {
 ** into the window. It owns GPU state, so like the caches it must be created
 ** after the Window and destroyed before it.
 */
-class RaylibRenderer final : public IRenderer {
+class RaylibRenderer final: public IRenderer {
 public:
     RaylibRenderer(Window &window, TextureCache &textures, FontCache &fonts,
         core::Vec2f logicalSize);
@@ -37,11 +37,13 @@ public:
 
     void setLogicalSize(core::Vec2f size) override;
 
+    void setBarsColor(core::Color color) override;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> _impl;
 };
 
-}
+} // namespace engine::render
 
 #endif

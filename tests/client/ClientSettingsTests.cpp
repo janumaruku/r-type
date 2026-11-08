@@ -5,17 +5,17 @@
 ** ClientSettingsTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "ClientSettings.hpp"
 
 #include <filesystem>
 #include <fstream>
+#include <gtest/gtest.h>
 #include <set>
 #include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "ClientSettings.hpp"
 #include "engine/core/Logger.hpp"
 
 namespace rtype::client {
@@ -53,7 +53,7 @@ public:
         engine::core::log::setOutput(std::cerr);
     }
 
-    LogCapture(const LogCapture &) = delete;
+    LogCapture(const LogCapture &)            = delete;
     LogCapture &operator=(const LogCapture &) = delete;
 
     [[nodiscard]] int count(const std::string &level) const
@@ -75,7 +75,7 @@ private:
     std::ostringstream _output;
 };
 
-class ClientSettingsFileTests : public ::testing::Test {
+class ClientSettingsFileTests: public ::testing::Test {
 protected:
     LogCapture _log;
 
@@ -90,12 +90,14 @@ protected:
         return _path;
     }
 
-    std::filesystem::path _path = std::filesystem::temp_directory_path()
-        / ("rtype_client_settings_"
-            + std::string(::testing::UnitTest::GetInstance()->current_test_info()->name())
-            + ".json");
+    std::filesystem::path _path = std::filesystem::temp_directory_path() /
+        ("rtype_client_settings_" +
+            std::string(::testing::UnitTest::GetInstance()
+                    ->current_test_info()
+                    ->name()) +
+            ".json");
 };
-}
+} // namespace
 
 TEST(ClientSettingsTests, EmptyObjectGivesTheDefaults)
 {
@@ -136,17 +138,20 @@ TEST(ClientSettingsTests, MissingKeysKeepTheirDefaults)
 
 TEST(ClientSettingsTests, VolumeAboveOneIsClamped)
 {
-    EXPECT_FLOAT_EQ(ClientSettings::fromJson({{"sfxVolume", 2}}).sfxVolume, 1.0F);
+    EXPECT_FLOAT_EQ(ClientSettings::fromJson({{"sfxVolume", 2}}).sfxVolume,
+        1.0F);
 }
 
 TEST(ClientSettingsTests, VolumeBelowZeroIsClamped)
 {
-    EXPECT_FLOAT_EQ(ClientSettings::fromJson({{"musicVolume", -1}}).musicVolume, 0.0F);
+    EXPECT_FLOAT_EQ(ClientSettings::fromJson({{"musicVolume", -1}}).musicVolume,
+        0.0F);
 }
 
 TEST(ClientSettingsTests, VolumeOfTheWrongTypeKeepsItsDefault)
 {
-    EXPECT_FLOAT_EQ(ClientSettings::fromJson({{"masterVolume", "loud"}}).masterVolume,
+    EXPECT_FLOAT_EQ(ClientSettings::fromJson({{"masterVolume", "loud"}})
+                        .masterVolume,
         ClientSettings{}.masterVolume);
 }
 
@@ -158,9 +163,11 @@ TEST(ClientSettingsTests, BooleanOfTheWrongTypeKeepsItsDefault)
 
 TEST(ClientSettingsTests, HudFontSizeOutOfRangeKeepsItsDefault)
 {
-    EXPECT_EQ(ClientSettings::fromJson({{"hudFontSize", 500}}).hudFontSize, 20U);
+    EXPECT_EQ(ClientSettings::fromJson({{"hudFontSize", 500}}).hudFontSize,
+        20U);
     EXPECT_EQ(ClientSettings::fromJson({{"hudFontSize", 7}}).hudFontSize, 20U);
-    EXPECT_EQ(ClientSettings::fromJson({{"hudFontSize", -10}}).hudFontSize, 20U);
+    EXPECT_EQ(ClientSettings::fromJson({{"hudFontSize", -10}}).hudFontSize,
+        20U);
 }
 
 TEST(ClientSettingsTests, HudFontSizeBoundsAreAccepted)
@@ -171,8 +178,10 @@ TEST(ClientSettingsTests, HudFontSizeBoundsAreAccepted)
 
 TEST(ClientSettingsTests, HudFontSizeThatIsNotAWholeNumberKeepsItsDefault)
 {
-    EXPECT_EQ(ClientSettings::fromJson({{"hudFontSize", 20.5}}).hudFontSize, 20U);
-    EXPECT_EQ(ClientSettings::fromJson({{"hudFontSize", "big"}}).hudFontSize, 20U);
+    EXPECT_EQ(ClientSettings::fromJson({{"hudFontSize", 20.5}}).hudFontSize,
+        20U);
+    EXPECT_EQ(ClientSettings::fromJson({{"hudFontSize", "big"}}).hudFontSize,
+        20U);
 }
 
 TEST(ClientSettingsTests, UnknownKeyIsIgnored)
@@ -187,7 +196,8 @@ TEST_F(ClientSettingsFileTests, MissingFileGivesTheDefaults)
 
 TEST_F(ClientSettingsFileTests, ValidFileIsRead)
 {
-    const ClientSettings settings = ClientSettings::load(write(R"({"muted": true, "hudFontSize": 40})"));
+    const ClientSettings settings =
+        ClientSettings::load(write(R"({"muted": true, "hudFontSize": 40})"));
 
     EXPECT_TRUE(settings.muted);
     EXPECT_EQ(settings.hudFontSize, 40U);
@@ -205,7 +215,8 @@ TEST_F(ClientSettingsFileTests, TopLevelThatIsNotAnObjectGivesTheDefaults)
 
 TEST(ClientSettingsTests, DefaultConfigFileHoldsTheDefaults)
 {
-    const std::filesystem::path path = std::filesystem::path(RTYPE_CONFIG_DIR) / "client.json";
+    const std::filesystem::path path =
+        std::filesystem::path(RTYPE_CONFIG_DIR) / "client.json";
 
     ASSERT_TRUE(std::filesystem::exists(path));
     expectDefaults(ClientSettings::load(path));
@@ -218,17 +229,20 @@ TEST(ClientSettingsTests, DefaultConfigFileHoldsExactlyTheSettingKeys)
     std::set<std::string> keys;
 
     ASSERT_TRUE(json.is_object());
-    for (const auto &[key, value] : json.items())
+    for (const auto &[key, value]: json.items())
         keys.insert(key);
-    EXPECT_EQ(keys, (std::set<std::string>{"masterVolume", "musicVolume", "sfxVolume", "muted",
-        "hudFontSize", "highContrast", "reduceFlashes", "fullscreen"}));
+    EXPECT_EQ(keys,
+        (std::set<std::string>{"masterVolume", "musicVolume", "sfxVolume",
+            "muted", "hudFontSize", "highContrast", "reduceFlashes",
+            "fullscreen"}));
 }
 
 TEST(ClientSettingsTests, ValidSettingsLogNothing)
 {
     const LogCapture log;
 
-    (void)ClientSettings::fromJson({{"masterVolume", 0.5}, {"muted", true}, {"hudFontSize", 32}});
+    (void)ClientSettings::fromJson({{"masterVolume", 0.5}, {"muted", true},
+        {"hudFontSize", 32}});
     EXPECT_EQ(log.text(), "");
 }
 
@@ -241,7 +255,7 @@ TEST(ClientSettingsTests, EachBadKeyLogsOneWarningNamingIt)
         {{{"colour", "blue"}}, "colour"},
     };
 
-    for (const auto &[json, key] : cases) {
+    for (const auto &[json, key]: cases) {
         const LogCapture log;
 
         (void)ClientSettings::fromJson(json);
@@ -268,4 +282,4 @@ TEST_F(ClientSettingsFileTests, TopLevelThatIsNotAnObjectLogsOneWarning)
     (void)ClientSettings::load(write("[1, 2]"));
     EXPECT_EQ(_log.count("WARN"), 1);
 }
-}
+} // namespace rtype::client

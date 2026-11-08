@@ -17,9 +17,9 @@ namespace rtype::client {
 bool SnapshotCommand::execute(ClientNetworkAdapter &adapter,
     net::Packet &packet)
 {
-    auto snapshot  = protocol::decode<protocol::Snapshot>(packet);
+    auto snapshot   = protocol::decode<protocol::Snapshot>(packet);
     auto &assembler = adapter.assembler();
-    auto &world    = adapter.world();
+    auto &world     = adapter.world();
 
     if (assembler.isStale(snapshot.serverTick))
         return true;
@@ -30,6 +30,7 @@ bool SnapshotCommand::execute(ClientNetworkAdapter &adapter,
     if (snapshot.chunkIndex == 0) {
         world.applyRoster(snapshot.roster);
         world.setLastProcessedInput(snapshot.lastProcessedInput);
+        world.setPhase(snapshot.phase);
     }
 
     if (auto completeTick = assembler.add(snapshot))
@@ -70,8 +71,7 @@ std::unique_ptr<IGameCommand> EventCommand::create()
 }
 ////////////////////////////////////////////////////////////
 
-bool ShutdownCommand::execute(ClientNetworkAdapter &adapter,
-    net::Packet &)
+bool ShutdownCommand::execute(ClientNetworkAdapter &adapter, net::Packet &)
 {
     adapter.leave(LeaveCause::SHUTDOWN);
     return true;

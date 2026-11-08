@@ -5,12 +5,11 @@
 ** KeyTableTests
 */
 
-#include <gtest/gtest.h>
+#include "../../../engine/render/include/engine/render/KeyTable.hpp"
 
 #include <cstddef>
+#include <gtest/gtest.h>
 #include <unordered_set>
-
-#include "../../../engine/render/include/engine/render/KeyTable.hpp"
 
 using engine::input::Key;
 using engine::input::KEY_COUNT;
@@ -35,6 +34,6 @@ TEST(KeyTableTests, NoTwoEngineKeysShareACode)
 
     for (std::size_t i = keyIndex(Key::UNKNOWN) + 1; i < KEY_COUNT; ++i)
         EXPECT_TRUE(seen.insert(KEY_TABLE[i]).second)
-            << engine::input::toString(static_cast<Key>(i))
-            << " shares code " << KEY_TABLE[i];
+            << engine::input::toString(static_cast<Key>(i)) << " shares code "
+            << KEY_TABLE[i];
 }

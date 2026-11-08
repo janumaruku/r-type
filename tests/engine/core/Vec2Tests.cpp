@@ -5,9 +5,10 @@
 ** Vec2Tests.cpp
 */
 
-#include <gtest/gtest.h>
 #include "engine/core/Vec2.hpp"
+
 #include <cmath>
+#include <gtest/gtest.h>
 
 TEST(Vec2, constuct)
 {
@@ -39,13 +40,12 @@ TEST(Vec2, add)
     engine::core::Vec2f v1{1, 2};
     engine::core::Vec2f v2{1, 2};
     engine::core::Vec2f v3 = v1 + v2;
-    
+
     auto x = v3.x();
     auto y = v3.y();
 
     EXPECT_FLOAT_EQ(x, 2);
     EXPECT_FLOAT_EQ(y, 4);
-
 }
 
 TEST(Vec2, sub)
@@ -53,13 +53,12 @@ TEST(Vec2, sub)
     engine::core::Vec2f v1{1, 2};
     engine::core::Vec2f v2{1, 2};
     engine::core::Vec2f v3 = v1 - v2;
-    
+
     auto x = v3.x();
     auto y = v3.y();
 
     EXPECT_FLOAT_EQ(x, 0);
     EXPECT_FLOAT_EQ(y, 0);
-
 }
 
 TEST(Vec2, mul)
@@ -70,7 +69,6 @@ TEST(Vec2, mul)
     EXPECT_FLOAT_EQ(v3.x(), 2);
     EXPECT_FLOAT_EQ(v3.y(), 4);
 }
-
 
 TEST(Vec2, div)
 {
@@ -137,9 +135,7 @@ TEST(Vec2, normalized)
     const auto actual = v1.normalized();
 
     const engine::core::Vec2f expected{
-        20.0F / std::sqrt(449.0F),
-        7.0F / std::sqrt(449.0F)
-    };
+        20.0F / std::sqrt(449.0F), 7.0F / std::sqrt(449.0F)};
 
     EXPECT_FLOAT_EQ(actual.x(), expected.x());
     EXPECT_FLOAT_EQ(actual.y(), expected.y());

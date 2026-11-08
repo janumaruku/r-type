@@ -6,12 +6,12 @@
 */
 
 #include "ClientNetworkAdapter.hpp"
-#include "ServerLink.tpp"
 
 #include "GameCommands.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
 #include "rtype/protocol/MessageType.hpp"
+#include "ServerLink.tpp"
 #include "SnapshotAssembler.hpp"
 
 namespace rtype::client {
@@ -64,8 +64,7 @@ void ClientNetworkAdapter::sendInput(std::uint32_t sequence,
 void ClientNetworkAdapter::sendDisconnect()
 {
     for (std::uint32_t i = 0; i < 3; ++i) {
-        _link.send(protocol::MessageType::DISCONNECT,
-            protocol::Disconnect{});
+        _link.send(protocol::MessageType::DISCONNECT, protocol::Disconnect{});
         std::chrono::milliseconds timeout(20);
         std::this_thread::sleep_for(timeout);
     }

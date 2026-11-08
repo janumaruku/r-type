@@ -5,15 +5,14 @@
 ** SparseSetTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/SparseSet.hpp"
 
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
-
-#include "engine/ecs/SparseSet.hpp"
 
 using engine::ecs::Entity;
 using engine::ecs::SparseSet;
@@ -27,14 +26,13 @@ Entity entity(std::uint32_t index, std::uint32_t generation = 0)
 
 struct Counted {
     static inline int copies = 0;
-    static inline int moves = 0;
-    int value = 0;
+    static inline int moves  = 0;
+    int value                = 0;
 
     Counted() = default;
 
     explicit Counted(int initial): value(initial)
-    {
-    }
+    {}
 
     Counted(const Counted &other): value(other.value)
     {
@@ -63,7 +61,7 @@ struct Counted {
     static void reset()
     {
         copies = 0;
-        moves = 0;
+        moves  = 0;
     }
 };
 
@@ -81,7 +79,7 @@ struct Fragile {
 template <class C>
 testing::AssertionResult aligned(SparseSet<C> &set)
 {
-    const auto entities = set.entities();
+    const auto entities   = set.entities();
     const auto components = set.components();
 
     if (entities.size() != components.size())
@@ -344,7 +342,7 @@ TEST(SparseSet, BackwardIterationWhileErasingVisitsEveryEntityOnce)
     }
 
     EXPECT_EQ(visits.size(), 10U);
-    for (const auto &[index, count] : visits)
+    for (const auto &[index, count]: visits)
         EXPECT_EQ(count, 1) << "entity " << index;
     EXPECT_EQ(set.size(), 5U);
     EXPECT_TRUE(aligned(set));

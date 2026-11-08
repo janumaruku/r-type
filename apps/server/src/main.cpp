@@ -47,10 +47,10 @@ public:
         std::signal(SIGTERM, SIG_DFL);
     }
 
-    StopOnSignal(const StopOnSignal &) = delete;
+    StopOnSignal(const StopOnSignal &)            = delete;
     StopOnSignal &operator=(const StopOnSignal &) = delete;
 };
-}
+} // namespace
 
 int main(int argc, char *argv[])
 {

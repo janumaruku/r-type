@@ -10,9 +10,9 @@
 
 namespace rtype::game {
 struct SpawnDirectorState {
-    float elapsed = 0.0F;
+    float elapsed        = 0.0F;
     float untilNextSpawn = 0.0F;
 };
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_SPAWN_DIRECTOR_STATE_HPP
+#endif // R_TYPE_SPAWN_DIRECTOR_STATE_HPP

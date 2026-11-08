@@ -8,6 +8,7 @@ The sprite sheets and the starting frame rectangles come from [ManuelR-T/R-Type]
 | `bydos_slave.gif` | `r-typesheet5.gif`, copied unmodified. The Bydos slave turning, 16 frames | MIT, ManuelR-T/R-Type |
 | `player_shots.gif` | `r-typesheet1.gif`, copied unmodified. Charge effects, beams and the player missile | MIT, ManuelR-T/R-Type |
 | `enemy_shots_and_explosions.png` | `r-typesheet43.png`, copied unmodified. ManuelR-T/R-Type's edited 424-px version of the original sheet: the enemy ball missile and the explosions. Every rectangle in `catalog.json` was measured on it | MIT, ManuelR-T/R-Type |
+| `white.png` | Written for this project. A single opaque white pixel: each star is this pixel, tinted grey for its brightness and scaled 1 (far) or 2 (near) | Same as the repository |
 | `catalog.json` | Written for this project. The ship grid, the state names and the starting rectangles come from ManuelR-T/R-Type's sprite data (`missileBall.json`, `explosion.json`); each entry's `source` field names the original sheet and frames | Same as the repository |
 
 The sheets were renamed after what they hold. The `source` fields in `catalog.json` keep the original names, so they can be traced back to the reference repository.

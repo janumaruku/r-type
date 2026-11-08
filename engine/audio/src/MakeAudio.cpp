@@ -23,9 +23,10 @@ std::unique_ptr<IAudio> makeAudio()
         log.info("sound device opened");
         return audio;
     } catch (const core::EngineError &error) {
-        log.warn("no sound, falling back to NullAudio: {}", std::string{error.what()});
+        log.warn("no sound, falling back to NullAudio: {}",
+            std::string{error.what()});
         return std::make_unique<NullAudio>();
     }
 }
 
-}
+} // namespace engine::audio

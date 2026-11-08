@@ -57,7 +57,7 @@ TEST_F(Respawn, JoinedSlotIsAliveAfterOneTick)
 
 TEST_F(Respawn, EveryJoinedSlotGetsItsOwnLane)
 {
-    const std::uint8_t first = joinPlayer();
+    const std::uint8_t first  = joinPlayer();
     const std::uint8_t second = joinPlayer();
 
     tick();
@@ -68,7 +68,7 @@ TEST_F(Respawn, EveryJoinedSlotGetsItsOwnLane)
 
 TEST_F(Respawn, SlotRespawningForTwoSecondsIsAliveAfter120Ticks)
 {
-    const Entity old = spawnAliveShip();
+    const Entity old     = spawnAliveShip();
     const NetId oldNetId = netIdOf(old);
 
     ASSERT_TRUE(roster().onShipKilled(0, 2.0F));

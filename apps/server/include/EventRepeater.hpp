@@ -51,7 +51,7 @@ private:
 
     std::vector<Pending> _pending;
     std::uint32_t _nextEventId = 1;
-    std::size_t _dropped = 0;
+    std::size_t _dropped       = 0;
     engine::core::log::Logger _logger{"EventRepeater"};
 };
 } // namespace rtype::server

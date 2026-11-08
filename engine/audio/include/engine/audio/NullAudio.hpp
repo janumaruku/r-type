@@ -21,7 +21,7 @@ namespace engine::audio {
 ** implementation, the same id for the same path, and the volumes are kept so
 ** an options menu still shows the right values.
 */
-class NullAudio final : public IAudio {
+class NullAudio final: public IAudio {
 public:
     NullAudio() = default;
 
@@ -55,6 +55,6 @@ private:
     std::unordered_map<std::filesystem::path, MusicId> _musics;
 };
 
-}
+} // namespace engine::audio
 
 #endif // !NULL_AUDIO_HPP

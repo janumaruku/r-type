@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
-
 #include "SnapshotAssembler.hpp"
+
+#include <gtest/gtest.h>
 
 namespace rtype::client {
 namespace {

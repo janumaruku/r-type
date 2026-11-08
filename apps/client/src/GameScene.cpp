@@ -14,8 +14,10 @@
 #include <utility>
 
 #include "ClientStages.hpp"
+#include "Hud.hpp"
 #include "InterpolationSystem.hpp"
 #include "PredictionSystem.hpp"
+#include "RenderSystems.hpp"
 #include "engine/core/Rng.hpp"
 #include "engine/ecs/Resources.hpp"
 #include "engine/render/RenderQueue.hpp"
@@ -31,21 +33,31 @@ constexpr auto SERVER_TIMEOUT = std::chrono::seconds(5);
 }
 
 /*
-** Adds the systems in client.md's order.
-** TODO(RTP-128): shipTiltSystem, animationSystem, effectSystem and
-** starfieldSystem after it in UPDATE, then renderSystem and hudSystem in
-** RENDER.
+** Adds the systems in client.md's order: hudSystem runs last in RENDER, so
+** the HUD draws over the sprites.
 */
 void addSystems(engine::ecs::Registry &registry)
 {
     registry.addSystem<game::Transform, const NetSamples>(ClientStage::UPDATE,
         "interpolation", interpolationSystem);
     registry.addSystem<>(ClientStage::UPDATE, "prediction", predictionSystem);
+    registry.addSystem<ShipTilt, const game::Transform, Animation>(
+        ClientStage::UPDATE, "shipTilt", shipTiltSystem);
+    registry.addSystem<Animation, Sprite>(ClientStage::UPDATE, "animation",
+        animationSystem);
+    registry.addSystem<TransientEffect>(ClientStage::UPDATE, "effects",
+        effectSystem);
+    registry.addSystem<game::Transform, const Star>(ClientStage::UPDATE,
+        "starfield", starfieldSystem);
+    registry.addSystem<const game::Transform, const Sprite>(
+        ClientStage::RENDER, "render", renderSystem);
+    registry.addSystem<>(ClientStage::RENDER, "hud", hudSystem);
 }
 
 void setResources(engine::ecs::Registry &registry)
 {
     registry.emplaceResource<engine::render::RenderQueue>();
+    registry.emplaceResource<ClientSettings>();
     registry.emplaceResource<RenderClock>();
     registry.emplaceResource<Correction>();
     registry.emplaceResource<engine::ecs::DeltaTime>();
@@ -54,27 +66,40 @@ void setResources(engine::ecs::Registry &registry)
 }
 }
 
+/*
+** The reactors are declared after _events and _world, so they are destroyed
+** first and unsubscribe while the bus still exists. The HudReactor lives in
+** the registry, inside _world, which is also destroyed before _events.
+** The ActionMap is copied once: the bindings don't change during a game.
+*/
 GameScene::GameScene(std::unique_ptr<ServerLink> link,
-    protocol::Welcome welcome, const SpriteCatalog &sprites):
+    protocol::Welcome welcome, const FrameContext &context):
     _link(std::move(link)), _playerId(welcome.playerId),
-    _world(sprites), _adapter(*_link, _world, _events)
+    _world(context.sprites), _adapter(*_link, _world, _events),
+    _sounds(context.sounds),
+    _audioReactor(_events, context.audio, _sounds, _world),
+    _effectsReactor(_events, _world.registry(), context.settings),
+    _rules(predictionRules(welcome)), _playersToStart(welcome.playersToStart)
 {
     _world.setLocalPlayer(_playerId);
     setResources(_world.registry());
+    setHudResources(context);
     addSystems(_world.registry());
 }
 
-/*
-** TODO(RTP-128): spawns the starfield and starts the looping stage1.ogg
-** music.
-*/
-void GameScene::onEnter([[maybe_unused]] FrameContext &context)
+void GameScene::onEnter(FrameContext &context)
 {
+    auto &registry = _world.registry();
+
+    spawnStarfield(registry, registry.getResource<engine::core::Rng>(),
+        context.whitePixel);
+    context.audio.playMusic(_sounds.stage1, true);
 }
 
 /*
-** The 5 steps of client.md § Frame loop: quit, receive, send the inputs at
-** 60 Hz, check the connection, then run the UPDATE stage.
+** The steps of client.md § Frame loop: quit, receive, send the inputs at
+** 60 Hz, check the connection, update the HUD state, then run the UPDATE
+** stage.
 */
 SceneRequest GameScene::update(FrameContext &context, float dt)
 {
@@ -103,17 +128,28 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
         _serverGone = true;
         return showMessage("Connection lost", "The server stopped answering");
     }
+    updateHudState(context);
     _world.registry().getResource<engine::ecs::DeltaTime>().seconds = dt;
     _world.registry().runStage(ClientStage::UPDATE);
     return SceneRequest::stay();
 }
 
+/*
+** The settings are copied every frame, so a change to highContrast shows
+** at once. Until the server starts the game, only the waiting message is
+** drawn.
+*/
 void GameScene::draw(engine::render::RenderQueue &queue,
-    [[maybe_unused]] const FrameContext &context)
+    const FrameContext &context)
 {
+    if (_world.phase() == protocol::GamePhase::WAITING) {
+        drawWaiting(queue, context);
+        return;
+    }
     auto &stageQueue = _world.registry().getResource<
         engine::render::RenderQueue>();
 
+    _world.registry().setResource(context.settings);
     std::swap(stageQueue, queue);
     _world.registry().runStage(ClientStage::RENDER);
     std::swap(stageQueue, queue);
@@ -123,10 +159,11 @@ void GameScene::draw(engine::render::RenderQueue &queue,
 ** Says goodbye unless the server already forgot us: after QUIT
 ** (_leftByChoice) or when the window closes (ClientApp's change(nullptr)),
 ** but not after SHUTDOWN, KICK or a timeout, which set _serverGone.
-** TODO(RTP-128): stops the music.
+** The music stops in every case.
 */
-void GameScene::onExit([[maybe_unused]] FrameContext &context)
+void GameScene::onExit(FrameContext &context)
 {
+    context.audio.stopMusic();
     if (!_serverGone)
         _adapter.sendDisconnect();
 }
@@ -195,6 +232,41 @@ void GameScene::receive(TimePoint now)
     for (const auto &datagram: _link->socket.receiveAll())
         _adapter.handle(datagram, now);
     _events.dispatch();
+}
+
+void GameScene::setHudResources(const FrameContext &context)
+{
+    auto &registry = _world.registry();
+
+    registry.emplaceResource<HudReactor>(_events, _world);
+    registry.emplaceResource<HudState>();
+    registry.setResource(context.actions);
+    registry.setResource(static_cast<const ClientWorld *>(&_world));
+}
+
+/*
+** F1 (TOGGLE_HUD_HELP) flips the help, and the ping is the average over
+** the last second, or nothing without a recent sample.
+*/
+void GameScene::updateHudState(const FrameContext &context)
+{
+    auto &state = _world.registry().getResource<HudState>();
+
+    if (context.actions.wasTriggered(Action::TOGGLE_HUD_HELP, context.input))
+        state.showHelp = !state.showHelp;
+    state.ping = _prediction.averagePing(context.now);
+}
+
+/*
+** The count comes from the last roster, so it climbs as players join.
+*/
+void GameScene::drawWaiting(engine::render::RenderQueue &queue,
+    const FrameContext &context) const
+{
+    pushMessage(queue, context.settings.hudFontSize, "Waiting for players",
+        std::to_string(_world.joinedPlayers()) + " / " +
+            std::to_string(_playersToStart) + " connected",
+        "ESC: quit");
 }
 
 void GameScene::advanceRenderClock(float dt)

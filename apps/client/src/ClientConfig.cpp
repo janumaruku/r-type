@@ -27,14 +27,13 @@ constexpr std::string_view PROGRAM = "r-type-client";
 */
 const CLI::Validator WHOLE_NUMBER(
     [](const std::string &value) {
-        const bool digitsOnly = !value.empty()
-            && std::ranges::all_of(value, [](unsigned char character) {
+        const bool digitsOnly = !value.empty() &&
+            std::ranges::all_of(value, [](unsigned char character) {
                 return std::isdigit(character) != 0;
             });
 
-        return digitsOnly
-            ? std::string{}
-            : "'" + value + "' is not a whole number";
+        return digitsOnly ? std::string{}
+                          : "'" + value + "' is not a whole number";
     },
     "", "WHOLE_NUMBER");
 
@@ -51,7 +50,7 @@ std::string printableName(std::string_view name)
 std::optional<std::string> readEnvironment(const char *name)
 {
 #ifdef _WIN32
-    char *value = nullptr;
+    char *value      = nullptr;
     std::size_t size = 0;
 
     if (_dupenv_s(&value, &size, name) != 0 || value == nullptr)
@@ -67,43 +66,47 @@ std::optional<std::string> readEnvironment(const char *name)
     return std::string(value);
 #endif
 }
-}
+} // namespace
 
 std::unique_ptr<CLI::App> makeApp(ClientConfig &config,
     std::string_view program)
 {
-    auto app = std::make_unique<CLI::App>("R-Type game client",
-        std::string(program));
+    auto app =
+        std::make_unique<CLI::App>("R-Type game client", std::string(program));
 
     app->set_help_flag("--help", "Prints usage and exits with 0");
 
     app->add_option("-h,--host", config.host, "Server host")
-       ->capture_default_str()
-       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+        ->capture_default_str()
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
     app->add_option("-p,--port", config.port,
            "UDP port to bind on to communicate with the server")
-       ->type_name("PORT")
-       ->check(WHOLE_NUMBER)
-       ->check(CLI::Range(1, 65535))
-       ->capture_default_str()
-       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+        ->type_name("PORT")
+        ->check(WHOLE_NUMBER)
+        ->check(CLI::Range(1, 65535))
+        ->capture_default_str()
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
-    app->add_option_function<std::string>("-n,--name",
+    app->add_option_function<std::string>(
+           "-n,--name",
            [&config](const std::string &nameStr) {
                config.name = printableName(nameStr);
-           }, "Player name")
-       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+           },
+           "Player name")
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
     app->add_flag("--fullscreen", config.fullscreen, "Enable fullscreen");
 
-    app->add_option_function<std::string>("--log-level",
+    app->add_option_function<std::string>(
+           "--log-level",
            [&config](const std::string &name) {
                config.logLevel = engine::core::log::parseLevel(name).value();
-           }, "Minimum level printed")
-       ->check(CLI::IsMember({"trace", "debug", "info", "warn", "error"}))
-       ->default_str("info")
-       ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
+           },
+           "Minimum level printed")
+        ->check(CLI::IsMember({"trace", "debug", "info", "warn", "error"}))
+        ->default_str("info")
+        ->multi_option_policy(CLI::MultiOptionPolicy::TakeLast);
 
     return app;
 }
@@ -112,9 +115,9 @@ ClientConfig ClientConfig::parse(std::span<const std::string_view> args)
 {
     ClientConfig config;
     config.name = defaultName();
-    auto app = makeApp(config, PROGRAM);
+    auto app    = makeApp(config, PROGRAM);
     std::vector<std::string> argList(args.rbegin(), args.rend());
-    
+
     try {
         app->parse(argList);
     } catch (const CLI::CallForHelp &) {
@@ -142,7 +145,7 @@ std::string ClientConfig::defaultName()
     constexpr std::array<const char *, 2> variables{"USER", "USERNAME"};
 #endif
 
-    for (const char *variable : variables)
+    for (const char *variable: variables)
         if (const auto user = readEnvironment(variable))
             return printableName(*user);
     return "";

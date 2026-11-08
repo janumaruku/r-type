@@ -7,20 +7,30 @@
 
 #pragma once
 
+#include <benchmark/benchmark.h>
 #include <cstddef>
 #include <cstdint>
 #include <random>
 #include <vector>
-#include <benchmark/benchmark.h>
 
 inline constexpr std::size_t ENTITY_COUNT = 1'000'000;
 
-struct Position { float x; float y; };
-struct Small { float value; float pad; };       // 8 bytes
-struct Big { float value; float pad[15]; };     // 64 bytes
+struct Position {
+    float x;
+    float y;
+};
+struct Small {
+    float value;
+    float pad;
+}; // 8 bytes
+struct Big {
+    float value;
+    float pad[15];
+}; // 64 bytes
 static_assert(sizeof(Small) == 8);
 static_assert(sizeof(Big) == 64);
-template <std::size_t N> struct Tag {};         // as many distinct types as needed
+template <std::size_t N>
+struct Tag {}; // as many distinct types as needed
 
 inline std::vector<std::size_t> pickEntities(double density,
     std::uint32_t seed = 42)
@@ -43,12 +53,12 @@ double memoryMB(const std::vector<std::size_t> &ids)
 {
     if (ids.empty())
         return 0.0;
-    const std::size_t sparseBytes = (ids.back() + 1) * 4;
-    const std::size_t denseBytes = ids.size() * 8;
+    const std::size_t sparseBytes    = (ids.back() + 1) * 4;
+    const std::size_t denseBytes     = ids.size() * 8;
     const std::size_t componentBytes = ids.size() * sizeof(T);
 
-    return static_cast<double>(sparseBytes + denseBytes + componentBytes)
-        / 1'000'000.0;
+    return static_cast<double>(sparseBytes + denseBytes + componentBytes) /
+        1'000'000.0;
 }
 
 inline double densityOf(const benchmark::State &state)

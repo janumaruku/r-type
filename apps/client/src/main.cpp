@@ -17,10 +17,10 @@
 #include "engine/core/Logger.hpp"
 
 namespace {
-constexpr std::string_view PROGRAM = "r-type_client";
-constexpr int EPITECH_EXIT_FAIL = 84;
+constexpr std::string_view PROGRAM  = "r-type_client";
+constexpr int EPITECH_EXIT_FAIL     = 84;
 constexpr const char *SETTINGS_FILE = "config/client.json";
-}
+} // namespace
 
 int main(int argc, char *argv[])
 {

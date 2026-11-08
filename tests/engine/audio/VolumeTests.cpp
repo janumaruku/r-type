@@ -5,11 +5,10 @@
 ** VolumeTests
 */
 
-#include <gtest/gtest.h>
-
-#include <limits>
-
 #include "engine/audio/Volume.hpp"
+
+#include <gtest/gtest.h>
+#include <limits>
 
 using engine::audio::Volume;
 
@@ -57,7 +56,9 @@ TEST(VolumeTests, NaNBecomesZero)
 
     volume.setMusic(std::numeric_limits<float>::quiet_NaN());
     EXPECT_FLOAT_EQ(volume.music(), 0.0F);
-    EXPECT_FLOAT_EQ(volume.effectiveSfx(std::numeric_limits<float>::quiet_NaN()), 0.0F);
+    EXPECT_FLOAT_EQ(volume
+                        .effectiveSfx(std::numeric_limits<float>::quiet_NaN()),
+        0.0F);
 }
 
 TEST(VolumeTests, APlayVolumeAboveOneIsClamped)

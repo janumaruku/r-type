@@ -23,4 +23,4 @@ struct rtype::game::GameWorldTestAccess {
     }
 };
 
-#endif //R_TYPE_GAMEWORLDTESTACCESS_HPP
+#endif // R_TYPE_GAMEWORLDTESTACCESS_HPP

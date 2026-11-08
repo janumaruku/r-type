@@ -14,6 +14,8 @@
 #include "ClientComponents.hpp"
 #include "engine/ecs/Component.hpp"
 #include "engine/ecs/Entity.hpp"
+#include "PresentationComponents.hpp"
+#include "RenderSystems.hpp"
 #include "rtype/game/Components.hpp"
 #include "rtype/game/GameWorld.hpp"
 #include "rtype/protocol/Snapshot.hpp"
@@ -29,7 +31,7 @@ ClientWorld::ClientWorld(SpriteCatalog sprites)
     _registry.registerComponent<Replica>();
     _registry.registerComponent<NetSamples>();
     _registry.registerComponent<Animation>();
-    _registry.registerComponent<SpriteDef>();
+    _registry.registerComponent<Sprite>();
     _registry.registerComponent<HighContrastOutline>();
     _registry.registerComponent<PlayerLabel>();
     _registry.registerComponent<ShipTilt>();
@@ -41,7 +43,8 @@ void ClientWorld::bindEntityComponents(std::uint32_t tick,
     SpriteKey spriteKey, const NetSample &sample)
 {
     const auto entity = _registry.spawnEntity();
-    const auto &def   = catalog.find(spriteKey, state.variant);
+    const auto defId  = catalog.find(spriteKey, state.variant);
+    const auto &def   = catalog.get(defId);
     _registry.addComponent(entity, rtype::game::Transform{{state.x, state.y}});
     _registry.addComponent(entity, rtype::game::Velocity{{state.vx, state.vy}});
     _registry.addComponent(entity,
@@ -50,13 +53,12 @@ void ClientWorld::bindEntityComponents(std::uint32_t tick,
             .netId    = state.netId});
     _registry.addComponent(entity,
         NetSamples{.ring{sample}, .lastSeenTick = tick});
-    _registry.addComponent(entity, Animation{.def = def});
+    _registry.addComponent(entity, Animation{.def = defId});
     _registry.addComponent(entity,
-        SpriteDef{
-            .texture   = catalog.get(def).texture,
-            .states    = catalog.get(def).states,
-            .frameTime = catalog.get(def).frameTime,
-            .loop      = catalog.get(def).loop,
+        Sprite{
+            .texture = def.texture,
+            .frame   = def.states.front().frames.front(),
+            .layer   = layerFor(state.kind),
         });
 
     if (state.kind == protocol::EntityKind::BYDOS_SLAVE ||
@@ -76,7 +78,7 @@ void ClientWorld::applyEntity(std::uint32_t tick,
     _latestServerTick = std::max(_latestServerTick, tick);
 
     auto &catalog  = _registry.getResource<SpriteCatalog>();
-    auto spriteKey = static_cast<SpriteKey>(state.kind);
+    const auto spriteKey = static_cast<SpriteKey>(state.kind);
     const NetSample sample{
         .tick     = tick,
         .position = {state.x, state.y},
@@ -141,7 +143,7 @@ void ClientWorld::applyRoster(std::span<const protocol::PlayerInfo> roster)
 
 void ClientWorld::tagLocalShip()
 {
-    auto &locals = _registry.registerComponent<LocalPlayer>();
+    const auto &locals = _registry.registerComponent<LocalPlayer>();
     const auto ship = localShip();
     const std::vector tagged(locals.entities().begin(),
         locals.entities().end());
@@ -188,6 +190,11 @@ std::optional<engine::ecs::Entity> ClientWorld::localShip() const
     return find(_roster[_playerId].shipNetId);
 }
 
+game::NetId ClientWorld::localShipNetId() const noexcept
+{
+    return _roster[_playerId].shipNetId;
+}
+
 const std::array<protocol::PlayerInfo, 4> &ClientWorld::roster() const noexcept
 {
     return _roster;
@@ -203,6 +210,24 @@ std::uint32_t ClientWorld::lastProcessedInput() const noexcept
     return _lastProcessedInput;
 }
 
+void ClientWorld::setPhase(protocol::GamePhase phase) noexcept
+{
+    _phase = phase;
+}
+
+protocol::GamePhase ClientWorld::phase() const noexcept
+{
+    return _phase;
+}
+
+std::size_t ClientWorld::joinedPlayers() const noexcept
+{
+    return static_cast<std::size_t>(std::ranges::count_if(_roster,
+        [](const protocol::PlayerInfo &slot) {
+            return slot.state != protocol::PlayerState::EMPTY;
+        }));
+}
+
 bool ClientWorld::rosterChangedSinceLastCall() noexcept
 {
     return std::exchange(_rosterChanged, false);
@@ -212,5 +237,4 @@ engine::ecs::Registry &ClientWorld::registry() noexcept
 {
     return _registry;
 }
-
-} // namespace rtype::client
+}

@@ -5,20 +5,18 @@
 ** RateLimitsTests.cpp
 */
 
-#include <gtest/gtest.h>
+#include "RateLimits.hpp"
 
+#include <asio.hpp>
 #include <chrono>
 #include <cstdint>
-#include <asio.hpp>
-
-#include "RateLimits.hpp"
+#include <gtest/gtest.h>
 
 namespace rtype::server::tests {
 
 using namespace std::chrono_literals;
 using Clock     = std::chrono::steady_clock;
 using TimePoint = Clock::time_point;
-
 
 namespace {
 
@@ -31,8 +29,8 @@ asio::ip::udp::endpoint endpointFor(std::uint32_t index)
     return {address, static_cast<unsigned short>(10000U + (index % 50000U))};
 }
 
-std::uint32_t sendDatagrams(
-    FloodTracker &tracker, TimePoint now, std::uint32_t amount)
+std::uint32_t sendDatagrams(FloodTracker &tracker, TimePoint now,
+    std::uint32_t amount)
 {
     std::uint32_t allowed = 0;
 
@@ -59,7 +57,8 @@ TEST(WindowCounterTests, AcceptsExactlyTheLimitAndResetsForANewWindow)
     EXPECT_EQ(counter.countInWindow(), 1U);
 }
 
-TEST(FloodTrackerTests, Allows240PerSecondAndDoesNotKickAfterTwoFloodedSecondsThenCalm)
+TEST(FloodTrackerTests,
+    Allows240PerSecondAndDoesNotKickAfterTwoFloodedSecondsThenCalm)
 {
     FloodTracker tracker;
 
@@ -121,7 +120,7 @@ TEST(FloodTrackerTests, AnOldStreakNoLongerKicks)
 {
     FloodTracker tracker;
 
-    for (const auto second : {0s, 1s, 2s})
+    for (const auto second: {0s, 1s, 2s})
         EXPECT_EQ(sendDatagrams(tracker, T0 + second, 300), 240U);
     ASSERT_TRUE(tracker.shouldKick(T0 + 3s));
 
@@ -147,8 +146,7 @@ TEST(RejectLimiterTests, AllowsOnlyTwentyDifferentEndpointsPerSecond)
         if (limiter.allow(endpointFor(i), T0))
             ++allowed;
         else
-            EXPECT_GE(i, 20U)
-                << "An endpoint among the first 20 was rejected";
+            EXPECT_GE(i, 20U) << "An endpoint among the first 20 was rejected";
     }
 
     EXPECT_EQ(allowed, 20U);
@@ -161,7 +159,7 @@ TEST(RejectLimiterTests, HandlesTenThousandUniqueEndpointsOverOneHundredSeconds)
 
     for (std::uint32_t second = 0; second < 100; ++second) {
         std::uint32_t allowedThisSecond = 0;
-        const auto now = T0 + std::chrono::seconds(second);
+        const auto now                  = T0 + std::chrono::seconds(second);
 
         for (std::uint32_t i = 0; i < 100; ++i, ++serial) {
             if (limiter.allow(endpointFor(serial), now))
@@ -182,7 +180,7 @@ TEST(RejectLimiterTests, NeverTracksMoreThanTwiceTheLimit)
 {
     RejectLimiter limiter;
     std::uint32_t serial = 0;
-    const auto sendAt = [&](TimePoint now, std::uint32_t count) {
+    const auto sendAt    = [&](TimePoint now, std::uint32_t count) {
         for (std::uint32_t i = 0; i < count; ++i, ++serial)
             EXPECT_TRUE(limiter.allow(endpointFor(serial), now))
                 << "address " << serial;

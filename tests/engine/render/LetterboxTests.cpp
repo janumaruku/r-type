@@ -5,9 +5,9 @@
 ** LetterboxTests
 */
 
-#include <gtest/gtest.h>
-
 #include "../../../engine/render/include/engine/render/Letterbox.hpp"
+
+#include <gtest/gtest.h>
 
 using engine::core::FloatRect;
 using engine::core::Vec2f;
@@ -25,7 +25,7 @@ void expectRect(const FloatRect &actual, float x, float y, float width,
     EXPECT_FLOAT_EQ(actual.width(), width);
     EXPECT_FLOAT_EQ(actual.height(), height);
 }
-}
+} // namespace
 
 TEST(LetterboxTests, TheLogicalSizeFillsTheWindowExactly)
 {
@@ -44,8 +44,7 @@ TEST(LetterboxTests, ATallerWindowGetsBarsAtTheTopAndBottom)
 
 TEST(LetterboxTests, ASquareWindowIsCentredVertically)
 {
-    expectRect(letterbox(Vec2u{1000, 1000}, LOGICAL), 0, 218.75F, 1000,
-        562.5F);
+    expectRect(letterbox(Vec2u{1000, 1000}, LOGICAL), 0, 218.75F, 1000, 562.5F);
 }
 
 TEST(LetterboxTests, AWiderWindowGetsBarsOnTheSides)

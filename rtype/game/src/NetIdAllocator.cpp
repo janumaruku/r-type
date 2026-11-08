@@ -45,4 +45,4 @@ std::size_t NetIdAllocator::size() const noexcept
 {
     return _byNetId.size();
 }
-}
+} // namespace rtype::game

@@ -5,11 +5,10 @@
 ** InputStateTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/input/InputState.hpp"
 
 #include <cstddef>
-
-#include "engine/input/InputState.hpp"
+#include <gtest/gtest.h>
 
 using engine::input::InputEvent;
 using engine::input::InputState;
@@ -21,7 +20,7 @@ InputEvent event(InputEvent::Type type, Key key = Key::UNKNOWN)
 {
     InputEvent result;
     result.type = type;
-    result.key = key;
+    result.key  = key;
     return result;
 }
 
@@ -39,9 +38,10 @@ testing::AssertionResult noBitSet(const InputState &state)
 {
     for (std::size_t i = 0; i < KEY_COUNT; ++i) {
         const auto key = static_cast<Key>(i);
-        if (state.isDown(key) || state.wasPressed(key)
-            || state.wasReleased(key))
-            return testing::AssertionFailure() << "key " << i << " has a bit set";
+        if (state.isDown(key) || state.wasPressed(key) ||
+            state.wasReleased(key))
+            return testing::AssertionFailure()
+                << "key " << i << " has a bit set";
     }
     return testing::AssertionSuccess();
 }

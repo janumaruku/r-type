@@ -9,7 +9,6 @@
 #define R_TYPE_ECS_EXAMPLE_COMPONENTS_HPP
 
 #include <cstdint>
-
 #include <raylib.h>
 
 #include "engine/core/Vec2.hpp"
@@ -17,13 +16,13 @@
 namespace ecs_example {
 using engine::core::Vec2f;
 
-enum class Stage: std::uint8_t {
+enum class Stage : std::uint8_t {
     UPDATE,
     RENDER,
 };
 
-constexpr int WIDTH = 960;
-constexpr int HEIGHT = 600;
+constexpr int WIDTH            = 960;
+constexpr int HEIGHT           = 600;
 constexpr float MAX_FRAME_TIME = 0.05F;
 
 struct Position {
@@ -70,6 +69,6 @@ struct Game {
     bool over;
     float nextEnemy;
 };
-}
+} // namespace ecs_example
 
 #endif // R_TYPE_ECS_EXAMPLE_COMPONENTS_HPP

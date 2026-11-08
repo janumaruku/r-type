@@ -1,6 +1,7 @@
 #include "ServerApp.hpp"
 
 #include <chrono>
+#include <filesystem>
 #include <thread>
 #include <utility>
 
@@ -10,16 +11,35 @@ namespace rtype::server {
 
 namespace {
 constexpr std::chrono::milliseconds SEND_TIMEOUT{200};
+
+/*
+** --rules names a file that exists, checked by ServerConfig::parse. Without
+** it, config/rules.json is read when it exists, and the built-in defaults
+** are used otherwise. A file the loader refuses throws ConfigError, which
+** main turns into exit 84.
+*/
+game::Rules loadRules(const ServerConfig &config)
+{
+    engine::core::log::Logger logger("ServerApp");
+    const std::filesystem::path path =
+        config.rulesPath.value_or(DEFAULT_RULES_PATH);
+
+    if (!config.rulesPath && !std::filesystem::exists(path)) {
+        logger.info("{}: not found, using the built-in rules", path.string());
+        return {};
+    }
+    game::Rules rules = game::Rules::load(path);
+
+    logger.info("rules loaded from {}", path.string());
+    return rules;
+}
 }
 
 ServerApp::ServerApp(ServerConfig config,
     const std::atomic<bool> &stopRequested):
-    _config(std::move(config)),
-    _socket(_config.port),
-    _world(game::Rules{}, _config.seed),
-    _adapter(_socket, _world, _sessions),
-    _ticker(TICK_PERIOD),
-    _stopRequested(stopRequested)
+    _config(std::move(config)), _socket(_config.port),
+    _world(loadRules(_config), _config.seed), _adapter(_socket, _world, _sessions),
+    _ticker(TICK_PERIOD), _stopRequested(stopRequested)
 {
     engine::core::log::setLevel(_config.logLevel);
     _logger.info("server seed {}", _config.seed);
@@ -63,9 +83,9 @@ void ServerApp::waitForSends(std::uint64_t target)
 void ServerApp::tick()
 {
     const auto now = Clock::now();
-    for (const auto &datagram : _socket.receiveAll())
+    for (const auto &datagram: _socket.receiveAll())
         _adapter.handle(datagram, now);
-    for (const auto &endpoint : _sessions.timedOut(now))
+    for (const auto &endpoint: _sessions.timedOut(now))
         _adapter.removeClient(endpoint, game::LeaveReason::TIMEOUT);
     _world.step(1.0F / 60.0F);
     _adapter.publish(_world.drainEvents());
@@ -82,17 +102,17 @@ void ServerApp::logStats()
 {
     std::vector<game::ReplicatedEntity> entities;
     _world.collectReplicated(entities);
-    const auto socket = _socket.stats();
+    const auto socket   = _socket.stats();
     const auto &adapter = _adapter.stats();
     const auto offences = adapter.totalBadMagic + adapter.totalBadSize +
         adapter.totalUnknownType + adapter.totalWrongDirection +
         adapter.totalTruncated + adapter.totalTrailingBytes +
         adapter.totalOutOfRange;
     _logger.info("players {}, entities {}, overruns {}, in {}, out {}, "
-        "dropped {}/{}/{}, offences {}, kicks {}",
+                 "dropped {}/{}/{}, offences {}, kicks {}",
         _sessions.size(), entities.size(), _ticker.overruns(), socket.received,
         socket.sent, socket.droppedEmpty, socket.droppedOversized,
         socket.droppedQueueFull, offences, adapter.totalKicked);
 }
 
-}
+} // namespace rtype::server

@@ -32,26 +32,25 @@ bool isOutside(const engine::core::Vec2f position,
     const engine::core::Vec2f halfSize, const float margin,
     const rtype::game::Rules &rules) noexcept
 {
-    return position.x() - halfSize.x() > rules.playfield.x() + margin
-        || position.x() + halfSize.x() < -margin
-        || position.y() - halfSize.y() > rules.playfield.y() + margin
-        || position.y() + halfSize.y() < -margin;
+    return position.x() - halfSize.x() > rules.playfield.x() + margin ||
+        position.x() + halfSize.x() < -margin ||
+        position.y() - halfSize.y() > rules.playfield.y() + margin ||
+        position.y() + halfSize.y() < -margin;
 }
 
-std::optional<engine::core::Vec2f> nearestShip(
-    engine::ecs::Registry &registry, const engine::core::Vec2f from)
+std::optional<engine::core::Vec2f> nearestShip(engine::ecs::Registry &registry,
+    const engine::core::Vec2f from)
 {
     std::optional<engine::core::Vec2f> nearest;
     float best = 0.0F;
 
-    for (auto &&[ship, transform]:
-         registry.view<const rtype::game::PlayerShip, const
-             rtype::game::Transform>()) {
+    for (auto &&[ship, transform]: registry.view<const rtype::game::PlayerShip,
+             const rtype::game::Transform>()) {
         const float distance = (transform.position - from).lengthSquared();
 
         if (!nearest || distance < best) {
             nearest = transform.position;
-            best = distance;
+            best    = distance;
         }
     }
 
@@ -68,11 +67,11 @@ using LayerHitboxes = std::array<std::vector<Hitbox>, 4>;
 std::uint8_t hitterPlayerId(engine::ecs::Registry &registry,
     const engine::ecs::Entity &hitter)
 {
-    if (const auto *ship = registry.getComponent<rtype::game::PlayerShip>(
-        hitter))
+    if (const auto *ship =
+            registry.getComponent<rtype::game::PlayerShip>(hitter))
         return ship->playerId;
     if (const auto *projectile =
-        registry.getComponent<rtype::game::Projectile>(hitter))
+            registry.getComponent<rtype::game::Projectile>(hitter))
         return projectile->ownerPlayerId;
     return rtype::game::NO_PLAYER;
 }
@@ -80,7 +79,7 @@ std::uint8_t hitterPlayerId(engine::ecs::Registry &registry,
 void hit(engine::ecs::Registry &registry, const engine::ecs::Entity &target,
     const engine::ecs::Entity &hitter)
 {
-    auto *health = registry.getComponent<rtype::game::Health>(target);
+    auto *health       = registry.getComponent<rtype::game::Health>(target);
     const auto *damage = registry.getComponent<rtype::game::Damage>(hitter);
     const auto *replicated =
         registry.getComponent<rtype::game::Replicated>(hitter);
@@ -91,9 +90,8 @@ void hit(engine::ecs::Registry &registry, const engine::ecs::Entity &target,
         static_cast<std::int16_t>(health->current - damage->amount);
 
     const rtype::game::LastHit lastHit{
-        .by = replicated != nullptr
-        ? replicated->netId
-        : rtype::game::NO_NET_ID,
+        .by =
+            replicated != nullptr ? replicated->netId : rtype::game::NO_NET_ID,
         .byPlayerId = hitterPlayerId(registry, hitter),
     };
 
@@ -146,20 +144,19 @@ std::size_t countBydos(engine::ecs::Registry &registry)
             ++count;
     return count;
 }
-}
+} // namespace
 
 namespace rtype::game {
 void playerInputSystem(engine::ecs::Registry &registry,
-    engine::ecs::SparseSet<PlayerShip> &,
-    engine::ecs::SparseSet<Velocity> &,
+    engine::ecs::SparseSet<PlayerShip> &, engine::ecs::SparseSet<Velocity> &,
     engine::ecs::SparseSet<Weapon> &)
 {
     const auto &rules = registry.getResource<Rules>();
     const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
 
     for (auto &&[ship, velocity, weapon]:
-         registry.view<PlayerShip, Velocity, Weapon>()) {
-        velocity.value = inputDirection(ship.buttons) * rules.playerSpeed;
+        registry.view<PlayerShip, Velocity, Weapon>()) {
+        velocity.value   = inputDirection(ship.buttons) * rules.playerSpeed;
         weapon.triggered = ship.buttons.held(InputButtons::FIRE);
         ship.invulnerableFor =
             std::max(0.0F, ship.invulnerableFor - delta.seconds);
@@ -173,7 +170,7 @@ void movementSystem(engine::ecs::Registry &registry,
     const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
 
     for (auto &&[transform, velocity]:
-         registry.view<Transform, const Velocity>())
+        registry.view<Transform, const Velocity>())
         transform.position += velocity.value * delta.seconds;
 }
 
@@ -184,15 +181,15 @@ void playfieldSystem(engine::ecs::Registry &registry,
     const auto &rules = registry.getResource<Rules>();
 
     for (auto &&[transform, collider, _]:
-         registry.view<Transform, const Collider, const ConfinedToPlayfield>())
-        transform.position = confineToPlayfield(transform.position,
-            collider.halfSize, rules);
+        registry.view<Transform, const Collider, const ConfinedToPlayfield>())
+        transform.position =
+            confineToPlayfield(transform.position, collider.halfSize, rules);
 
     for (auto &&[entity, transform, collider, despawn]:
-         registry.indexedView<const Transform, const Collider,
-             const DespawnOutsidePlayfield>())
+        registry.indexedView<const Transform, const Collider,
+            const DespawnOutsidePlayfield>())
         if (isOutside(transform.position, collider.halfSize, despawn.margin,
-            rules))
+                rules))
             registry.commands().kill(entity);
 }
 
@@ -201,7 +198,7 @@ void straightMoverSystem(engine::ecs::Registry &registry,
     engine::ecs::SparseSet<Velocity> &)
 {
     for (auto &&[mover, velocity]:
-         registry.view<const StraightMover, Velocity>())
+        registry.view<const StraightMover, Velocity>())
         velocity.value = {-mover.speed, 0.0F};
 }
 
@@ -213,10 +210,9 @@ void straightMoverSystem(engine::ecs::Registry &registry,
 ** baseY + amplitude × sin(2π × frequency × age) at every tick.
 */
 void sineMoverSystem(engine::ecs::Registry &registry,
-    engine::ecs::SparseSet<SineMover> &,
-    engine::ecs::SparseSet<Velocity> &)
+    engine::ecs::SparseSet<SineMover> &, engine::ecs::SparseSet<Velocity> &)
 {
-    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+    const auto &delta     = registry.getResource<engine::ecs::DeltaTime>();
     constexpr float twoPi = 2.0F * std::numbers::pi_v<float>;
 
     for (auto &&[mover, velocity]: registry.view<SineMover, Velocity>()) {
@@ -224,7 +220,7 @@ void sineMoverSystem(engine::ecs::Registry &registry,
 
         mover.age += delta.seconds;
         const float after = std::sin(twoPi * mover.frequency * mover.age);
-        const float vy = delta.seconds > 0.0F
+        const float vy    = delta.seconds > 0.0F
             ? mover.amplitude * (after - before) / delta.seconds
             : 0.0F;
 
@@ -234,15 +230,14 @@ void sineMoverSystem(engine::ecs::Registry &registry,
 
 void aimedShooterSystem(engine::ecs::Registry &registry,
     engine::ecs::SparseSet<AimedShooter> &,
-    const engine::ecs::SparseSet<Transform> &,
-    engine::ecs::SparseSet<Weapon> &)
+    const engine::ecs::SparseSet<Transform> &, engine::ecs::SparseSet<Weapon> &)
 {
-    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+    const auto &delta  = registry.getResource<engine::ecs::DeltaTime>();
     const auto &roster = registry.getResource<PlayerRoster>();
-    auto &rng = registry.getResource<engine::core::Rng>();
+    auto &rng          = registry.getResource<engine::core::Rng>();
 
     for (auto &&[shooter, transform, weapon]:
-         registry.view<AimedShooter, const Transform, Weapon>()) {
+        registry.view<AimedShooter, const Transform, Weapon>()) {
         shooter.timer -= delta.seconds;
         if (shooter.timer > 0.0F)
             continue;
@@ -257,23 +252,22 @@ void aimedShooterSystem(engine::ecs::Registry &registry,
 
         if (!target || (*target - muzzle).lengthSquared() <= 0.0F)
             continue;
-        weapon.aim = (*target - muzzle).normalized();
+        weapon.aim       = (*target - muzzle).normalized();
         weapon.triggered = true;
     }
 }
 
 void weaponSystem(engine::ecs::Registry &registry,
-    engine::ecs::SparseSet<Weapon> &,
-    const engine::ecs::SparseSet<Transform> &,
+    engine::ecs::SparseSet<Weapon> &, const engine::ecs::SparseSet<Transform> &,
     const engine::ecs::SparseSet<Replicated> &)
 {
     const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
 
     for (auto &&[entity, weapon, transform, replicated]:
-         registry.indexedView<Weapon, const Transform, const Replicated>()) {
+        registry.indexedView<Weapon, const Transform, const Replicated>()) {
         const auto *ship = registry.getComponent<PlayerShip>(entity);
 
-        weapon.timer = std::max(0.0F, weapon.timer - delta.seconds);
+        weapon.timer     = std::max(0.0F, weapon.timer - delta.seconds);
         const bool ready = weapon.triggered && weapon.timer == 0.0F;
 
         if (ship == nullptr)
@@ -281,42 +275,45 @@ void weaponSystem(engine::ecs::Registry &registry,
         if (!ready)
             continue;
         weapon.timer = weapon.cooldown;
-        registry.commands().spawn(
-            [shooter = replicated.netId,
-                playerId = ship != nullptr ? ship->playerId : NO_PLAYER,
-                side = ship != nullptr ? Side::PLAYER : Side::ENEMY,
-                muzzle = transform.position + weapon.muzzleOffset,
-                aim = weapon.aim](engine::ecs::Registry &world,
-            const engine::ecs::Entity &missile) {
+        registry.commands()
+            .spawn([shooter     = replicated.netId,
+                       playerId = ship != nullptr ? ship->playerId : NO_PLAYER,
+                       side     = ship != nullptr ? Side::PLAYER : Side::ENEMY,
+                       muzzle   = transform.position + weapon.muzzleOffset,
+                       aim      = weapon.aim](engine::ecs::Registry &world,
+                       const engine::ecs::Entity &missile) {
                 const NetId missileId = side == Side::PLAYER
                     ? makePlayerMissile(world, missile, shooter, playerId,
-                        muzzle)
+                          muzzle)
                     : makeEnemyMissile(world, missile, shooter, muzzle, aim);
 
-                world.getResource<EventOutbox>().push(
-                    Fired{.shooter = shooter, .missile = missileId,
-                          .side = side, .position = muzzle,});
+                world.getResource<EventOutbox>().push(Fired{
+                    .shooter  = shooter,
+                    .missile  = missileId,
+                    .side     = side,
+                    .position = muzzle,
+                });
             });
     }
 }
 
 void collisionSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<Collider> &,
-    const engine::ecs::SparseSet<Transform> &,
-    engine::ecs::SparseSet<Health> &)
+    const engine::ecs::SparseSet<Transform> &, engine::ecs::SparseSet<Health> &)
 {
     using enum CollisionLayer;
     LayerHitboxes hitboxes;
 
     for (auto &&[entity, collider, transform]:
-         registry.indexedView<const Collider, const Transform>()) {
+        registry.indexedView<const Collider, const Transform>()) {
         const auto *ship = registry.getComponent<PlayerShip>(entity);
 
         if (ship == nullptr || ship->invulnerableFor <= 0.0F)
-            hitboxes[static_cast<std::size_t>(collider.layer)].push_back(
-            {.entity = entity,
-             .box = engine::core::FloatRect::fromCenter(
-                 transform.position, collider.halfSize),});
+            hitboxes[static_cast<std::size_t>(collider.layer)].push_back({
+                .entity = entity,
+                .box = engine::core::FloatRect::fromCenter(transform.position,
+                    collider.halfSize),
+            });
     }
     forEachOverlap(layer(hitboxes, PLAYER), layer(hitboxes, ENEMY),
         [&registry](const auto &ship, const auto &enemy) {
@@ -340,34 +337,38 @@ void healthSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<Replicated> &)
 {
     const auto &rules = registry.getResource<Rules>();
-    auto &roster = registry.getResource<PlayerRoster>();
-    auto &outbox = registry.getResource<EventOutbox>();
+    auto &roster      = registry.getResource<PlayerRoster>();
+    auto &outbox      = registry.getResource<EventOutbox>();
 
     for (auto &&[entity, health, replicated]:
-         registry.indexedView<const Health, const Replicated>()) {
+        registry.indexedView<const Health, const Replicated>()) {
         if (health.current > 0)
             continue;
         registry.commands().kill(entity);
 
-        const auto *lastHit = registry.getComponent<LastHit>(entity);
-        const LastHit killer = lastHit != nullptr ? *lastHit : LastHit{};
+        const auto *lastHit   = registry.getComponent<LastHit>(entity);
+        const LastHit killer  = lastHit != nullptr ? *lastHit : LastHit{};
         const auto *transform = registry.getComponent<Transform>(entity);
         const engine::core::Vec2f position =
             transform != nullptr ? transform->position : engine::core::Vec2f{};
 
         if (const auto *ship = registry.getComponent<PlayerShip>(entity)) {
             (void)roster.onShipKilled(ship->playerId, rules.respawnDelay);
-            outbox.push(PlayerKilled{.killer = killer.by,
-                                     .ship = replicated.netId,
-                                     .playerId = ship->playerId,
-                                     .position = position,});
+            outbox.push(PlayerKilled{
+                .killer   = killer.by,
+                .ship     = replicated.netId,
+                .playerId = ship->playerId,
+                .position = position,
+            });
         } else if (const auto *score =
-            registry.getComponent<ScoreValue>(entity)) {
+                       registry.getComponent<ScoreValue>(entity)) {
             if (roster.get(killer.byPlayerId) != nullptr)
                 (void)roster.addScore(killer.byPlayerId, score->points);
-            outbox.push(EnemyKilled{.killerShip = killer.by,
-                                    .enemy = replicated.netId,
-                                    .position = position,});
+            outbox.push(EnemyKilled{
+                .killerShip = killer.by,
+                .enemy      = replicated.netId,
+                .position   = position,
+            });
         }
     }
 }
@@ -380,7 +381,7 @@ void healthSystem(engine::ecs::Registry &registry,
 void lifetimeSystem(engine::ecs::Registry &registry,
     engine::ecs::SparseSet<Lifetime> &)
 {
-    const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
+    const auto &delta         = registry.getResource<engine::ecs::DeltaTime>();
     constexpr float tolerance = 1e-4F;
 
     for (auto &&[entity, lifetime]: registry.indexedView<Lifetime>()) {
@@ -393,28 +394,28 @@ void lifetimeSystem(engine::ecs::Registry &registry,
 void spawnDirectorSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<Replicated> &)
 {
-    if (!registry.getResource<PlayerRoster>().anyAlive()
-        || registry.getResource<GamePhase>().phase() != Phase::PLAYING)
+    if (!registry.getResource<PlayerRoster>().anyAlive() ||
+        registry.getResource<GamePhase>().phase() != Phase::PLAYING)
         return;
 
     const auto &rules = registry.getResource<Rules>();
     const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
-    auto &state = registry.getResource<SpawnDirectorState>();
-    auto &rng = registry.getResource<engine::core::Rng>();
+    auto &state       = registry.getResource<SpawnDirectorState>();
+    auto &rng         = registry.getResource<engine::core::Rng>();
 
     state.elapsed += delta.seconds;
     state.untilNextSpawn -= delta.seconds;
     if (state.untilNextSpawn > 0.0F)
         return;
     if (countBydos(registry) < rules.maxEnemies) {
-        const float y = rng.uniformFloat(rules.enemySpawnY.min,
-            rules.enemySpawnY.max);
+        const float y =
+            rng.uniformFloat(rules.enemySpawnY.min, rules.enemySpawnY.max);
         const MovePattern pattern = rng.chance(rules.sineChance)
             ? MovePattern::SINE
             : MovePattern::STRAIGHT;
 
-        makeBydosSlave(registry, registry.spawnEntity(),
-            {rules.enemySpawnX, y}, pattern);
+        makeBydosSlave(registry, registry.spawnEntity(), {rules.enemySpawnX, y},
+            pattern);
     }
     state.untilNextSpawn = spawnInterval(rules, state.elapsed);
 }
@@ -422,41 +423,78 @@ void spawnDirectorSystem(engine::ecs::Registry &registry,
 void respawnSystem(engine::ecs::Registry &registry)
 {
     const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
-    auto &roster = registry.getResource<PlayerRoster>();
+    auto &roster      = registry.getResource<PlayerRoster>();
 
+    if (registry.getResource<GamePhase>().phase() != Phase::PLAYING)
+        return;
     for (const std::uint8_t playerId: roster.advanceRespawns(delta.seconds)) {
-        const NetId ship = makePlayerShip(registry, registry.spawnEntity(),
-            playerId);
+        const NetId ship =
+            makePlayerShip(registry, registry.spawnEntity(), playerId);
 
         (void)roster.onShipSpawned(playerId, ship);
     }
 }
 
+static void clearWorld(engine::ecs::Registry &registry)
+{
+    for (auto &&[entity, replicated]: registry.indexedView<const Replicated>())
+        registry.commands().kill(entity);
+    registry.getResource<SpawnDirectorState>() = {};
+}
+
+/*
+** WAITING: starts the game once playersToStart players have joined.
+** PLAYING: GAME_OVER once every joined player is out, or back to WAITING
+** when every player has left. GAME_OVER: after gameOverResetDelay, clears
+** the world, gives every joined slot its lives back and goes to WAITING,
+** which starts again at once if enough players are still there.
+*/
 void gameOverSystem(engine::ecs::Registry &registry,
     const engine::ecs::SparseSet<Replicated> &)
 {
     const auto &rules = registry.getResource<Rules>();
     const auto &delta = registry.getResource<engine::ecs::DeltaTime>();
-    auto &phase = registry.getResource<GamePhase>();
-    auto &roster = registry.getResource<PlayerRoster>();
-    auto &outbox = registry.getResource<EventOutbox>();
+    auto &phase       = registry.getResource<GamePhase>();
+    auto &roster      = registry.getResource<PlayerRoster>();
+    auto &outbox      = registry.getResource<EventOutbox>();
 
-    if (!phase.isOver()) {
+    switch (phase.phase()) {
+    case Phase::WAITING:
+        startWhenReady(registry);
+        return;
+
+    case Phase::PLAYING:
+        if (roster.joined() == 0 && phase.wait()) {
+            clearWorld(registry);
+            return;
+        }
         if (roster.allOut() && phase.enterGameOver(rules.gameOverResetDelay))
             outbox.push(GameOver{.teamScore = roster.teamScore()});
         return;
+
+    case Phase::GAME_OVER:
+        break;
     }
     if (!phase.update(delta.seconds))
         return;
-    for (auto &&[entity, replicated]: registry.indexedView<const Replicated>())
-        registry.commands().kill(entity);
+    clearWorld(registry);
     roster.onGameRestarted(rules.playerLives);
-    registry.getResource<SpawnDirectorState>() = {};
     outbox.push(GameRestarted{});
+    startWhenReady(registry);
+}
+
+void startWhenReady(engine::ecs::Registry &registry)
+{
+    const auto &rules   = registry.getResource<Rules>();
+    const auto &roster  = registry.getResource<PlayerRoster>();
+    auto &phase         = registry.getResource<GamePhase>();
+
+    if (roster.joined() >= rules.playersToStart && phase.start())
+        registry.getResource<SpawnDirectorState>() = {};
 }
 
 void netIdCleanupSystem(engine::ecs::Registry &registry)
 {
     registry.getResource<NetIdAllocator>().releaseDead(registry);
 }
-}
+} // namespace rtype::game

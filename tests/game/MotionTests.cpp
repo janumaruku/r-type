@@ -5,12 +5,12 @@
 ** MotionTests
 */
 
-#include <gtest/gtest.h>
+#include "rtype/game/Motion.hpp"
 
+#include <gtest/gtest.h>
 #include <numbers>
 
 #include "engine/core/Vec2.hpp"
-#include "rtype/game/Motion.hpp"
 #include "rtype/game/Rules.hpp"
 
 using engine::core::Vec2f;
@@ -28,15 +28,15 @@ void expectVec(const Vec2f actual, const Vec2f expected)
     EXPECT_FLOAT_EQ(actual.y(), expected.y());
 }
 
-}
+} // namespace
 
 TEST(InputDirection, OppositeButtonsAndNothingGiveZero)
 {
-    expectVec(inputDirection(InputButtons{InputButtons::UP
-                  | InputButtons::DOWN}),
+    expectVec(inputDirection(InputButtons{
+                  InputButtons::UP | InputButtons::DOWN}),
         {0.0F, 0.0F});
-    expectVec(inputDirection(InputButtons{InputButtons::LEFT
-                  | InputButtons::RIGHT}),
+    expectVec(inputDirection(InputButtons{
+                  InputButtons::LEFT | InputButtons::RIGHT}),
         {0.0F, 0.0F});
     expectVec(inputDirection(InputButtons{}), {0.0F, 0.0F});
 }
@@ -45,8 +45,8 @@ TEST(InputDirection, DiagonalIsNormalised)
 {
     const float half = std::numbers::sqrt2_v<float> / 2.0F;
 
-    expectVec(inputDirection(InputButtons{InputButtons::UP
-                  | InputButtons::RIGHT}),
+    expectVec(inputDirection(InputButtons{
+                  InputButtons::UP | InputButtons::RIGHT}),
         {half, -half});
 }
 
@@ -66,8 +66,7 @@ TEST(ConfineToPlayfield, KeepsTheWholeBoxInside)
 
     expectVec(confineToPlayfield({640.0F, 360.0F}, half, rules),
         {640.0F, 360.0F});
-    expectVec(confineToPlayfield({-50.0F, -50.0F}, half, rules),
-        {16.0F, 7.0F});
+    expectVec(confineToPlayfield({-50.0F, -50.0F}, half, rules), {16.0F, 7.0F});
     expectVec(confineToPlayfield({2000.0F, 2000.0F}, half, rules),
         {1264.0F, 713.0F});
 }

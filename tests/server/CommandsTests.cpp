@@ -4,11 +4,11 @@
 
 namespace {
 
-namespace game = rtype::game;
+namespace game  = rtype::game;
 namespace proto = rtype::protocol;
-using server_test::Fixture;
 using server_test::datagram;
 using server_test::endpointFor;
+using server_test::Fixture;
 
 class ThrowingCommand final: public rtype::server::IServerCommand {
 public:
@@ -64,8 +64,8 @@ TEST(CommandsTests, RefusedMessageCountsOneOutOfRangeOffence)
     ASSERT_EQ(world.reserveSlot(), 0);
     sessions.add(from, 0, "Player", {});
 
-    adapter.handle(datagram(from, proto::MessageType::INPUT,
-        proto::Input{}), {});
+    adapter.handle(datagram(from, proto::MessageType::INPUT, proto::Input{}),
+        {});
 
     EXPECT_EQ(adapter.stats().totalOutOfRange, 1U);
     EXPECT_NE(sessions.find(from), nullptr);
@@ -114,12 +114,12 @@ TEST(CommandsTests, UnexpectedCommandExceptionKicksSessionWithoutEscaping)
     ASSERT_TRUE(world.roster().get(0) != nullptr);
     sessions.add(from, 0, "Player", {});
 
-    adapter.handle(datagram(from, proto::MessageType::INPUT,
-        proto::Input{}), {});
+    adapter.handle(datagram(from, proto::MessageType::INPUT, proto::Input{}),
+        {});
 
     EXPECT_EQ(sessions.find(from), nullptr);
     EXPECT_EQ(adapter.stats().totalKicked, 1U);
     socket.stop();
 }
 
-}
+} // namespace

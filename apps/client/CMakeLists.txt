@@ -1,5 +1,6 @@
 add_library(client_logic STATIC
         src/Actions.cpp
+        src/AudioReactor.cpp
         src/ClientApp.cpp
         src/ClientConfig.cpp
         src/ClientDispatch.cpp
@@ -7,16 +8,20 @@ add_library(client_logic STATIC
         src/ClientSettings.cpp
         src/ClientWorld.cpp
         src/ConnectingScene.cpp
+        src/EffectsReactor.cpp
         src/GameCommands.cpp
         src/GameEventBus.cpp
         src/GameScene.cpp
+        src/Hud.cpp
         src/InterpolationSystem.cpp
+        src/PredictionState.cpp
+        src/PredictionSystem.cpp
+        src/RenderSystems.cpp
         src/Scenes.cpp
         src/ServerLink.cpp
         src/SnapshotAssembler.cpp
+        src/SoundBank.cpp
         src/SpriteCatalog.cpp
-        src/PredictionState.cpp
-        src/PredictionSystem.cpp
 )
 
 target_include_directories(client_logic PUBLIC include)

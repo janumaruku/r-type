@@ -59,7 +59,7 @@ private:
 class FloodTracker {
 public:
     static constexpr std::chrono::seconds WINDOW{1};
-    static constexpr std::uint32_t LIMIT = 240;
+    static constexpr std::uint32_t LIMIT      = 240;
     static constexpr std::uint32_t KICK_AFTER = 3;
 
     FloodTracker() = default;

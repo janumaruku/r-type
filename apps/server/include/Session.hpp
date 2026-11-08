@@ -42,17 +42,19 @@ public:
      * fewer than @ref MAX_SESSIONS sessions exist, and `endpoint` has none.
      * @return The new session, valid until it is removed.
      */
-    ClientSession &add(const asio::ip::udp::endpoint &endpoint, std::uint8_t playerId,
-        std::string name, TimePoint now);
+    ClientSession &add(const asio::ip::udp::endpoint &endpoint,
+        std::uint8_t playerId, std::string name, TimePoint now);
     [[nodiscard]] ClientSession *find(const asio::ip::udp::endpoint &endpoint);
     void remove(const asio::ip::udp::endpoint &endpoint);
-    [[nodiscard]] std::vector<asio::ip::udp::endpoint> timedOut(TimePoint now) const;
-    [[nodiscard]] std::map<asio::ip::udp::endpoint, ClientSession> &all() noexcept;
+    [[nodiscard]] std::vector<asio::ip::udp::endpoint> timedOut(TimePoint now)
+        const;
+    [[nodiscard]] std::map<asio::ip::udp::endpoint, ClientSession> &all()
+        noexcept;
     [[nodiscard]] std::size_t size() const noexcept;
 
 private:
     std::map<asio::ip::udp::endpoint, ClientSession> _sessions;
 };
-}
+} // namespace rtype::server
 
 #endif

@@ -20,15 +20,15 @@
 #include "engine/core/AssetLocator.hpp"
 #include "engine/core/Color.hpp"
 #include "engine/core/Errors.hpp"
-#include "engine/render/FontCache.hpp"
 #include "engine/core/Logger.hpp"
-#include "engine/render/RaylibRenderer.hpp"
-#include "engine/render/RenderQueue.hpp"
-#include "Scene.hpp"
-#include "engine/render/TextureCache.hpp"
-#include "engine/render/Window.hpp"
 #include "engine/input/InputEvent.hpp"
 #include "engine/input/InputState.hpp"
+#include "engine/render/FontCache.hpp"
+#include "engine/render/RaylibRenderer.hpp"
+#include "engine/render/RenderQueue.hpp"
+#include "engine/render/TextureCache.hpp"
+#include "engine/render/Window.hpp"
+#include "Scene.hpp"
 
 namespace {
 using engine::core::Vec2f;
@@ -40,11 +40,11 @@ using render_demo::LOGICAL_SIZE;
 using render_demo::Ship;
 using Bindings = engine::input::ActionMap<Action>;
 
-constexpr int EXIT_ERROR = 84;
-constexpr float SHIP_SPEED = 400.0F;
-constexpr float BULLET_SPEED = 900.0F;
-constexpr float MAX_FRAME_TIME = 0.05F;
-constexpr float VOLUME_STEP = 0.1F;
+constexpr int EXIT_ERROR           = 84;
+constexpr float SHIP_SPEED         = 400.0F;
+constexpr float BULLET_SPEED       = 900.0F;
+constexpr float MAX_FRAME_TIME     = 0.05F;
+constexpr float VOLUME_STEP        = 0.1F;
 constexpr int EXPLOSIONS_PER_PRESS = 10;
 const engine::core::Color BACKGROUND{12, 18, 40, 255};
 
@@ -60,21 +60,20 @@ bool handleEvents(const std::vector<InputEvent> &events, InputState &input,
     for (const InputEvent &event: events) {
         input.apply(event);
         switch (event.type) {
-            case InputEvent::Type::WINDOW_CLOSED:
-                return false;
-            case InputEvent::Type::RESIZED:
-                logger.info("RESIZED to {}x{}", event.size.x(),
-                    event.size.y());
-                break;
-            case InputEvent::Type::FOCUS_LOST:
-                input.releaseAll();
-                logger.info("FOCUS_LOST");
-                break;
-            case InputEvent::Type::FOCUS_GAINED:
-                logger.info("FOCUS_GAINED");
-                break;
-            default:
-                break;
+        case InputEvent::Type::WINDOW_CLOSED:
+            return false;
+        case InputEvent::Type::RESIZED:
+            logger.info("RESIZED to {}x{}", event.size.x(), event.size.y());
+            break;
+        case InputEvent::Type::FOCUS_LOST:
+            input.releaseAll();
+            logger.info("FOCUS_LOST");
+            break;
+        case InputEvent::Type::FOCUS_GAINED:
+            logger.info("FOCUS_GAINED");
+            break;
+        default:
+            break;
         }
     }
     return true;
@@ -83,8 +82,8 @@ bool handleEvents(const std::vector<InputEvent> &events, InputState &input,
 float axis(const Bindings &bindings, const InputState &input,
     const Action negative, const Action positive)
 {
-    return static_cast<float>(bindings.isActive(positive, input))
-        - static_cast<float>(bindings.isActive(negative, input));
+    return static_cast<float>(bindings.isActive(positive, input)) -
+        static_cast<float>(bindings.isActive(negative, input));
 }
 
 void moveShip(Ship &ship, const Bindings &bindings, const InputState &input,
@@ -93,12 +92,12 @@ void moveShip(Ship &ship, const Bindings &bindings, const InputState &input,
     const Vec2f direction{
         axis(bindings, input, Action::MOVE_LEFT, Action::MOVE_RIGHT),
         axis(bindings, input, Action::MOVE_UP, Action::MOVE_DOWN)};
-    const Vec2f moved = ship.position + direction * (SHIP_SPEED * dt);
+    const Vec2f moved  = ship.position + direction * (SHIP_SPEED * dt);
     const float margin = CELL * render_demo::SPRITE_SCALE / 2.0F;
 
-    ship.position = Vec2f{
-        std::clamp(moved.x(), margin, LOGICAL_SIZE.x() - margin),
-        std::clamp(moved.y(), margin, LOGICAL_SIZE.y() - margin)};
+    ship.position =
+        Vec2f{std::clamp(moved.x(), margin, LOGICAL_SIZE.x() - margin),
+            std::clamp(moved.y(), margin, LOGICAL_SIZE.y() - margin)};
     ship.thrusting = direction != Vec2f{0.0F, 0.0F};
     if (direction.x() != 0.0F)
         ship.facingLeft = direction.x() < 0.0F;
@@ -116,7 +115,7 @@ void moveBullets(std::vector<Vec2f> &bullets, const float dt)
 Bindings loadBindings(const engine::core::AssetLocator &assets,
     engine::core::log::Logger &logger)
 {
-    Bindings bindings = render_demo::defaultBindings();
+    Bindings bindings                = render_demo::defaultBindings();
     const std::filesystem::path file = assets.root() / "keybindings.json";
 
     if (bindings.load(file))
@@ -139,7 +138,8 @@ void checkTextureIdsAreShared(engine::render::TextureCache &textures,
         textures.load(assets.root() / "." / "sprites.png");
 
     if (again != sheet)
-        throw engine::core::EngineError("sprites.png loaded twice gave two ids");
+        throw engine::core::
+            EngineError("sprites.png loaded twice gave two ids");
     logger.info("sprites.png loaded twice: same id {}", sheet.value);
 }
 
@@ -170,12 +170,13 @@ DemoSounds startAudio(engine::audio::IAudio &audio,
     const bool silent =
         dynamic_cast<engine::audio::NullAudio *>(&audio) != nullptr;
     const DemoSounds sounds{
-        .shot = audio.loadSound(assets.resolve("shot.wav")),
+        .shot      = audio.loadSound(assets.resolve("shot.wav")),
         .explosion = audio.loadSound(assets.resolve("explosion.wav")),
-        .music = audio.loadMusic(assets.resolve("music.ogg")),
+        .music     = audio.loadMusic(assets.resolve("music.ogg")),
     };
 
-    logger.info("audio: {}", std::string{silent ? "NullAudio (silent)" : "RaylibAudio"});
+    logger.info("audio: {}",
+        std::string{silent ? "NullAudio (silent)" : "RaylibAudio"});
     audio.setMasterVolume(1.0F);
     audio.setSfxVolume(0.6F);
     audio.setMusicVolume(0.8F);
@@ -213,21 +214,21 @@ void run(engine::core::log::Logger &logger, const bool missingAsset)
     const engine::core::AssetLocator assets{
         std::filesystem::path{RENDER_DEMO_ASSETS}};
     engine::render::Window window{engine::render::WindowConfig{
-        .title = "render_demo",
-        .size = {1280, 720},
+        .title      = "render_demo",
+        .size       = {1280, 720},
         .fullscreen = false,
-        .vsync = true,
+        .vsync      = true,
         .frameLimit = 60,
     }};
     engine::render::TextureCache textures;
     engine::render::FontCache fonts;
-    engine::render::RaylibRenderer renderer{window, textures, fonts,
-        LOGICAL_SIZE};
+    engine::render::RaylibRenderer renderer{
+        window, textures, fonts, LOGICAL_SIZE};
     const std::unique_ptr<engine::audio::IAudio> audio =
         engine::audio::makeAudio();
     const render_demo::SceneAssets scene{
         .sheet = textures.load(assets.resolve("sprites.png")),
-        .font = fonts.load(assets.resolve("DejaVuSansMono.ttf")),
+        .font  = fonts.load(assets.resolve("DejaVuSansMono.ttf")),
     };
     checkTextureIdsAreShared(textures, assets, scene.sheet, logger);
     if (missingAsset)
@@ -236,11 +237,12 @@ void run(engine::core::log::Logger &logger, const bool missingAsset)
     const DemoSounds sounds = startAudio(*audio, assets, logger);
     InputState input;
     engine::render::RenderQueue queue;
-    Ship ship{.position = LOGICAL_SIZE * 0.5F, .facingLeft = false,
-        .thrusting = false};
+    Ship ship{.position = LOGICAL_SIZE * 0.5F,
+        .facingLeft     = false,
+        .thrusting      = false};
     std::vector<Vec2f> bullets;
     unsigned fired = 0;
-    auto previous = std::chrono::steady_clock::now();
+    auto previous  = std::chrono::steady_clock::now();
 
     while (window.isOpen()) {
         input.beginFrame();
@@ -257,17 +259,19 @@ void run(engine::core::log::Logger &logger, const bool missingAsset)
         audio->update();
 
         const auto now = std::chrono::steady_clock::now();
-        const float dt = std::min(
-            std::chrono::duration<float>(now - previous).count(),
-            MAX_FRAME_TIME);
+        const float dt =
+            std::min(std::chrono::duration<float>(now - previous).count(),
+                MAX_FRAME_TIME);
         previous = now;
         moveShip(ship, bindings, input, dt);
         moveBullets(bullets, dt);
 
         queue.clear();
-        render_demo::fillQueue(queue, scene, render_demo::Frame{
-            .ship = ship, .bullets = bullets, .fired = fired,
-            .volumes = audio->volumes()});
+        render_demo::fillQueue(queue, scene,
+            render_demo::Frame{.ship = ship,
+                .bullets             = bullets,
+                .fired               = fired,
+                .volumes             = audio->volumes()});
         queue.sortByLayer();
         renderer.beginFrame(BACKGROUND);
         renderer.submit(queue);
@@ -275,7 +279,7 @@ void run(engine::core::log::Logger &logger, const bool missingAsset)
     }
     logger.info("quit after {} shots", fired);
 }
-}
+} // namespace
 
 int main(int argc, char **argv)
 {
