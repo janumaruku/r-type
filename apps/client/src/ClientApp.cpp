@@ -115,7 +115,8 @@ ClientApp::ClientApp(ClientConfig config, ClientSettings settings):
     _window(windowConfig(_settings)), _sprites(loadSprites(_textures)),
     _whitePixel(loadWhitePixel(_textures)),
     _renderer(_window, _textures, _fonts, LOGICAL_SIZE),
-    _audio(startAudio(_settings)), _actions(loadBindings())
+    _audio(startAudio(_settings)), _sounds(SoundBank::load(*_audio)),
+    _actions(loadBindings())
 {
     FrameContext context = frameContext();
 
@@ -157,6 +158,7 @@ FrameContext ClientApp::frameContext()
         .fonts      = _fonts,
         .sprites    = _sprites,
         .whitePixel = _whitePixel,
+        .sounds     = _sounds,
         .config     = _config,
         .settings   = _settings,
         .now        = engine::runtime::Clock::now(),

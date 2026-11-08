@@ -20,6 +20,7 @@ add_library(client_logic STATIC
         src/Scenes.cpp
         src/ServerLink.cpp
         src/SnapshotAssembler.cpp
+        src/SoundBank.cpp
         src/SpriteCatalog.cpp
 )
 

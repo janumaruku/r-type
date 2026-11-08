@@ -22,6 +22,7 @@
 #include "engine/render/Window.hpp"
 #include "engine/runtime/StopWatch.hpp"
 #include "Scenes.hpp"
+#include "SoundBank.hpp"
 #include "SpriteCatalog.hpp"
 
 namespace rtype::client {
@@ -44,6 +45,7 @@ private:
     engine::render::TextureId _whitePixel;
     engine::render::RaylibRenderer _renderer;
     std::unique_ptr<engine::audio::IAudio> _audio;
+    SoundBank _sounds;
     engine::input::InputState _input;
     engine::input::ActionMap<Action> _actions;
     engine::render::RenderQueue _queue;

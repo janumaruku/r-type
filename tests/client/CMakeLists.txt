@@ -15,6 +15,7 @@ rtype_add_test(client_tests
         RenderSystemTests.cpp
         StarfieldTests.cpp
         AudioReactorTests.cpp
+        SoundBankTests.cpp
         EffectsReactorTests.cpp
         HudTests.cpp
         InputSamplingTests.cpp
@@ -23,4 +24,5 @@ rtype_add_test(client_tests
 )
 
 target_compile_definitions(client_tests PRIVATE
-    RTYPE_CONFIG_DIR="${PROJECT_SOURCE_DIR}/config")
+    RTYPE_CONFIG_DIR="${PROJECT_SOURCE_DIR}/config"
+    RTYPE_ASSETS_DIR="${PROJECT_SOURCE_DIR}/assets")
