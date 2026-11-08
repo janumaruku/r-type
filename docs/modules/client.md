@@ -101,6 +101,9 @@ classDiagram
         -GameEventBus _events
         -ClientWorld _world
         -ClientNetworkAdapter _adapter
+        -SoundBank _sounds
+        -AudioReactor _audioReactor
+        -EffectsReactor _effectsReactor
         -PredictionState _prediction
         -runtime::FixedTimestep _inputStep
         -uint32_t _inputSequence
@@ -109,7 +112,7 @@ classDiagram
         -bool _serverGone
         -Starfield _starfield
         -Hud _hud
-        +GameScene(std::unique_ptr~ServerLink~ link, protocol::Welcome welcome, SpriteCatalog const& sprites)
+        +GameScene(std::unique_ptr~ServerLink~ link, protocol::Welcome welcome, FrameContext const& context)
         +playerId() uint8_t
         -leaveFor(LeaveCause cause) SceneRequest
     }
@@ -396,5 +399,7 @@ The catalog must have an entry, exact or `"*"`, for every key the server sends: 
 | EVENT PLAYER_KILLED | `explosion_big.wav`, plus an explosion effect at (x, y) |
 | EVENT PLAYER_JOINED / PLAYER_LEFT | `ui_join.wav` / `ui_leave.wav` |
 | In game | `stage1.ogg` looping music |
+
+`GameScene` owns a copy of the `SoundBank` and two subscribers of its `GameEventBus`: `AudioReactor` plays the sounds of this table and `EffectsReactor` spawns the explosions. Both are declared after `_events` and `_world`, so they unsubscribe before the bus is destroyed. `onEnter` starts `stage1.ogg` looping and `onExit` stops it, even when the server is gone. The files and their licences are listed in `assets/LICENSES.md`.
 
 **HUD.** Each slot shows `P1`–`P4`, the player's name, lives and score (all from the roster), plus the team score, the ping, and transient banners such as "P3 lost connection" or "GAME OVER – restarting in 5". All HUD text uses the font size from `client.json` (default 20 px at 720p).
