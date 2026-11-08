@@ -269,7 +269,11 @@ TEST(HudReactorTests, PlayerLeftWithKickShowsWasKicked)
     EXPECT_EQ(reactor.banners().back().text, "P3 was kicked");
 }
 
-TEST(HudReactorTests, PlayerKilledUsesShipNetIdToFindPlayer)
+/*
+** PLAYER_KILLED carries the killer in a and the dead ship in b. The killer
+** here has P1's ship NetId, so reading a would name P1 instead of P3.
+*/
+TEST(HudReactorTests, PlayerKilledNamesTheShipInBNotTheKillerInA)
 {
     GameEventBus bus;
     ClientWorld world{SpriteCatalog{}};
@@ -278,10 +282,23 @@ TEST(HudReactorTests, PlayerKilledUsesShipNetIdToFindPlayer)
     auto roster = makeRoster();
     world.applyRoster(roster);
 
-    emit(bus, makeEvent(EventType::PLAYER_KILLED, 102));
+    emit(bus, makeEvent(EventType::PLAYER_KILLED, 100, 102));
 
     ASSERT_EQ(reactor.banners().size(), 1U);
     EXPECT_EQ(reactor.banners().back().text, "P3 was shot down");
+}
+
+TEST(HudReactorTests, PlayerKilledWithAnUnknownShipAddsNoBanner)
+{
+    GameEventBus bus;
+    ClientWorld world{SpriteCatalog{}};
+    HudReactor reactor{bus, world};
+
+    world.applyRoster(makeRoster());
+
+    emit(bus, makeEvent(EventType::PLAYER_KILLED, 102, 999));
+
+    EXPECT_TRUE(reactor.banners().empty());
 }
 
 TEST(HudReactorTests, KeepsOnlyTheThreeNewestBanners)

@@ -53,7 +53,7 @@ void HudReactor::onEvent(const protocol::Event &event)
         const auto *const found = std::ranges::find_if(roster,
             [&event](const protocol::PlayerInfo &slot) {
                 return slot.state != protocol::PlayerState::EMPTY &&
-                    slot.shipNetId == event.a;
+                    slot.shipNetId == event.b;
             });
 
         if (found != roster.end())
