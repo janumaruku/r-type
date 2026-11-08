@@ -14,6 +14,7 @@
 #include <utility>
 
 #include "ClientStages.hpp"
+#include "Hud.hpp"
 #include "InterpolationSystem.hpp"
 #include "PredictionSystem.hpp"
 #include "RenderSystems.hpp"
@@ -32,8 +33,8 @@ constexpr auto SERVER_TIMEOUT = std::chrono::seconds(5);
 }
 
 /*
-** Adds the systems in client.md's order.
-** TODO(RTP-130): hudSystem after renderSystem in RENDER.
+** Adds the systems in client.md's order: hudSystem runs last in RENDER, so
+** the HUD draws over the sprites.
 */
 void addSystems(engine::ecs::Registry &registry)
 {
@@ -50,6 +51,7 @@ void addSystems(engine::ecs::Registry &registry)
         "starfield", starfieldSystem);
     registry.addSystem<const game::Transform, const Sprite>(
         ClientStage::RENDER, "render", renderSystem);
+    registry.addSystem<>(ClientStage::RENDER, "hud", hudSystem);
 }
 
 void setResources(engine::ecs::Registry &registry)
@@ -66,7 +68,9 @@ void setResources(engine::ecs::Registry &registry)
 
 /*
 ** The reactors are declared after _events and _world, so they are destroyed
-** first and unsubscribe while the bus still exists.
+** first and unsubscribe while the bus still exists. The HudReactor lives in
+** the registry, inside _world, which is also destroyed before _events.
+** The ActionMap is copied once: the bindings don't change during a game.
 */
 GameScene::GameScene(std::unique_ptr<ServerLink> link,
     protocol::Welcome welcome, const FrameContext &context):
@@ -78,6 +82,7 @@ GameScene::GameScene(std::unique_ptr<ServerLink> link,
 {
     _world.setLocalPlayer(_playerId);
     setResources(_world.registry());
+    setHudResources(context);
     addSystems(_world.registry());
 }
 
@@ -91,8 +96,9 @@ void GameScene::onEnter(FrameContext &context)
 }
 
 /*
-** The 5 steps of client.md § Frame loop: quit, receive, send the inputs at
-** 60 Hz, check the connection, then run the UPDATE stage.
+** The steps of client.md § Frame loop: quit, receive, send the inputs at
+** 60 Hz, check the connection, update the HUD state, then run the UPDATE
+** stage.
 */
 SceneRequest GameScene::update(FrameContext &context, float dt)
 {
@@ -121,6 +127,7 @@ SceneRequest GameScene::update(FrameContext &context, float dt)
         _serverGone = true;
         return showMessage("Connection lost", "The server stopped answering");
     }
+    updateHudState(context);
     _world.registry().getResource<engine::ecs::DeltaTime>().seconds = dt;
     _world.registry().runStage(ClientStage::UPDATE);
     return SceneRequest::stay();
@@ -219,6 +226,29 @@ void GameScene::receive(TimePoint now)
     for (const auto &datagram: _link->socket.receiveAll())
         _adapter.handle(datagram, now);
     _events.dispatch();
+}
+
+void GameScene::setHudResources(const FrameContext &context)
+{
+    auto &registry = _world.registry();
+
+    registry.emplaceResource<HudReactor>(_events, _world);
+    registry.emplaceResource<HudState>();
+    registry.setResource(context.actions);
+    registry.setResource(static_cast<const ClientWorld *>(&_world));
+}
+
+/*
+** F1 (TOGGLE_HUD_HELP) flips the help, and the ping is the average over
+** the last second, or nothing without a recent sample.
+*/
+void GameScene::updateHudState(const FrameContext &context)
+{
+    auto &state = _world.registry().getResource<HudState>();
+
+    if (context.actions.wasTriggered(Action::TOGGLE_HUD_HELP, context.input))
+        state.showHelp = !state.showHelp;
+    state.ping = _prediction.averagePing(context.now);
 }
 
 void GameScene::advanceRenderClock(float dt)

@@ -7,11 +7,14 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
 #include <filesystem>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <thread>
+#include <variant>
 #include <vector>
 
 #include "Actions.hpp"
@@ -19,6 +22,8 @@
 #include "LoopbackHelpers.hpp"
 #include "engine/audio/IAudio.hpp"
 #include "engine/audio/Volume.hpp"
+#include "engine/render/DrawCommand.hpp"
+#include "engine/render/RenderQueue.hpp"
 #include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
@@ -180,6 +185,21 @@ protected:
         }
     }
 
+    /* Draws one frame and returns the text of every TextCmd in it. */
+    std::vector<std::string> drawnTexts()
+    {
+        engine::render::RenderQueue queue;
+        std::vector<std::string> texts;
+
+        _scene->draw(queue, _context);
+        for (const auto &command: queue.commands()) {
+            if (const auto *text =
+                    std::get_if<engine::render::TextCmd>(&command))
+                texts.push_back(text->text);
+        }
+        return texts;
+    }
+
     template <class Message>
     void send(MessageType type, const Message &message)
     {
@@ -191,6 +211,13 @@ protected:
     {
         _input.beginFrame();
         _input.apply(InputEvent{.type = InputEvent::Type::KEY_PRESSED,
+            .key = key});
+    }
+
+    void release(Key key)
+    {
+        _input.beginFrame();
+        _input.apply(InputEvent{.type = InputEvent::Type::KEY_RELEASED,
             .key = key});
     }
 
@@ -344,4 +371,51 @@ TEST_F(Game, TheSameEventReceivedThreeTimesPlaysOneSound)
     updateFor(QUIET);
 
     EXPECT_EQ(_audio.sounds, std::vector<SoundId>{JOIN_SOUND});
+}
+
+static bool contains(const std::vector<std::string> &texts, const std::string &text)
+{
+    return std::ranges::find(texts, text) != texts.end();
+}
+
+static bool showsHelp(const std::vector<std::string> &texts)
+{
+    return std::ranges::any_of(texts, [](const std::string &text) {
+        return text.starts_with("TOGGLE_HUD_HELP: ");
+    });
+}
+
+TEST_F(Game, EachFrameDrawsTheHud)
+{
+    update(0.0F);
+
+    const auto texts = drawnTexts();
+
+    EXPECT_TRUE(contains(texts, "team 0"));
+    EXPECT_TRUE(contains(texts, "ping -"));
+    EXPECT_FALSE(showsHelp(texts));
+}
+
+TEST_F(Game, F1TogglesTheHelpOnAndOff)
+{
+    press(Key::F1);
+    update(0.0F);
+    EXPECT_TRUE(showsHelp(drawnTexts()));
+
+    release(Key::F1);
+    update(0.0F);
+    EXPECT_TRUE(showsHelp(drawnTexts()));
+
+    press(Key::F1);
+    update(0.0F);
+    EXPECT_FALSE(showsHelp(drawnTexts()));
+}
+
+TEST_F(Game, AnEventFromTheServerShowsItsBanner)
+{
+    send(MessageType::EVENT, rtype::protocol::Event{.eventId = 1,
+        .type = EventType::PLAYER_JOINED, .a = 1});
+    updateFor(QUIET);
+
+    EXPECT_TRUE(contains(drawnTexts(), "P2 joined"));
 }
