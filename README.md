@@ -1,12 +1,22 @@
-# r-type
+# Software Architecture Engineering - R-Type
 
-A networked R-Type clone built on a small game engine written for it: an authoritative UDP server (`r-type_server`) and a graphical client (`r-type_client`), in C++20.
+This is an **Epitech project** called R-Type.
 
-The developer documentation is in [`docs/`](docs/README.md).
+It's a four-week project from the fifth semester of the Epitech **Software Architecture Engineering module** (**G-ING-500**).
 
-## Build
+## Project Overview
 
-### Prerequisites
+The goal of this project is to **implement a multi-threaded server and a graphical client for a well-known legacy video game called R-Type, using a game engine of your own design**.
+
+The language used is **C++**.
+
+## Epitech Warning
+
+**This is a warning to all epitech students:** 
+- **We recall you that being a copycat at EPITECH will not bring you any good.**
+- **Copying is totally banned at EPITECH and by not respecting this rule you can be scolded.**
+
+## Prerequisites
 
 | Platform | What to install |
 | --- | --- |
@@ -77,3 +87,11 @@ export CPM_SOURCE_CACHE=$PWD/.cpm-cache
 ```
 
 `.cpm-cache/` is ignored by git, and CI uses the same variable.
+
+## Authors
+
+| [<img src="https://avatars.githubusercontent.com/u/146741144?v=4?size=85" width=85><br><sub>Jean-Marc Kottin </sub>](https://github.com/janumaruku) |
+| :---: |
+| [<img src="https://avatars.githubusercontent.com/u/181121247?v=4?size=85" width=85><br><sub>Quentin Dutournier-Ottenin</sub>](https://github.com/Patate-with-computer) |
+| [<img src="https://avatars.githubusercontent.com/u/146721380?v=4?size=85" width=85><br><sub> Liam Lequet</sub>](https://github.com/lyzer-px) |
+
