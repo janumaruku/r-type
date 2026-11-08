@@ -88,6 +88,10 @@ export CPM_SOURCE_CACHE=$PWD/.cpm-cache
 
 `.cpm-cache/` is ignored by git, and CI uses the same variable.
 
+## Documentation
+
+The developer documentation is in [`docs/`](docs/README.md).
+
 ## Authors
 
 | [<img src="https://avatars.githubusercontent.com/u/146741144?v=4?size=85" width=85><br><sub>Jean-Marc Kottin </sub>](https://github.com/janumaruku) |
