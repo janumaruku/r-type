@@ -5,11 +5,11 @@
 ** MakeAudioTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/audio/MakeAudio.hpp"
 
+#include <gtest/gtest.h>
 #include <memory>
 
-#include "engine/audio/MakeAudio.hpp"
 #include "engine/audio/RaylibAudio.hpp"
 #include "engine/core/Errors.hpp"
 

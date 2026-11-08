@@ -23,8 +23,8 @@ asio::ip::udp::endpoint resolveServer(const std::string &host,
         std::to_string(port), error);
 
     if (error || results.empty())
-        throw engine::core::NetworkError("cannot resolve server '" + host
-            + "'" + (error ? ": " + error.message() : ""));
+        throw engine::core::NetworkError("cannot resolve server '" + host +
+            "'" + (error ? ": " + error.message() : ""));
     return results.begin()->endpoint();
 }
-}
+} // namespace rtype::client

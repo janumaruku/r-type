@@ -21,13 +21,16 @@ ClientSession &SessionManager::add(const asio::ip::udp::endpoint &endpoint,
     assert(_sessions.size() < MAX_SESSIONS && "no free slot was reserved");
     assert(!_sessions.contains(endpoint) && "the endpoint already has one");
 
-    return _sessions.emplace(endpoint, ClientSession{
-        .endpoint  = endpoint,
-        .playerId  = playerId,
-        .name      = std::move(name),
-        .lastHeard = now,
-        .datagrams = {},
-    }).first->second;
+    return _sessions
+        .emplace(endpoint,
+            ClientSession{
+                .endpoint  = endpoint,
+                .playerId  = playerId,
+                .name      = std::move(name),
+                .lastHeard = now,
+                .datagrams = {},
+            })
+        .first->second;
 }
 
 ClientSession *SessionManager::find(const asio::ip::udp::endpoint &endpoint)

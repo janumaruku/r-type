@@ -5,9 +5,8 @@
 ** SpawnDirectorTests
 */
 
-#include <gtest/gtest.h>
-
 #include <array>
+#include <gtest/gtest.h>
 #include <utility>
 
 #include "GameSystemsFixture.hpp"
@@ -53,13 +52,16 @@ TEST_F(SpawnDirector, OnePlayerAliveForOnePointSixSecondsSpawnsOneBydos)
 TEST_F(SpawnDirector, IntervalShrinksWithElapsedTime)
 {
     constexpr std::array<std::pair<float, float>, 4> expected{{
-        {0.0F, 1.6F}, {10.0F, 1.55F}, {100.0F, 1.1F}, {300.0F, 0.5F},
+        {0.0F, 1.6F},
+        {10.0F, 1.55F},
+        {100.0F, 1.1F},
+        {300.0F, 0.5F},
     }};
 
     (void)spawnAliveShip();
     for (const auto &[elapsed, interval]: expected) {
         SCOPED_TRACE(elapsed);
-        director().elapsed = elapsed;
+        director().elapsed        = elapsed;
         director().untilNextSpawn = 0.0F;
         tick();
         EXPECT_NEAR(director().untilNextSpawn, interval, 1e-5F);
@@ -85,8 +87,8 @@ TEST_F(SpawnDirector, AboutHalfOfAThousandSpawnsAreSine)
         director().untilNextSpawn = 0.0F;
         tick();
         for (const Entity entity: bydos()) {
-            if (component<Replicated>(entity).variant
-                == static_cast<std::uint8_t>(MovePattern::SINE))
+            if (component<Replicated>(entity).variant ==
+                static_cast<std::uint8_t>(MovePattern::SINE))
                 ++sine;
             _registry.killEntity(entity);
         }

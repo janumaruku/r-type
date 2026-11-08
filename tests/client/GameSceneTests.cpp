@@ -7,22 +7,32 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <chrono>
+#include <filesystem>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <thread>
+#include <variant>
 #include <vector>
 
 #include "Actions.hpp"
 #include "GameScene.hpp"
 #include "LoopbackHelpers.hpp"
-#include "engine/audio/NullAudio.hpp"
+#include "engine/audio/IAudio.hpp"
+#include "engine/audio/Volume.hpp"
+#include "engine/render/DrawCommand.hpp"
+#include "engine/render/RenderQueue.hpp"
 #include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
+#include "rtype/protocol/Snapshot.hpp"
 
 using client_tests::loopbackOf;
 using client_tests::waitForDatagrams;
+using engine::audio::MusicId;
+using engine::audio::SoundId;
 using engine::input::InputEvent;
 using engine::input::Key;
 using rtype::client::Action;
@@ -31,10 +41,63 @@ using rtype::client::GameScene;
 using rtype::client::MessageScene;
 using rtype::client::SceneRequest;
 using rtype::client::ServerLink;
+using rtype::protocol::EventType;
 using rtype::protocol::MessageType;
 
 namespace {
 constexpr auto QUIET = std::chrono::milliseconds(100);
+constexpr SoundId JOIN_SOUND{4};
+constexpr MusicId STAGE_MUSIC{1};
+
+/** An IAudio that records the sounds and music the scene plays. */
+class RecordingAudio final: public engine::audio::IAudio {
+public:
+    SoundId loadSound(const std::filesystem::path &) override
+    {
+        return SoundId{};
+    }
+    MusicId loadMusic(const std::filesystem::path &) override
+    {
+        return MusicId{};
+    }
+    void playSound(SoundId id, float) override
+    {
+        sounds.push_back(id);
+    }
+    void playMusic(MusicId id, bool loop) override
+    {
+        music     = id;
+        looping   = loop;
+        ++musicStarts;
+    }
+    void stopMusic() override
+    {
+        ++musicStops;
+    }
+    void setMasterVolume(float) override
+    {}
+    void setSfxVolume(float) override
+    {}
+    void setMusicVolume(float) override
+    {}
+    void setMuted(bool) override
+    {}
+    [[nodiscard]] const engine::audio::Volume &volumes() const override
+    {
+        return _volumes;
+    }
+    void update() override
+    {}
+
+    std::vector<SoundId> sounds;
+    MusicId music;
+    bool looping    = false;
+    int musicStarts = 0;
+    int musicStops  = 0;
+
+private:
+    engine::audio::Volume _volumes;
+};
 
 [[nodiscard]] MessageType typeOf(const net::Datagram &datagram)
 {
@@ -85,8 +148,10 @@ protected:
         link->socket.start();
         link->lastHeard = Clock::now();
         _client = loopbackOf(link->socket);
+        _context.sounds.join   = JOIN_SOUND;
+        _context.sounds.stage1 = STAGE_MUSIC;
         _scene = std::make_unique<GameScene>(std::move(link),
-            rtype::protocol::Welcome{.playerId = 0}, _sprites);
+            rtype::protocol::Welcome{.playerId = 0}, _context);
         _scene->onEnter(_context);
     }
 
@@ -110,6 +175,60 @@ protected:
         return SceneRequest::stay();
     }
 
+    /* Updates the scene for `duration`, so it reads what the server sent. */
+    void updateFor(std::chrono::milliseconds duration)
+    {
+        const auto deadline = Clock::now() + duration;
+
+        while (Clock::now() < deadline) {
+            EXPECT_EQ(update(0.0F).kind, SceneRequest::Kind::STAY);
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    }
+
+    /* Draws one frame and returns the text of every TextCmd in it. */
+    std::vector<std::string> drawnTexts()
+    {
+        engine::render::RenderQueue queue;
+        std::vector<std::string> texts;
+
+        _scene->draw(queue, _context);
+        for (const auto &command: queue.commands()) {
+            if (const auto *text =
+                    std::get_if<engine::render::TextCmd>(&command))
+                texts.push_back(text->text);
+        }
+        return texts;
+    }
+
+    /*
+    ** Sends a one-chunk SNAPSHOT in `phase` where the first `joined` slots
+    ** wait for their ship and the others are EMPTY, then reads it.
+    */
+    void sendSnapshot(rtype::protocol::GamePhase phase, std::uint8_t joined)
+    {
+        rtype::protocol::Snapshot snapshot{.serverTick = ++_serverTick,
+            .phase = phase};
+
+        for (std::uint8_t id = 0; id < rtype::protocol::MAX_PLAYERS; ++id) {
+            rtype::protocol::PlayerInfo slot{.playerId = id};
+
+            if (id < joined) {
+                slot.state     = rtype::protocol::PlayerState::RESPAWNING;
+                slot.lives     = 3;
+                slot.maxHealth = 100;
+            }
+            snapshot.roster.push_back(slot);
+        }
+        send(MessageType::SNAPSHOT, snapshot);
+        updateFor(QUIET);
+    }
+
+    void startGame()
+    {
+        sendSnapshot(rtype::protocol::GamePhase::PLAYING, 1);
+    }
+
     template <class Message>
     void send(MessageType type, const Message &message)
     {
@@ -121,6 +240,13 @@ protected:
     {
         _input.beginFrame();
         _input.apply(InputEvent{.type = InputEvent::Type::KEY_PRESSED,
+            .key = key});
+    }
+
+    void release(Key key)
+    {
+        _input.beginFrame();
+        _input.apply(InputEvent{.type = InputEvent::Type::KEY_RELEASED,
             .key = key});
     }
 
@@ -150,10 +276,11 @@ protected:
     net::UdpSocket _server{0};
     asio::ip::udp::endpoint _client;
     std::uint32_t _serverSequence = 0;
+    std::uint32_t _serverTick     = 0;
     std::unique_ptr<GameScene> _scene;
     engine::input::InputState _input;
     engine::input::ActionMap<Action> _actions;
-    engine::audio::NullAudio _audio;
+    RecordingAudio _audio;
     engine::render::TextureCache _textures;
     engine::render::FontCache _fonts;
     rtype::client::SpriteCatalog _sprites;
@@ -165,6 +292,8 @@ protected:
         .textures = _textures,
         .fonts = _fonts,
         .sprites = _sprites,
+        .whitePixel = {},
+        .sounds = {},
         .config = _config,
         .settings = _settings,
         .now = Clock::now()};
@@ -228,4 +357,124 @@ TEST_F(Game, ShutdownThenKickShowsServerClosedAndNoDisconnect)
     _scene->onExit(_context);
     EXPECT_EQ(countOf(waitForDatagrams(_server, 1, QUIET),
         MessageType::DISCONNECT), 0U);
+}
+
+TEST_F(Game, EnteringStartsTheLoopingStageMusic)
+{
+    EXPECT_EQ(_audio.musicStarts, 1);
+    EXPECT_EQ(_audio.music, STAGE_MUSIC);
+    EXPECT_TRUE(_audio.looping);
+}
+
+TEST_F(Game, LeavingStopsTheMusic)
+{
+    _scene->onExit(_context);
+    EXPECT_EQ(_audio.musicStops, 1);
+}
+
+TEST_F(Game, LeavingAfterTheServerIsGoneStillStopsTheMusic)
+{
+    _context.now = Clock::now() + std::chrono::seconds(6);
+    ASSERT_EQ(_scene->update(_context, 0.0F).kind,
+        SceneRequest::Kind::CHANGE);
+
+    _scene->onExit(_context);
+    EXPECT_EQ(_audio.musicStops, 1);
+}
+
+TEST_F(Game, AnEventFromTheServerPlaysItsSound)
+{
+    send(MessageType::EVENT, rtype::protocol::Event{.eventId = 1,
+        .type = EventType::PLAYER_JOINED, .a = 1});
+    updateFor(QUIET);
+
+    EXPECT_EQ(_audio.sounds, std::vector<SoundId>{JOIN_SOUND});
+}
+
+TEST_F(Game, TheSameEventReceivedThreeTimesPlaysOneSound)
+{
+    const rtype::protocol::Event joined{.eventId = 7,
+        .type = EventType::PLAYER_JOINED, .a = 1};
+
+    for (int copy = 0; copy < 3; ++copy)
+        send(MessageType::EVENT, joined);
+    updateFor(QUIET);
+
+    EXPECT_EQ(_audio.sounds, std::vector<SoundId>{JOIN_SOUND});
+}
+
+static bool contains(const std::vector<std::string> &texts, const std::string &text)
+{
+    return std::ranges::find(texts, text) != texts.end();
+}
+
+static bool showsHelp(const std::vector<std::string> &texts)
+{
+    return std::ranges::any_of(texts, [](const std::string &text) {
+        return text.starts_with("TOGGLE_HUD_HELP: ");
+    });
+}
+
+TEST_F(Game, BeforeAnySnapshotItWaitsForPlayers)
+{
+    update(0.0F);
+
+    const auto texts = drawnTexts();
+
+    EXPECT_TRUE(contains(texts, "Waiting for players"));
+    EXPECT_TRUE(contains(texts, "0 / 4 connected"));
+    EXPECT_FALSE(contains(texts, "team 0"));
+}
+
+TEST_F(Game, TheWaitingScreenCountsTheJoinedPlayers)
+{
+    sendSnapshot(rtype::protocol::GamePhase::WAITING, 2);
+
+    EXPECT_TRUE(contains(drawnTexts(), "2 / 4 connected"));
+}
+
+TEST_F(Game, TheWaitingScreenGoesAwayWhenTheGameStarts)
+{
+    sendSnapshot(rtype::protocol::GamePhase::WAITING, 3);
+    startGame();
+
+    EXPECT_FALSE(contains(drawnTexts(), "Waiting for players"));
+}
+
+TEST_F(Game, EachFrameDrawsTheHud)
+{
+    startGame();
+    update(0.0F);
+
+    const auto texts = drawnTexts();
+
+    EXPECT_TRUE(contains(texts, "team 0"));
+    EXPECT_TRUE(contains(texts, "ping -"));
+    EXPECT_FALSE(showsHelp(texts));
+}
+
+TEST_F(Game, F1TogglesTheHelpOnAndOff)
+{
+    startGame();
+    press(Key::F1);
+    update(0.0F);
+    EXPECT_TRUE(showsHelp(drawnTexts()));
+
+    release(Key::F1);
+    update(0.0F);
+    EXPECT_TRUE(showsHelp(drawnTexts()));
+
+    press(Key::F1);
+    update(0.0F);
+    EXPECT_FALSE(showsHelp(drawnTexts()));
+}
+
+TEST_F(Game, AnEventFromTheServerShowsItsBanner)
+{
+    startGame();
+    send(MessageType::EVENT, rtype::protocol::Event{.eventId = 1,
+        .type = EventType::PLAYER_JOINED, .a = 1});
+    updateFor(QUIET);
+
+    EXPECT_TRUE(contains(drawnTexts(), "P2 joined"));
 }

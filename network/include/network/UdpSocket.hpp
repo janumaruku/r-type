@@ -13,11 +13,11 @@
 #include <atomic>
 #include <chrono>
 #include <cstddef>
-#include <thread>
 #include <cstdint>
 #include <deque>
 #include <mutex>
 #include <optional>
+#include <thread>
 #include <vector>
 
 #include "engine/core/Logger.hpp"
@@ -40,29 +40,29 @@ struct Datagram {
 ** atomic snapshot, which is enough for statistics.
 */
 struct SocketStats {
-    std::uint64_t received = 0;
-    std::uint64_t droppedEmpty = 0;
+    std::uint64_t received         = 0;
+    std::uint64_t droppedEmpty     = 0;
     std::uint64_t droppedOversized = 0;
     std::uint64_t droppedQueueFull = 0;
-    std::uint64_t receiveErrors = 0;
-    std::uint64_t sent = 0;
-    std::uint64_t sendErrors = 0;
+    std::uint64_t receiveErrors    = 0;
+    std::uint64_t sent             = 0;
+    std::uint64_t sendErrors       = 0;
 };
 
 class UdpSocket {
 public:
-    static constexpr std::size_t MAX_PACKET_SIZE = 1200;
+    static constexpr std::size_t MAX_PACKET_SIZE      = 1200;
     static constexpr std::size_t MAX_QUEUED_DATAGRAMS = 4096;
 
     explicit UdpSocket(std::uint16_t port = 0);
     ~UdpSocket();
 
-    UdpSocket() = delete;
+    UdpSocket()                  = delete;
     UdpSocket(const UdpSocket &) = delete;
-    UdpSocket(UdpSocket &&) = delete;
+    UdpSocket(UdpSocket &&)      = delete;
 
     UdpSocket &operator=(const UdpSocket &) = delete;
-    UdpSocket &operator=(UdpSocket &&) = delete;
+    UdpSocket &operator=(UdpSocket &&)      = delete;
 
     void start();
     void stop();
@@ -76,7 +76,7 @@ public:
     [[nodiscard]] bool isReceiving() const noexcept;
 
 private:
-    static constexpr std::size_t MAX_RECEIVE_ERRORS = 3;
+    static constexpr std::size_t MAX_RECEIVE_ERRORS  = 3;
     static constexpr int SYSTEM_RECEIVE_BUFFER_BYTES = 4 * 1024 * 1024;
 
     engine::core::log::Logger _logger{"UDP-socket"};
@@ -115,8 +115,8 @@ private:
         std::chrono::steady_clock::time_point last{};
         std::uint64_t pending = 0;
 
-        [[nodiscard]] std::uint64_t record(
-            std::chrono::steady_clock::time_point now);
+        [[nodiscard]] std::uint64_t record(std::chrono::steady_clock::time_point
+                now);
         [[nodiscard]] std::uint64_t flush();
     };
 

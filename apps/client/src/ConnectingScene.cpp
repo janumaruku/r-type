@@ -7,32 +7,33 @@
 
 #include "ConnectingScene.hpp"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <format>
 #include <memory>
 
 #include "GameScene.hpp"
-#include "ServerLink.tpp"
 #include "engine/core/Errors.hpp"
 #include "engine/core/Logger.hpp"
 #include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/ProtocolError.hpp"
+#include "ServerLink.tpp"
 
 namespace rtype::client {
 namespace {
-constexpr float HELLO_INTERVAL = 0.5F;
-constexpr float CONNECT_TIMEOUT = 5.0F;
+constexpr float HELLO_INTERVAL   = 0.5F;
+constexpr float CONNECT_TIMEOUT  = 5.0F;
 constexpr std::int16_t HUD_LAYER = 1000;
-constexpr unsigned TEXT_SIZE = 20;
-constexpr float TEXT_X = 40.0F;
-constexpr float TEXT_Y = 340.0F;
+constexpr unsigned TEXT_SIZE     = 20;
+constexpr float TEXT_X           = 40.0F;
+constexpr float TEXT_Y           = 340.0F;
 
 [[nodiscard]] SceneRequest showMessage(std::string title, std::string detail,
     bool canReconnect)
 {
-    return SceneRequest::change(std::make_unique<MessageScene>(
-        std::move(title), std::move(detail), canReconnect));
+    return SceneRequest::change(std::make_unique<MessageScene>(std::move(title),
+        std::move(detail), canReconnect));
 }
 
 [[nodiscard]] SceneRequest showRejection(protocol::RejectReason reason)
@@ -41,7 +42,7 @@ constexpr float TEXT_Y = 340.0F;
         return showMessage("Version mismatch", "Update your client", false);
     return showMessage("Server full", "4 players are already playing", true);
 }
-}
+} // namespace
 
 ConnectingScene::ConnectingScene()
 {
@@ -57,9 +58,8 @@ void ConnectingScene::registerCommands() noexcept
 void ConnectingScene::onEnter(FrameContext &context)
 {
     try {
-        _link = std::make_unique<ServerLink>();
-        _link->server = resolveServer(context.config.host,
-            context.config.port);
+        _link         = std::make_unique<ServerLink>();
+        _link->server = resolveServer(context.config.host, context.config.port);
         _link->socket.start();
         sendHello(context);
     } catch (const engine::core::NetworkError &error) {
@@ -75,14 +75,15 @@ SceneRequest ConnectingScene::update(FrameContext &context, float dt)
     if (_welcome)
         return SceneRequest::change(
             std::make_unique<GameScene>(std::move(_link), *_welcome,
-                context.sprites));
+                context));
     if (_rejected)
         return showRejection(*_rejected);
     _elapsed += dt;
     if (_elapsed >= CONNECT_TIMEOUT)
         return showMessage("Server unreachable",
             std::format("{}:{} did not answer", context.config.host,
-                context.config.port), true);
+                context.config.port),
+            true);
     _sinceHello += dt;
     if (_sinceHello >= HELLO_INTERVAL) {
         _sinceHello -= HELLO_INTERVAL;
@@ -125,8 +126,9 @@ void ConnectingScene::receive(const FrameContext &context)
             _link->lastHeard = context.now;
         } catch (const net::PacketError &error) {
             if (_logs.shouldLog(protocol::classify(error), context.now))
-                engine::core::log::Logger("client").warn(
-                    "Dropped a message from the server: {}", error.what());
+                engine::core::log::Logger("client")
+                    .warn("Dropped a message from the server: {}",
+                        error.what());
         }
     }
 }
@@ -142,8 +144,7 @@ void ConnectingScene::sendHello(const FrameContext &context)
 ** it's destroyed with this scene, and destroying it stops the socket.
 */
 void ConnectingScene::onExit([[maybe_unused]] FrameContext &context)
-{
-}
+{}
 
 void ConnectingScene::onWelcome(const protocol::Welcome &welcome)
 {
@@ -187,4 +188,4 @@ std::unique_ptr<IConnectCommand> RejectCommand::create()
 {
     return std::make_unique<RejectCommand>();
 }
-}
+} // namespace rtype::client

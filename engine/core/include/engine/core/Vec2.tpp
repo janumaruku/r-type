@@ -24,7 +24,19 @@ const T &Vec2<T>::x() const noexcept
 }
 
 template<typename T>
+T &Vec2<T>::x() noexcept
+{
+    return _x;
+}
+
+template<typename T>
 const T &Vec2<T>::y() const noexcept
+{
+    return _y;
+}
+
+template<typename T>
+T &Vec2<T>::y() noexcept
 {
     return _y;
 }

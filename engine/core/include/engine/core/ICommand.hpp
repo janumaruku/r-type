@@ -18,5 +18,5 @@ public:
 
     virtual bool operator()(Args... args) = 0;
 };
-}
+} // namespace designPattern
 #endif

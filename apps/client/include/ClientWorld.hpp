@@ -22,17 +22,6 @@
 
 namespace rtype::client {
 
-class SpriteCatalog;
-
-// Remove this after RTP-128 is merged
-struct Animation {
-    SpriteDefId def;
-    std::uint8_t state = 0;
-    std::size_t index  = 0;
-    float timer        = 0.0F;
-};
-///////////////////////////////////////
-
 class ClientWorld {
 public:
     explicit ClientWorld(SpriteCatalog sprites);
@@ -42,17 +31,24 @@ public:
     void removeNotSeenSince(std::uint32_t tick);
     void setLocalPlayer(std::uint8_t playerId) noexcept;
     void setLastProcessedInput(std::uint32_t sequence) noexcept;
+    void setPhase(protocol::GamePhase phase) noexcept;
 
-    void bindEntityComponents(std::uint32_t tick, const protocol::EntityState &state,
-        SpriteCatalog &catalog, SpriteKey spriteKey, const NetSample &sample);
+    void bindEntityComponents(std::uint32_t tick,
+        const protocol::EntityState &state, SpriteCatalog &catalog,
+        SpriteKey spriteKey, const NetSample &sample);
 
     [[nodiscard]] std::optional<engine::ecs::Entity> find(game::NetId netId)
         const;
     [[nodiscard]] std::optional<engine::ecs::Entity> localShip() const;
+    [[nodiscard]] game::NetId localShipNetId() const noexcept;
     [[nodiscard]] const std::array<protocol::PlayerInfo, 4> &roster()
         const noexcept;
     [[nodiscard]] std::uint32_t latestServerTick() const noexcept;
     [[nodiscard]] std::uint32_t lastProcessedInput() const noexcept;
+    /** @brief The server's phase from the last SNAPSHOT, WAITING before. */
+    [[nodiscard]] protocol::GamePhase phase() const noexcept;
+    /** @brief The roster's slots that aren't EMPTY. */
+    [[nodiscard]] std::size_t joinedPlayers() const noexcept;
     [[nodiscard]] bool rosterChangedSinceLastCall() noexcept;
     [[nodiscard]] engine::ecs::Registry &registry() noexcept;
 
@@ -65,6 +61,7 @@ private:
     std::uint8_t _playerId            = 0;
     std::uint32_t _latestServerTick   = 0;
     std::uint32_t _lastProcessedInput = 0;
+    protocol::GamePhase _phase        = protocol::GamePhase::WAITING;
     bool _rosterChanged               = false;
 };
 } // namespace rtype::client

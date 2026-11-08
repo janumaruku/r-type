@@ -5,33 +5,27 @@
 ** TypeIdTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/TypeId.hpp"
 
 #include <array>
 #include <cstddef>
+#include <gtest/gtest.h>
 #include <latch>
 #include <thread>
-
-#include "engine/ecs/TypeId.hpp"
 
 using engine::ecs::detail::nextTypeId;
 using engine::ecs::detail::typeId;
 
 namespace {
-struct First {
-};
+struct First {};
 
-struct Second {
-};
+struct Second {};
 
-struct Third {
-};
+struct Third {};
 
-struct Repeated {
-};
+struct Repeated {};
 
-struct SharedByThreads {
-};
+struct SharedByThreads {};
 
 template <class T>
 concept HasTypeId = requires { typeId<T>(); };
@@ -70,9 +64,9 @@ TEST(TypeId, NextTypeIdCountsUpByOne)
 
 TEST(TypeId, IdsAreBelowTheNumberOfIdsHandedOut)
 {
-    const std::size_t first = typeId<First>();
-    const std::size_t second = typeId<Second>();
-    const std::size_t third = typeId<Third>();
+    const std::size_t first     = typeId<First>();
+    const std::size_t second    = typeId<Second>();
+    const std::size_t third     = typeId<Third>();
     const std::size_t handedOut = nextTypeId();
 
     EXPECT_LT(first, handedOut);

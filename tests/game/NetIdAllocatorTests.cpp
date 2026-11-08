@@ -5,12 +5,12 @@
 ** NetIdAllocatorTests
 */
 
-#include <gtest/gtest.h>
+#include "rtype/game/NetIdAllocator.hpp"
 
+#include <gtest/gtest.h>
 #include <vector>
 
 #include "engine/ecs/Registry.hpp"
-#include "rtype/game/NetIdAllocator.hpp"
 
 using engine::ecs::Entity;
 using engine::ecs::Registry;
@@ -32,7 +32,7 @@ TEST(NetIdAllocator, FindsALiveEntity)
     Registry registry;
     NetIdAllocator allocator;
     const Entity entity = registry.spawnEntity();
-    const auto netId = allocator.allocate(entity);
+    const auto netId    = allocator.allocate(entity);
 
     EXPECT_EQ(allocator.find(netId, registry), entity);
 }
@@ -42,7 +42,7 @@ TEST(NetIdAllocator, FindIgnoresAKilledEntity)
     Registry registry;
     NetIdAllocator allocator;
     const Entity entity = registry.spawnEntity();
-    const auto netId = allocator.allocate(entity);
+    const auto netId    = allocator.allocate(entity);
 
     registry.killEntity(entity);
     EXPECT_EQ(allocator.find(netId, registry), std::nullopt);
@@ -53,7 +53,7 @@ TEST(NetIdAllocator, FindIgnoresAKilledEntityWhoseIndexWasReused)
     Registry registry;
     NetIdAllocator allocator;
     const Entity entity = registry.spawnEntity();
-    const auto netId = allocator.allocate(entity);
+    const auto netId    = allocator.allocate(entity);
 
     registry.killEntity(entity);
     const Entity reused = registry.spawnEntity();

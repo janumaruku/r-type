@@ -24,14 +24,13 @@ using engine::ecs::Registry;
 */
 void buildWorld(Registry &registry, std::uint32_t seed);
 
-void makeEnemy(Registry &registry, const Entity &entity, Vec2f at,
-    float speed);
+void makeEnemy(Registry &registry, const Entity &entity, Vec2f at, float speed);
 
 void makeBullet(Registry &registry, const Entity &entity, Vec2f at);
 
 void addGameplaySystems(Registry &registry);
 
 void addRenderSystems(Registry &registry);
-}
+} // namespace ecs_example
 
 #endif // R_TYPE_ECS_EXAMPLE_WORLD_HPP

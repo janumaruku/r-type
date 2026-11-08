@@ -80,6 +80,6 @@ public:
 private:
     std::vector<GameEvent> _events;
 };
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_EVENTS_HPP
+#endif // R_TYPE_EVENTS_HPP

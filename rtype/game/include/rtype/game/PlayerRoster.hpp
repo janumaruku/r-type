@@ -22,11 +22,11 @@ namespace rtype::game {
 struct PlayerSlot {
     std::uint8_t playerId = 0;
     std::string name{};
-    std::uint8_t lives = 0;
-    std::uint32_t score = 0;
-    SlotState state = SlotState::EMPTY;
-    float respawnTimer = 0.0F;
-    NetId shipNetId = NO_NET_ID;
+    std::uint8_t lives              = 0;
+    std::uint32_t score             = 0;
+    SlotState state                 = SlotState::EMPTY;
+    float respawnTimer              = 0.0F;
+    NetId shipNetId                 = NO_NET_ID;
     std::uint32_t lastInputSequence = 0;
 };
 
@@ -123,6 +123,12 @@ public:
     [[nodiscard]] std::size_t active() const noexcept;
 
     /**
+     * @brief The number of players who joined: every slot but EMPTY ones,
+     * whether ALIVE, RESPAWNING or OUT.
+     */
+    [[nodiscard]] std::size_t joined() const noexcept;
+
+    /**
      * @brief `true` when at least one slot has joined (any state but EMPTY)
      * and every joined slot is OUT: the game is over.
      */
@@ -156,6 +162,6 @@ private:
     std::array<std::optional<PlayerSlot>, 4> _slots;
     engine::core::log::Logger _logger{"game"};
 };
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_PLAYER_ROSTER_HPP
+#endif // R_TYPE_PLAYER_ROSTER_HPP

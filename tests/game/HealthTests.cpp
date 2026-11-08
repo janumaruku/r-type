@@ -33,7 +33,7 @@ TEST_F(Healths, BydosKilledByADeadPlayersMissileScoresForThatPlayer)
 {
     (void)spawnAliveShip();
     (void)spawnAliveShip();
-    const Entity ship = spawnAliveShip();
+    const Entity ship     = spawnAliveShip();
     const NetId shipNetId = netIdOf(ship);
     const Vec2f position{900.0F, 500.0F};
 
@@ -43,10 +43,11 @@ TEST_F(Healths, BydosKilledByADeadPlayersMissileScoresForThatPlayer)
     ASSERT_EQ(roster().get(2)->state, SlotState::RESPAWNING);
     (void)eventsOf<PlayerKilled>();
 
-    const Entity bydos = spawnBydos(position);
+    const Entity bydos   = spawnBydos(position);
     const Entity missile = spawnPlayerMissile(shipNetId, 2, position);
     const EnemyKilled expected{.killerShip = netIdOf(missile),
-        .enemy = netIdOf(bydos), .position = position};
+        .enemy                             = netIdOf(bydos),
+        .position                          = position};
 
     tick();
 
@@ -61,19 +62,23 @@ TEST_F(Healths, BydosKilledByADeadPlayersMissileScoresForThatPlayer)
     EXPECT_EQ(killed[0], expected);
 }
 
+/* A ship hit with just enough health left for the collision to finish it. */
 TEST_F(Healths, ShipKilledWithThreeLivesRespawns)
 {
-    const Entity ship = spawnAliveShip(3);
+    const Entity ship  = spawnAliveShip(3);
     const Entity bydos = spawnBydos({640.0F, 360.0F});
 
     moveTo(ship, {640.0F, 360.0F});
+    component<Health>(ship).current = rules().enemyCollisionDamage;
 
     const PlayerKilled expected{.killer = netIdOf(bydos),
-        .ship = netIdOf(ship), .playerId = 0, .position = {640.0F, 360.0F}};
+        .ship                           = netIdOf(ship),
+        .playerId                       = 0,
+        .position                       = {640.0F, 360.0F}};
 
     tick();
 
-    const auto *slot = roster().get(0);
+    const auto *slot  = roster().get(0);
     const auto killed = eventsOf<PlayerKilled>();
 
     EXPECT_FALSE(_registry.isAlive(ship));
@@ -86,6 +91,24 @@ TEST_F(Healths, ShipKilledWithThreeLivesRespawns)
     EXPECT_EQ(killed[0], expected);
 }
 
+TEST_F(Healths, AShipWithHealthLeftKeepsItsLife)
+{
+    const Entity ship  = spawnAliveShip(3);
+    const Entity bydos = spawnBydos({640.0F, 360.0F});
+
+    moveTo(ship, {640.0F, 360.0F});
+    component<Health>(ship).current =
+        static_cast<std::int16_t>(rules().enemyCollisionDamage + 1);
+    tick();
+
+    EXPECT_TRUE(_registry.isAlive(ship));
+    EXPECT_FALSE(_registry.isAlive(bydos));
+    EXPECT_EQ(component<Health>(ship).current, 1);
+    EXPECT_EQ(roster().get(0)->state, SlotState::ALIVE);
+    EXPECT_EQ(roster().get(0)->lives, 3);
+    EXPECT_TRUE(eventsOf<PlayerKilled>().empty());
+}
+
 TEST_F(Healths, ShipKilledOnItsLastLifeIsOut)
 {
     const Entity ship = spawnAliveShip(1);
@@ -93,7 +116,7 @@ TEST_F(Healths, ShipKilledOnItsLastLifeIsOut)
     component<Health>(ship).current = 0;
     tick();
 
-    const auto *slot = roster().get(0);
+    const auto *slot  = roster().get(0);
     const auto killed = eventsOf<PlayerKilled>();
 
     EXPECT_FALSE(_registry.isAlive(ship));

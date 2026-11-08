@@ -5,7 +5,7 @@ The server runs one authoritative `GameWorld` at 60 ticks per second on its main
 ## Command line
 
 ```text
-r-type_server --seed N [-p PORT] [--log-level trace|debug|info|warn|error] [-h]
+r-type_server --seed N [-p PORT] [-r FILE] [--log-level trace|debug|info|warn|error] [-h]
 ```
 
 | Option | Default | Effect |
@@ -13,9 +13,12 @@ r-type_server --seed N [-p PORT] [--log-level trace|debug|info|warn|error] [-h]
 | `-p`, `--port` | 4242 | UDP port to bind on every interface |
 | `--seed` | required | Seeds `Rng`, so every run can be replayed |
 | `--log-level` | `info` | Minimum level printed |
+| `-r`, `--rules` | `config/rules.json` | The game rules, as JSON ([game.md § Rules and tuning values](game.md#rules-and-tuning-values)) |
 | `-h`, `--help` | | Prints usage and exits with 0 |
 
 `ServerConfig::parse` reads the options with CLI11 and throws `HelpRequested` on `-h`, or `ConfigError` naming the option at fault; `main` prints and picks the exit code. The help is the one CLI11 generates (`ServerConfig::usage`). `--seed` is required: without it, parsing fails like any other invalid argument. Ports and seeds must be whole decimal numbers: `+5`, `42x` or an empty value are refused, and so is port 0. An invalid argument or a port that can't be bound prints the reason plus the usage to `stderr` and exits with **84** (the Epitech convention). On `SIGINT` or `SIGTERM`, the server sends SHUTDOWN to every client and exits with 0.
+
+**Rules file.** A file given with `-r` or `--rules` must exist, or parsing fails like any other bad argument. Without the option, `ServerApp` reads `config/rules.json`, relative to the working directory, when it exists, and uses the built-in defaults otherwise (logged at `info`). `game::Rules::load` refuses an unknown key, a wrong type, an out-of-range value or two rules that disagree with a `ConfigError` naming the file and the key, for example `config/rules.json: playerSpeed: must be a number > 0, got -3`. `main` logs it and exits with **84**: a typo never silently gives a different game. The playfield is not a rule: it is fixed at 1280 × 720 units. The movement rules then go to each client in WELCOME (`welcomeFor` in `Conversions`), so its prediction matches the server. `playersToStart` (4 by default) makes the server wait for that many players before the game starts, and again after each game over ([game.md § Game flow](game.md#game-flow)); a test or a solo run uses a rules file with `{"playersToStart": 1}`.
 
 Everything except `main.cpp` is built as the static library `server_logic`, which links `rtype_game`, `rtype_protocol`, `network` and `engine_runtime` publicly, and CLI11 privately. The `r-type_server` executable is `main.cpp` alone linked to `server_logic`, and it lands at the repository root. The server tests link `server_logic` too, so they exercise `ServerConfig::parse`, `ServerApp` and the sessions without going through `main`.
 
@@ -242,7 +245,7 @@ Adding a message type means one new command class and one `registerCreator` line
 6. `adapter.flushEvents()` sends one copy of every pending event to every session. An event with 3 copies goes out on 3 consecutive ticks with the same `eventId`.
 7. `adapter.flushGoodbyes()` sends the due copy of each queued KICK (see [Leaving](#joining-leaving-and-crashing)).
 8. Every 600 ticks (10 s), `logStats()` prints one line: players, entities, tick overruns, datagrams in and out, drops, offences and kicks.
-9. On even ticks (30 Hz), `adapter.sendSnapshots()`. `SnapshotBuilder` builds the snapshot **once** (the tick, the roster from `rosterToProtocol`, every entity through `toProtocol`) and splits it into chunks. Only `lastProcessedInput` differs between clients, so it's set on each chunk just before that client's copy is encoded. It's the slot's `lastInputSequence`, which the game updates when it accepts a newer INPUT. Each chunk is one datagram.
+9. On even ticks (30 Hz), `adapter.sendSnapshots()`. `SnapshotBuilder` builds the snapshot **once** (the tick, the phase from `world.phase()`, the roster from `rosterToProtocol(world)`, which adds each ship's health from `GameWorld::shipHealth`, every entity through `toProtocol`) and splits it into chunks. Only `lastProcessedInput` differs between clients, so it's set on each chunk just before that client's copy is encoded. It's the slot's `lastInputSequence`, which the game updates when it accepts a newer INPUT. Each chunk is one datagram.
 
 Every datagram sent to a session is numbered with that session's own sequence, starting at 1 (RFC § 4). A REJECT goes to an address with no session, so it's always sequence 1.
 
@@ -269,7 +272,7 @@ A HELLO whose `protocolVersion` isn't 1 gets REJECT(VERSION_MISMATCH), like one 
 
 1. `world.reserveSlot()`. If no slot is free, send REJECT(SERVER_FULL).
 2. `name = protocol::sanitizeName(hello.playerName, playerId)`: at most 16 bytes, every byte outside printable ASCII becomes `?`, and an empty name becomes "Player N" (slot + 1).
-3. `sessions.add(from, playerId, name, now)`, then send WELCOME (`playerId`, 60, 30, 4, `world.tick()`).
+3. `sessions.add(from, playerId, name, now)`, then send WELCOME (`welcomeFor`: `playerId`, 60, 30, `maxPlayers`, `playersToStart`, `world.tick()` and the movement rules).
 4. `world.apply(JoinPlayer{playerId, name})`. The slot starts RESPAWNING, and the game's respawn system spawns the ship on the next `step`, so it appears one tick later, in the next snapshot for everyone. `PlayerJoined` becomes an EVENT.
 
 The newcomer needs nothing else: their first snapshot already holds every entity and every player.

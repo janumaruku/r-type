@@ -5,9 +5,9 @@
 ** ColorTests.cpp
 */
 
+#include "engine/core/Color.hpp"
 
 #include <gtest/gtest.h>
-#include "engine/core/Color.hpp"
 
 TEST(Color, constuct)
 {
@@ -66,4 +66,3 @@ TEST(Color, static_colors)
     EXPECT_EQ(engine::core::Color::CLEAR.b, 0);
     EXPECT_EQ(engine::core::Color::CLEAR.a, 0);
 }
-

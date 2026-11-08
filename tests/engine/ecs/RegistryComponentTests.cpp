@@ -5,12 +5,12 @@
 ** RegistryComponentTests
 */
 
-#include <gtest/gtest.h>
+#include "engine/ecs/Registry.hpp"
 
+#include <gtest/gtest.h>
 #include <memory>
 
 #include "engine/core/Errors.hpp"
-#include "engine/ecs/Registry.hpp"
 
 using engine::core::EngineError;
 using engine::ecs::Entity;
@@ -32,14 +32,13 @@ struct Unregistered {
 
 struct Counted {
     static inline int copies = 0;
-    static inline int moves = 0;
-    int value = 0;
+    static inline int moves  = 0;
+    int value                = 0;
 
     Counted() = default;
 
     explicit Counted(int initial): value(initial)
-    {
-    }
+    {}
 
     Counted(const Counted &other): value(other.value)
     {
@@ -68,7 +67,7 @@ struct Counted {
     static void reset()
     {
         copies = 0;
-        moves = 0;
+        moves  = 0;
     }
 };
 
@@ -76,7 +75,7 @@ struct MoveOnly {
     std::unique_ptr<int> value;
 };
 
-class RegistryComponent : public testing::Test {
+class RegistryComponent: public testing::Test {
 protected:
     void SetUp() override
     {
@@ -140,10 +139,10 @@ TEST_F(RegistryComponent, AddingReturnsTheStoredComponent)
 {
     const Entity entity = _registry.spawnEntity();
 
-    Position &added = _registry.addComponent(entity, Position{1.0F, 2.0F});
-    added.x = 10.0F;
+    Position &added  = _registry.addComponent(entity, Position{1.0F, 2.0F});
+    added.x          = 10.0F;
     Health &emplaced = _registry.emplaceComponent<Health>(entity, 3);
-    emplaced.points = 30;
+    emplaced.points  = 30;
 
     EXPECT_EQ(&added, _registry.getComponent<Position>(entity));
     EXPECT_FLOAT_EQ(_registry.getComponent<Position>(entity)->x, 10.0F);
@@ -162,7 +161,8 @@ TEST_F(RegistryComponent, EmplaceBuildsTheComponentInPlace)
     EXPECT_EQ(_registry.getComponent<Counted>(entity)->value, 7);
 }
 
-TEST_F(RegistryComponent, AddingAgainReplacesTheComponentWithoutGrowingTheStorage)
+TEST_F(RegistryComponent,
+    AddingAgainReplacesTheComponentWithoutGrowingTheStorage)
 {
     const Entity entity = _registry.spawnEntity();
     _registry.addComponent(entity, Position{1.0F, 2.0F});
@@ -193,7 +193,7 @@ TEST_F(RegistryComponent, RemovingAComponentKeepsTheEntitysOtherComponents)
 TEST_F(RegistryComponent, RemovingAnAbsentComponentDoesNothing)
 {
     const Entity entity = _registry.spawnEntity();
-    const Entity other = _registry.spawnEntity();
+    const Entity other  = _registry.spawnEntity();
     _registry.addComponent(other, Position{1.0F, 2.0F});
 
     _registry.removeComponent<Position>(entity);
@@ -215,9 +215,10 @@ TEST_F(RegistryComponent, AddingToADeadEntityThrowsAndCreatesNothing)
     EXPECT_TRUE(_registry.getComponents<Health>().empty());
 }
 
-TEST_F(RegistryComponent, AddingThroughAStaleHandleThrowsAndLeavesTheNewOwnerAlone)
+TEST_F(RegistryComponent,
+    AddingThroughAStaleHandleThrowsAndLeavesTheNewOwnerAlone)
 {
-    const Entity stale = _registry.spawnEntity();
+    const Entity stale    = _registry.spawnEntity();
     const Entity newOwner = reuseIndexOf(stale);
 
     EXPECT_THROW(_registry.addComponent(stale, Position{1.0F, 2.0F}),
@@ -231,15 +232,14 @@ TEST_F(RegistryComponent, AddingThroughAStaleHandleThrowsAndLeavesTheNewOwnerAlo
 
 TEST_F(RegistryComponent, EveryCallOnAnUnregisteredTypeThrows)
 {
-    const Entity entity = _registry.spawnEntity();
+    const Entity entity           = _registry.spawnEntity();
     const Registry &constRegistry = _registry;
 
     EXPECT_THROW(_registry.addComponent(entity, Unregistered{1}), EngineError);
     EXPECT_THROW(_registry.emplaceComponent<Unregistered>(entity, 1),
         EngineError);
     EXPECT_THROW(_registry.getComponent<Unregistered>(entity), EngineError);
-    EXPECT_THROW(constRegistry.getComponent<Unregistered>(entity),
-        EngineError);
+    EXPECT_THROW(constRegistry.getComponent<Unregistered>(entity), EngineError);
     EXPECT_THROW(_registry.removeComponent<Unregistered>(entity), EngineError);
 }
 
@@ -255,7 +255,7 @@ TEST_F(RegistryComponent, AnUnregisteredTypeThrowsEvenForADeadEntity)
 
 TEST_F(RegistryComponent, GetReturnsNullptrForAnAbsentComponent)
 {
-    const Entity entity = _registry.spawnEntity();
+    const Entity entity           = _registry.spawnEntity();
     const Registry &constRegistry = _registry;
 
     EXPECT_EQ(_registry.getComponent<Position>(entity), nullptr);
@@ -289,7 +289,7 @@ TEST_F(RegistryComponent, GetReturnsNullptrForAStaleHandle)
 
 TEST_F(RegistryComponent, RemovingThroughAStaleHandleKeepsTheNewOwnersComponent)
 {
-    const Entity stale = _registry.spawnEntity();
+    const Entity stale    = _registry.spawnEntity();
     const Entity newOwner = reuseIndexOf(stale);
     _registry.addComponent(newOwner, Position{7.0F, 8.0F});
 

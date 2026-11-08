@@ -16,13 +16,15 @@
 #include "Actions.hpp"
 #include "ClientConfig.hpp"
 #include "ClientSettings.hpp"
-#include "engine/render/FontCache.hpp"
-#include "engine/render/RenderQueue.hpp"
-#include "SpriteCatalog.hpp"
-#include "engine/render/TextureCache.hpp"
 #include "engine/audio/IAudio.hpp"
 #include "engine/input/ActionMap.hpp"
+#include "engine/render/FontCache.hpp"
+#include "engine/render/RenderQueue.hpp"
+#include "engine/render/TextureCache.hpp"
+#include "engine/render/DrawCommand.hpp"
 #include "engine/runtime/Clock.hpp"
+#include "SoundBank.hpp"
+#include "SpriteCatalog.hpp"
 
 namespace rtype::client {
 class IScene;
@@ -34,6 +36,8 @@ struct FrameContext {
     engine::render::TextureCache &textures;
     engine::render::FontCache &fonts;
     const SpriteCatalog &sprites;
+    engine::render::TextureId whitePixel;
+    SoundBank sounds;
     const ClientConfig &config;
     const ClientSettings &settings;
     engine::runtime::TimePoint now;
@@ -47,8 +51,8 @@ struct SceneRequest {
 
     [[nodiscard]] static SceneRequest stay() noexcept;
 
-    [[nodiscard]] static SceneRequest change(
-        std::unique_ptr<IScene> next) noexcept;
+    [[nodiscard]] static SceneRequest change(std::unique_ptr<IScene> next)
+        noexcept;
 
     [[nodiscard]] static SceneRequest quit() noexcept;
 };
@@ -61,8 +65,8 @@ public:
 
     virtual void onExit(FrameContext &context) = 0;
 
-    [[nodiscard]] virtual SceneRequest update(FrameContext &context, float dt) =
-    0;
+    [[nodiscard]] virtual SceneRequest update(FrameContext &context,
+        float dt) = 0;
 
     virtual void draw(engine::render::RenderQueue &queue,
         const FrameContext &context) = 0;
@@ -83,6 +87,15 @@ private:
 };
 
 /**
+ * @brief Pushes a centred message on the HUD layer: the title at twice
+ * `hudFontSize`, then the detail and the key hint. MessageScene draws with
+ * it, and GameScene while it waits for players.
+ */
+void pushMessage(engine::render::RenderQueue &queue, unsigned hudFontSize,
+    const std::string &title, const std::string &detail,
+    const std::string &hint);
+
+/**
  * @brief A title and a detail line ("Server full", "Connection lost"),
  * with a hint for the keys. CONFIRM reconnects through a new
  * ConnectingScene when @p canReconnect is true, QUIT quits.
@@ -95,8 +108,7 @@ public:
 
     void onExit(FrameContext &context) override;
 
-    [[nodiscard]] SceneRequest update(FrameContext &context,
-        float dt) override;
+    [[nodiscard]] SceneRequest update(FrameContext &context, float dt) override;
 
     /**
      * @brief The title, the detail and the key hint on the HUD layer, sized
@@ -116,6 +128,6 @@ private:
     std::string _detail;
     bool _canReconnect;
 };
-}
+} // namespace rtype::client
 
 #endif

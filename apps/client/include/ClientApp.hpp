@@ -13,8 +13,6 @@
 #include "Actions.hpp"
 #include "ClientConfig.hpp"
 #include "ClientSettings.hpp"
-#include "Scenes.hpp"
-#include "SpriteCatalog.hpp"
 #include "engine/audio/IAudio.hpp"
 #include "engine/input/ActionMap.hpp"
 #include "engine/input/InputState.hpp"
@@ -23,6 +21,9 @@
 #include "engine/render/TextureCache.hpp"
 #include "engine/render/Window.hpp"
 #include "engine/runtime/StopWatch.hpp"
+#include "Scenes.hpp"
+#include "SoundBank.hpp"
+#include "SpriteCatalog.hpp"
 
 namespace rtype::client {
 
@@ -41,8 +42,10 @@ private:
     engine::render::TextureCache _textures;
     engine::render::FontCache _fonts;
     SpriteCatalog _sprites;
+    engine::render::TextureId _whitePixel;
     engine::render::RaylibRenderer _renderer;
     std::unique_ptr<engine::audio::IAudio> _audio;
+    SoundBank _sounds;
     engine::input::InputState _input;
     engine::input::ActionMap<Action> _actions;
     engine::render::RenderQueue _queue;
@@ -50,6 +53,6 @@ private:
     engine::runtime::Stopwatch _frameClock;
 };
 
-}
+} // namespace rtype::client
 
 #endif

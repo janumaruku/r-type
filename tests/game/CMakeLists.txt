@@ -18,9 +18,13 @@ rtype_add_test(game_tests
     NetIdCleanupTests.cpp
     PlayerRosterTests.cpp
     RespawnTests.cpp
+    RulesLoadTests.cpp
     RulesTests.cpp
     ScenarioTests.cpp
     SpawnDirectorTests.cpp
     TypesTests.cpp
     WeaponTests.cpp
 )
+
+target_compile_definitions(game_tests PRIVATE
+    RTYPE_CONFIG_DIR="${PROJECT_SOURCE_DIR}/config")

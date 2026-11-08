@@ -5,9 +5,9 @@
 ** TypesTests
 */
 
-#include <gtest/gtest.h>
-
 #include "rtype/game/Types.hpp"
+
+#include <gtest/gtest.h>
 
 using rtype::game::InputButtons;
 
@@ -24,7 +24,7 @@ TEST(InputButtons, DefaultHoldsNothing)
 {
     const InputButtons buttons{};
 
-    for (const auto button : {InputButtons::UP, InputButtons::DOWN,
+    for (const auto button: {InputButtons::UP, InputButtons::DOWN,
              InputButtons::LEFT, InputButtons::RIGHT, InputButtons::FIRE})
         EXPECT_FALSE(buttons.held(button)) << static_cast<int>(button);
 }

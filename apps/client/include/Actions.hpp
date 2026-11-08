@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <string_view>
+
 #include "engine/input/ActionMap.hpp"
 
 namespace rtype::client {
@@ -31,6 +32,6 @@ std::ostream &operator<<(std::ostream &stream, const Action &action);
 [[nodiscard]] bool fromString(std::string_view name, Action &action) noexcept;
 
 void bindDefaults(engine::input::ActionMap<Action> &actions);
-}
+} // namespace rtype::client
 
 #endif

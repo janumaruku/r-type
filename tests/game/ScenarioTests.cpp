@@ -5,26 +5,25 @@
 ** ScenarioTests
 */
 
-#include <gtest/gtest.h>
-
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <optional>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "GameWorldTestAccess.hpp"
-#include "ScriptedGame.hpp"
 #include "engine/core/Vec2.hpp"
 #include "engine/ecs/Registry.hpp"
+#include "GameWorldTestAccess.hpp"
 #include "rtype/game/Builders.hpp"
 #include "rtype/game/Components.hpp"
 #include "rtype/game/GameWorld.hpp"
 #include "rtype/game/Motion.hpp"
 #include "rtype/game/NetIdAllocator.hpp"
 #include "rtype/game/SpawnDirectorState.hpp"
+#include "ScriptedGame.hpp"
 
 using engine::core::Vec2f;
 using engine::ecs::Entity;
@@ -60,8 +59,8 @@ using rtype::game::Transform;
 
 namespace {
 constexpr std::uint32_t SEED = 7;
-constexpr float NO_SPAWN = 1.0e9F;
-}
+constexpr float NO_SPAWN     = 1.0e9F;
+} // namespace
 
 /*
 ** A GameWorld driven through its public interface, as the server drives it.
@@ -71,8 +70,8 @@ constexpr float NO_SPAWN = 1.0e9F;
 */
 class Scenario: public testing::Test {
 protected:
-    GameWorld _world{Rules{}, SEED};
-    Rules _rules{};
+    GameWorld _world{game_tests::soloRules(), SEED};
+    Rules _rules{game_tests::soloRules()};
     std::vector<std::pair<std::uint32_t, GameEvent>> _events;
     std::uint32_t _sequence = 0;
 
@@ -129,8 +128,8 @@ protected:
     void hold(const std::uint8_t playerId, const std::uint8_t bits)
     {
         _world.apply(SetInput{.playerId = playerId,
-            .inputSequence = ++_sequence,
-            .buttons = InputButtons{.bits = bits}});
+            .inputSequence              = ++_sequence,
+            .buttons                    = InputButtons{.bits = bits}});
     }
 
     const rtype::game::PlayerSlot &slot(const std::uint8_t playerId)
@@ -140,8 +139,7 @@ protected:
 
     std::optional<Entity> find(const NetId netId)
     {
-        return registry().getResource<NetIdAllocator>().find(netId,
-            registry());
+        return registry().getResource<NetIdAllocator>().find(netId, registry());
     }
 
     Entity shipOf(const std::uint8_t playerId)
@@ -184,16 +182,25 @@ protected:
     }
 
     /*
-    ** Waits for the ship, lets its protection run out, and kills it.
+    ** Waits for the ship, lets its protection run out, then fires enemy
+    ** missiles at it one at a time until it dies: playerHealth /
+    ** enemyMissileDamage of them, rounded up. Each one hits within 10 ticks.
     */
     std::optional<PlayerKilled> killPlayer(const std::uint8_t playerId)
     {
         for (int i = 0; i < 300 && slot(playerId).state != SlotState::ALIVE;
-             ++i)
+            ++i)
             play();
         waitForVulnerable(playerId);
-        fireAt(playerId);
-        return playUntil<PlayerKilled>(60);
+        const int shots = (_rules.playerHealth + _rules.enemyMissileDamage - 1) /
+            _rules.enemyMissileDamage;
+
+        for (int shot = 0; shot < shots; ++shot) {
+            fireAt(playerId);
+            if (const auto killed = playUntil<PlayerKilled>(10))
+                return killed;
+        }
+        return std::nullopt;
     }
 
     template <class Event>
@@ -221,7 +228,7 @@ protected:
         std::size_t count = 0;
 
         for (auto &&[entity, projectile]:
-             registry().indexedView<const Projectile>())
+            registry().indexedView<const Projectile>())
             count += projectile.ownerPlayerId == playerId ? 1 : 0;
         return count;
     }
@@ -241,7 +248,7 @@ TEST_F(Scenario, JoinedShipAppearsOneTickLaterAndMovesLikeMovePlayer)
     EXPECT_EQ(replicated[0].kind, EntityKind::PLAYER_SHIP);
 
     const Entity ship = shipOf(player);
-    Vec2f predicted = _rules.playerSpawn[player];
+    Vec2f predicted   = _rules.playerSpawn[player];
 
     EXPECT_EQ(positionOf(ship), predicted);
     hold(player, InputButtons::RIGHT);
@@ -260,8 +267,8 @@ TEST_F(Scenario, ShootingABydosOnTheLaneScoresTheKill)
 
     play();
 
-    const NetId ship = slot(player).shipNetId;
-    const Entity bydos = registry().spawnEntity();
+    const NetId ship       = slot(player).shipNetId;
+    const Entity bydos     = registry().spawnEntity();
     const NetId bydosNetId = rtype::game::makeBydosSlave(registry(), bydos,
         _rules.playerSpawn[player] + Vec2f{480.0F, 0.0F},
         MovePattern::STRAIGHT);
@@ -289,7 +296,7 @@ TEST_F(Scenario, ShootingABydosOnTheLaneScoresTheKill)
 TEST_F(Scenario, KilledShipComesBackTwoSecondsLaterProtected)
 {
     const std::uint8_t player = join("alice");
-    const auto killed = killPlayer(player);
+    const auto killed         = killPlayer(player);
 
     ASSERT_TRUE(killed.has_value());
     EXPECT_EQ(killed->playerId, player);
@@ -305,8 +312,9 @@ TEST_F(Scenario, KilledShipComesBackTwoSecondsLaterProtected)
     EXPECT_EQ(_world.tick() - death, 119U);
     EXPECT_NE(slot(player).shipNetId, killed->ship);
     EXPECT_EQ(positionOf(shipOf(player)), _rules.playerSpawn[player]);
-    EXPECT_FLOAT_EQ(
-        registry().getComponent<PlayerShip>(shipOf(player))->invulnerableFor,
+    EXPECT_FLOAT_EQ(registry()
+                        .getComponent<PlayerShip>(shipOf(player))
+                        ->invulnerableFor,
         _rules.respawnInvulnerability);
 }
 
@@ -330,9 +338,13 @@ TEST_F(Scenario, LosingTheLastLifeEndsTheGameThenRestartsIt)
 
     EXPECT_EQ(countOf<GameOver>(), 1U);
     EXPECT_EQ(std::get<GameOver>(std::find_if(_events.begin(), _events.end(),
-        [](const auto &entry) {
-            return std::holds_alternative<GameOver>(entry.second);
-        })->second).teamScore, _rules.killScore);
+                                     [](const auto &entry) {
+                                         return std::holds_alternative<
+                                             GameOver>(entry.second);
+                                     })
+                                     ->second)
+                  .teamScore,
+        _rules.killScore);
     EXPECT_EQ(_world.phase(), Phase::GAME_OVER);
     EXPECT_EQ(slot(player).state, SlotState::SLOT_OUT);
 
@@ -356,7 +368,7 @@ TEST_F(Scenario, PlayerJoiningDuringAGameOverPlaysAfterTheRestart)
     play();
     ASSERT_EQ(_world.phase(), Phase::GAME_OVER);
 
-    const std::size_t seen = _events.size();
+    const std::size_t seen  = _events.size();
     const std::uint8_t late = join("bob");
 
     play();
@@ -385,10 +397,10 @@ TEST_F(Scenario, PlayerLeavingMidGameLeavesTheOtherOneUntouched)
     ASSERT_GT(countOwnedBy(leaver), 0U);
     ASSERT_GT(countOwnedBy(stayer), 0U);
 
-    const NetId stayerShip = slot(stayer).shipNetId;
-    const NetId leaverShip = slot(leaver).shipNetId;
+    const NetId stayerShip           = slot(stayer).shipNetId;
+    const NetId leaverShip           = slot(leaver).shipNetId;
     const std::size_t stayerMissiles = countOwnedBy(stayer);
-    const std::size_t seen = _events.size();
+    const std::size_t seen           = _events.size();
 
     _world.apply(LeavePlayer{.playerId = leaver, .reason = LeaveReason::QUIT});
     EXPECT_EQ(countOwnedBy(leaver), 0U);

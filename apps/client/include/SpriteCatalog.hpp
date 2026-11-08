@@ -12,6 +12,7 @@
 #include <filesystem>
 #include <iosfwd>
 #include <map>
+#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -19,19 +20,17 @@
 #include <utility>
 #include <vector>
 
-#include <nlohmann/json_fwd.hpp>
-
 #include "engine/core/Rect2.hpp"
 #include "engine/render/DrawCommand.hpp"
 #include "engine/render/TextureCache.hpp"
 
 namespace rtype::client {
 enum class SpriteKey : std::uint8_t {
-    PLAYER_SHIP = 1,
-    BYDOS_SLAVE = 2,
+    PLAYER_SHIP    = 1,
+    BYDOS_SLAVE    = 2,
     PLAYER_MISSILE = 3,
-    ENEMY_MISSILE = 4,
-    EXPLOSION = 100,
+    ENEMY_MISSILE  = 4,
+    EXPLOSION      = 100,
 };
 
 [[nodiscard]] std::string_view toString(SpriteKey key) noexcept;
@@ -53,10 +52,10 @@ struct SpriteDef {
     engine::render::TextureId texture;
     std::vector<AnimationState> states;
     float frameTime = 0.0F;
-    bool loop = true;
+    bool loop       = true;
 
     [[nodiscard]] std::optional<std::uint8_t> stateIndex(std::string_view name)
-    const noexcept;
+        const noexcept;
 };
 
 class SpriteCatalog {
@@ -86,7 +85,7 @@ private:
 };
 
 [[nodiscard]] std::optional<SpriteKey> spriteKeyFromString(std::string_view
-    name) noexcept;
+        name) noexcept;
 
 class CatalogError: public std::runtime_error {
 public:

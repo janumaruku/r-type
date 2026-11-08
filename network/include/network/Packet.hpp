@@ -6,17 +6,17 @@
 */
 
 #ifndef PACKET_HPP
-#define PACKET_HPP
+    #define PACKET_HPP
 
-#include <cstddef>
-#include <cstdint>
-#include <limits>
-#include <span>
-#include <vector>
-#include <stdexcept>
-#include <bit>
+    #include <bit>
+    #include <cstddef>
+    #include <cstdint>
+    #include <limits>
+    #include <span>
+    #include <stdexcept>
+    #include <vector>
 
-#include "network/Serializers.hpp"
+    #include "network/Serializers.hpp"
 
 namespace net {
 
@@ -61,7 +61,7 @@ static_assert(std::endian::native == std::endian::little,
     "the wire format is little-endian");
 static_assert(std::numeric_limits<float>::is_iec559, "floats must be IEEE-754");
 
-}
+} // namespace net
 #endif
 
 #include "network/Packet.tpp"

@@ -5,7 +5,6 @@
 ** Logger.cpp
 */
 
-
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -19,9 +18,9 @@
 #include <utility>
 
 #ifdef _WIN32
-#include <io.h>
+    #include <io.h>
 #else
-#include <unistd.h>
+    #include <unistd.h>
 #endif
 
 #include "engine/core/Logger.hpp"
@@ -40,11 +39,11 @@ const std::map<Level, const char *> LEVEL_NAMES{
 };
 
 const std::map<Level, const char *> LEVEL_COLORS{
-    {Level::EG_TRACE, "90"},
-    {Level::EG_DEBUG, "36"},
-    {Level::EG_INFO, "32"},
-    {Level::EG_WARN, "33"},
-    {Level::EG_ERROR, "31"},
+    {Level::EG_TRACE, "37"}, // White
+    {Level::EG_DEBUG, "35"}, // Purple
+    {Level::EG_INFO,  "36"}, // Cyan
+    {Level::EG_WARN,  "33"}, // Yellow
+    {Level::EG_ERROR, "31"}, // Red
 };
 
 const char *levelName(Level level) noexcept
@@ -61,11 +60,11 @@ const char *levelColor(Level level) noexcept
 
 bool isTerminal() noexcept
 {
-    #ifdef _WIN32
+#ifdef _WIN32
     return _isatty(_fileno(stderr)) != 0;
-    #else
+#else
     return isatty(fileno(stderr)) != 0;
-    #endif
+#endif
 }
 
 /*
@@ -77,7 +76,7 @@ struct State {
     std::atomic<Level> level{Level::EG_INFO};
     std::mutex mutex;
     std::ostream *output = &std::cerr;
-    bool colors = isTerminal();
+    bool colors          = isTerminal();
 };
 
 State &state()
@@ -104,7 +103,8 @@ bool isEnabled(Level lineLevel) noexcept
 
 std::optional<Level> parseLevel(std::string_view name) noexcept
 {
-    static constexpr std::pair<std::string_view, Level> names[]{ // NOLINT
+    static constexpr std::pair<std::string_view, Level> names[]{
+        // NOLINT
         {"trace", Level::EG_TRACE},
         {"debug", Level::EG_DEBUG},
         {"info", Level::EG_INFO},
@@ -137,15 +137,12 @@ void setColors(bool enabled)
 }
 
 Logger::Logger(const std::string &context) noexcept: _context(context)
-{
-}
+{}
 
 Logger::Logger(Logger &&other) noexcept: _context(std::move(other._context))
-{
-}
+{}
 
-Logger &Logger::operator=(Logger &&other)
-    noexcept
+Logger &Logger::operator=(Logger &&other) noexcept
 {
     if (this != &other) {
         _context = std::move(other._context);
@@ -154,14 +151,13 @@ Logger &Logger::operator=(Logger &&other)
 }
 
 LogLine::LogLine(Level lineLevel, const std::string &lineContext,
-    bool lineActive) noexcept
-    : level(lineLevel), context(lineContext), active(lineActive)
-{
-}
+    bool lineActive) noexcept:
+    level(lineLevel), context(lineContext), active(lineActive)
+{}
 
-LogLine::LogLine(LogLine &&other) noexcept
-    : level(other.level), context(other.context), active(other.active),
-      buffer(std::move(other.buffer))
+LogLine::LogLine(LogLine &&other) noexcept:
+    level(other.level), context(other.context), active(other.active),
+    buffer(std::move(other.buffer))
 {
     other.active = false;
 }
@@ -201,7 +197,6 @@ LogLine Logger::error()
     return makeLine(Level::EG_ERROR);
 }
 
-
 LogLine &LogLine::operator<<(const std::string &message) &
 {
     if (active)
@@ -228,15 +223,14 @@ LogLine::~LogLine() noexcept
 
     try {
         const auto now = std::chrono::system_clock::now();
-        const auto timestamp = std::chrono::floor<
-            std::chrono::milliseconds>(now);
-        const std::string contextPart = context.empty()
-            ? ""
-            : std::format(" [{}]", context);
-        const std::string prefix = std::format("[{:%T}] [{}] [{}]{}",
-            timestamp, levelName(level), threadName, contextPart);
+        const auto timestamp =
+            std::chrono::floor<std::chrono::milliseconds>(now);
+        const std::string contextPart =
+            context.empty() ? "" : std::format(" [{}]", context);
+        const std::string prefix = std::format("[{:%T}] [{}] [{}]{}", timestamp,
+            levelName(level), threadName, contextPart);
         const std::string message = buffer.str();
-        State &shared = state();
+        State &shared             = state();
         const std::lock_guard lock(shared.mutex);
 
         if (!shared.colors)
@@ -250,4 +244,4 @@ LogLine::~LogLine() noexcept
     } catch (...) {
     }
 }
-}
+} // namespace engine::core::log

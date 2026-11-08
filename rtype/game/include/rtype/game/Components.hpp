@@ -8,9 +8,9 @@
 #ifndef R_TYPE_COMPONENTS_HPP
 #define R_TYPE_COMPONENTS_HPP
 
-#include "Types.hpp"
 #include "engine/core/Vec2.hpp"
 #include "engine/ecs/Registry.hpp"
+#include "Types.hpp"
 
 namespace rtype::game {
 struct Transform {
@@ -28,7 +28,7 @@ struct Collider {
 
 struct Health {
     std::int16_t current = 1;
-    std::int16_t max = 1;
+    std::int16_t max     = 1;
 };
 
 struct Damage {
@@ -41,8 +41,8 @@ struct Damage {
  * without it stays server-only.
  */
 struct Replicated {
-    NetId netId = NO_NET_ID;
-    EntityKind kind = EntityKind::PLAYER_SHIP;
+    NetId netId          = NO_NET_ID;
+    EntityKind kind      = EntityKind::PLAYER_SHIP;
     std::uint8_t variant = 0;
 };
 
@@ -54,7 +54,7 @@ struct PlayerShip {
 
 struct Weapon {
     float cooldown = 0.0F;
-    float timer = 0.0F;
+    float timer    = 0.0F;
     engine::core::Vec2f muzzleOffset{};
     float projectileSpeed = 0.0F;
     engine::core::Vec2f aim{1.0F, 0.0F};
@@ -66,11 +66,11 @@ struct StraightMover {
 };
 
 struct SineMover {
-    float speed = 0.0F;
-    float baseY = 0.0F;
+    float speed     = 0.0F;
+    float baseY     = 0.0F;
     float amplitude = 0.0F;
     float frequency = 0.0F;
-    float age = 0.0F;
+    float age       = 0.0F;
 };
 
 struct AimedShooter {
@@ -79,12 +79,12 @@ struct AimedShooter {
 };
 
 struct Projectile {
-    NetId owner = NO_NET_ID;
+    NetId owner                = NO_NET_ID;
     std::uint8_t ownerPlayerId = NO_PLAYER;
 };
 
 struct LastHit {
-    NetId by = NO_NET_ID;
+    NetId by                = NO_NET_ID;
     std::uint8_t byPlayerId = NO_PLAYER;
 };
 
@@ -92,8 +92,7 @@ struct Lifetime {
     float remaining = 0.0F;
 };
 
-struct ConfinedToPlayfield {
-};
+struct ConfinedToPlayfield {};
 
 struct DespawnOutsidePlayfield {
     float margin = 0.0F;
@@ -104,6 +103,6 @@ struct ScoreValue {
 };
 
 void registerComponents(engine::ecs::Registry &registry);
-}
+} // namespace rtype::game
 
-#endif //R_TYPE_COMPONENTS_HPP
+#endif // R_TYPE_COMPONENTS_HPP

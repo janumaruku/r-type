@@ -5,14 +5,14 @@
 ** HeaderTests
 */
 
-#include <gtest/gtest.h>
+#include "rtype/protocol/Header.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <gtest/gtest.h>
 #include <span>
 #include <vector>
 
-#include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/ProtocolError.hpp"
 
 using rtype::protocol::DecodeError;
@@ -28,22 +28,20 @@ namespace {
 struct EmptyMessage {};
 
 void serialize(net::Packet &, const EmptyMessage &)
-{
-}
+{}
 
 void deserialize(net::Packet &, EmptyMessage &)
-{
-}
+{}
 
-const std::vector<std::uint8_t> RFC_EXAMPLE{0x54, 0x52, 0x01, 0x02,
-                                            0xDC, 0x05, 0x00, 0x00};
+const std::vector<std::uint8_t> RFC_EXAMPLE{
+    0x54, 0x52, 0x02, 0x02, 0xDC, 0x05, 0x00, 0x00};
 
 std::vector<std::uint8_t> toVector(std::span<const std::uint8_t> bytes)
 {
     return {bytes.begin(), bytes.end()};
 }
 
-}
+} // namespace
 
 TEST(HeaderTests, TheRfcExampleIsWrittenByteForByte)
 {
@@ -69,8 +67,7 @@ TEST(HeaderTests, TheRfcExampleIsReadBack)
 
 TEST(HeaderTests, AHeaderWithTheLargestSequenceRoundTrips)
 {
-    const Header written{.type = MessageType::SNAPSHOT,
-                         .sequence = 0xFFFFFFFF};
+    const Header written{.type = MessageType::SNAPSHOT, .sequence = 0xFFFFFFFF};
     net::Packet out;
 
     out << written;
@@ -88,7 +85,8 @@ TEST(HeaderTests, AHeaderWithTheLargestSequenceRoundTrips)
 
 TEST(HeaderTests, ABadMagicIsRejected)
 {
-    for (const std::uint16_t magic: {std::uint16_t{0x5253}, std::uint16_t{0x0000}}) {
+    for (const std::uint16_t magic:
+        {std::uint16_t{0x5253}, std::uint16_t{0x0000}}) {
         net::Packet out;
         out << magic << Header::VERSION << MessageType::HELLO
             << std::uint32_t{1};
@@ -108,7 +106,7 @@ TEST(HeaderTests, ABadMagicIsRejected)
 TEST(HeaderTests, AnotherVersionIsLeftToTheDispatcher)
 {
     std::vector<std::uint8_t> bytes = RFC_EXAMPLE;
-    bytes[2] = 2;
+    bytes[2]                        = 2;
     net::Packet packet(bytes);
     Header header;
 
@@ -119,7 +117,7 @@ TEST(HeaderTests, AnotherVersionIsLeftToTheDispatcher)
 TEST(HeaderTests, AnUnknownTypeIsLeftToTheDispatcher)
 {
     std::vector<std::uint8_t> bytes = RFC_EXAMPLE;
-    bytes[3] = 0x42;
+    bytes[3]                        = 0x42;
     net::Packet packet(bytes);
     Header header;
 
@@ -145,8 +143,8 @@ TEST(HeaderTests, EveryPrefixOfAHeaderIsTruncated)
 
 TEST(HeaderTests, MakePacketWritesTheHeaderThenTheMessage)
 {
-    const net::Packet packet = rtype::protocol::makePacket(MessageType::INPUT,
-        1500, EmptyMessage{});
+    const net::Packet packet =
+        rtype::protocol::makePacket(MessageType::INPUT, 1500, EmptyMessage{});
 
     EXPECT_EQ(toVector(packet.bytes()), RFC_EXAMPLE);
 

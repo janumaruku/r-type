@@ -37,22 +37,28 @@ std::vector<proto::PlayerInfo> fullRoster()
         proto::PlayerInfo{.playerId = 0,
             .state                  = proto::PlayerState::ALIVE,
             .lives                  = 3,
+            .health                 = 255,
+            .maxHealth              = 255,
             .score                  = 0xFFFFFFFF,
             .shipNetId              = 101,
             .name                   = SIXTEEN_BYTES},
         proto::PlayerInfo{.playerId = 1,
             .state                  = proto::PlayerState::RESPAWNING,
             .lives                  = 2,
+            .maxHealth              = 255,
             .score                  = 1500,
             .name                   = SIXTEEN_BYTES},
         proto::PlayerInfo{.playerId = 2,
             .state                  = proto::PlayerState::PLAYER_OUT,
             .lives                  = 0,
+            .maxHealth              = 255,
             .score                  = 42,
             .name                   = SIXTEEN_BYTES},
         proto::PlayerInfo{.playerId = 3,
             .state                  = proto::PlayerState::ALIVE,
             .lives                  = 1,
+            .health                 = 37,
+            .maxHealth              = 255,
             .score                  = 7,
             .shipNetId              = 104,
             .name                   = SIXTEEN_BYTES},
@@ -134,7 +140,7 @@ TEST(SnapshotTests, AFullChunkRoundTripsAndFitsInOneDatagram)
 
     expectRoundTrip(chunk);
     EXPECT_EQ(proto::makePacket(proto::MessageType::SNAPSHOT, 1, chunk).size(),
-        1190U);
+        1199U);
 }
 
 TEST(SnapshotTests, AnEmptyLaterChunkIsTheSmallestPayload)
@@ -143,7 +149,7 @@ TEST(SnapshotTests, AnEmptyLaterChunkIsTheSmallestPayload)
         .serverTick = 9, .chunkIndex = 1, .chunkCount = 2};
 
     expectRoundTrip(chunk);
-    EXPECT_EQ(encode(chunk).size(), 14U);
+    EXPECT_EQ(encode(chunk).size(), 15U);
 }
 
 TEST(SnapshotTests, AnEmptySlotRoundTrips)
@@ -180,10 +186,21 @@ TEST(SnapshotTests, AnUnknownPlayerStateIsRejected)
         .state = static_cast<proto::PlayerState>(4)});
 }
 
-TEST(SnapshotTests, MoreThanThreeLivesIsRejected)
+TEST(SnapshotTests, MoreThanNinetyNineLivesIsRejected)
 {
     expectOutOfRange(proto::PlayerInfo{
-        .state = proto::PlayerState::PLAYER_OUT, .lives = 4});
+        .state = proto::PlayerState::PLAYER_OUT, .lives = 100});
+}
+
+TEST(SnapshotTests, AnImpossibleHealthIsRejected)
+{
+    expectOutOfRange(proto::PlayerInfo{.state = proto::PlayerState::ALIVE,
+        .health = 101, .maxHealth = 100});
+    expectOutOfRange(proto::PlayerInfo{
+        .state = proto::PlayerState::RESPAWNING, .health = 50,
+        .maxHealth = 100});
+    expectOutOfRange(proto::PlayerInfo{.state = proto::PlayerState::EMPTY,
+        .maxHealth = 100});
 }
 
 TEST(SnapshotTests, ANameLongerThanSixteenBytesIsRejected)
@@ -246,6 +263,20 @@ TEST(SnapshotTests, AChunkCountOfZeroOrAboveSixteenIsRejected)
     expectOutOfRange(proto::Snapshot{.chunkCount = 17, .roster = fullRoster()});
 }
 
+TEST(SnapshotTests, EveryPhaseRoundTrips)
+{
+    for (const auto phase: {proto::GamePhase::PLAYING,
+             proto::GamePhase::GAME_OVER, proto::GamePhase::WAITING})
+        expectRoundTrip(proto::Snapshot{.phase = phase,
+            .roster = fullRoster()});
+}
+
+TEST(SnapshotTests, AnUnknownPhaseIsRejected)
+{
+    expectOutOfRange(proto::Snapshot{
+        .phase = static_cast<proto::GamePhase>(3), .roster = fullRoster()});
+}
+
 TEST(SnapshotTests, AChunkIndexPastTheCountIsRejected)
 {
     expectOutOfRange(proto::Snapshot{.chunkIndex = 2, .chunkCount = 2});
@@ -281,4 +312,16 @@ TEST(SnapshotTests, ARosterOutOfSlotOrderIsRejected)
 {
     expectOutOfRange(proto::Snapshot{.roster = rosterWithIds({1, 0, 2, 3})});
     expectOutOfRange(proto::Snapshot{.roster = rosterWithIds({0, 0, 1, 3})});
+}
+
+/*
+** The generic kinds belong to other games, which own their variant byte,
+** so any value decodes.
+*/
+TEST(SnapshotTests, GenericKindsRoundTripWithAnyVariant)
+{
+    expectRoundTrip(proto::EntityState{.netId = 1,
+        .kind = proto::EntityKind::GENERIC_PLAYER, .variant = 255});
+    expectRoundTrip(proto::EntityState{.netId = 2,
+        .kind = proto::EntityKind::GENERIC_ENEMY, .variant = 42});
 }

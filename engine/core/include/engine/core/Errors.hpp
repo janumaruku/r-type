@@ -12,27 +12,26 @@
 
 namespace engine::core {
 
-class EngineError : public std::runtime_error {
+class EngineError: public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
 };
 
-class ResourceError : public EngineError {
+class ResourceError: public EngineError {
 public:
     using EngineError::EngineError;
 };
 
-class ConfigError : public EngineError {
+class ConfigError: public EngineError {
 public:
     using EngineError::EngineError;
 };
 
-class NetworkError : public EngineError {
+class NetworkError: public EngineError {
 public:
     using EngineError::EngineError;
 };
 
-
-}
+} // namespace engine::core
 
 #endif

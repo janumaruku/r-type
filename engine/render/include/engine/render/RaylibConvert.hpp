@@ -34,17 +34,17 @@ namespace engine::render::detail {
 
 [[nodiscard]] inline Rectangle toRaylib(const core::FloatRect &rect) noexcept
 {
-    return Rectangle{rect.origin().x(), rect.origin().y(), rect.width(),
-        rect.height()};
+    return Rectangle{
+        rect.origin().x(), rect.origin().y(), rect.width(), rect.height()};
 }
 
 [[nodiscard]] inline Rectangle toRaylib(const core::IntRect &rect) noexcept
 {
     return Rectangle{static_cast<float>(rect.origin().x()),
-        static_cast<float>(rect.origin().y()),
-        static_cast<float>(rect.width()), static_cast<float>(rect.height())};
+        static_cast<float>(rect.origin().y()), static_cast<float>(rect.width()),
+        static_cast<float>(rect.height())};
 }
 
-}
+} // namespace engine::render::detail
 
 #endif /* !RAYLIB_CONVERT_HPP */

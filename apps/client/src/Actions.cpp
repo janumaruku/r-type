@@ -14,16 +14,22 @@
 namespace rtype::client {
 namespace {
 constexpr std::array ACTIONS{
-    Action::MOVE_UP, Action::MOVE_DOWN, Action::MOVE_LEFT, Action::MOVE_RIGHT,
-    Action::FIRE, Action::TOGGLE_HUD_HELP, Action::QUIT, Action::CONFIRM,
+    Action::MOVE_UP,
+    Action::MOVE_DOWN,
+    Action::MOVE_LEFT,
+    Action::MOVE_RIGHT,
+    Action::FIRE,
+    Action::TOGGLE_HUD_HELP,
+    Action::QUIT,
+    Action::CONFIRM,
 };
 
 [[nodiscard]] bool sameLetter(char left, char right) noexcept
 {
-    return std::toupper(static_cast<unsigned char>(left))
-        == std::toupper(static_cast<unsigned char>(right));
+    return std::toupper(static_cast<unsigned char>(left)) ==
+        std::toupper(static_cast<unsigned char>(right));
 }
-}
+} // namespace
 
 std::ostream &operator<<(std::ostream &stream, const Action &action)
 {
@@ -56,7 +62,7 @@ std::string_view toString(Action action) noexcept
 
 bool fromString(std::string_view name, Action &action) noexcept
 {
-    for (const Action candidate : ACTIONS) {
+    for (const Action candidate: ACTIONS) {
         if (std::ranges::equal(toString(candidate), name, sameLetter)) {
             action = candidate;
             return true;
@@ -81,4 +87,4 @@ void bindDefaults(engine::input::ActionMap<Action> &actions)
     actions.bind(Action::QUIT, engine::input::Key::ESCAPE);
     actions.bind(Action::CONFIRM, engine::input::Key::ENTER);
 }
-}
+} // namespace rtype::client
