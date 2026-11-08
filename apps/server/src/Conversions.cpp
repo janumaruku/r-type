@@ -130,6 +130,7 @@ protocol::Welcome welcomeFor(std::uint8_t playerId, const game::GameWorld &world
 
     return protocol::Welcome{.playerId = playerId,
         .maxPlayers                    = rules.maxPlayers,
+        .playersToStart                = rules.playersToStart,
         .serverTick                    = world.tick(),
         .playerSpeed                   = rules.playerSpeed,
         .playerHalfWidth               = rules.playerHalfSize.x(),

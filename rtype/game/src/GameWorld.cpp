@@ -138,9 +138,11 @@ void GameWorld::handle(const JoinPlayer &command)
         : roster.join(command.playerId, command.name,
               _registry.getResource<Rules>().playerLives);
 
-    if (joined)
-        _registry.getResource<EventOutbox>().push(PlayerJoined{
-            .playerId = command.playerId});
+    if (!joined)
+        return;
+    _registry.getResource<EventOutbox>().push(PlayerJoined{
+        .playerId = command.playerId});
+    startWhenReady(_registry);
 }
 
 void GameWorld::handle(const LeavePlayer &command)

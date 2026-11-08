@@ -22,6 +22,18 @@
 
 namespace game_tests {
 
+/**
+ * @brief The default rules, except that one player is enough to start: the
+ * tests that drive a whole GameWorld join one or two players.
+ */
+inline rtype::game::Rules soloRules()
+{
+    rtype::game::Rules rules;
+
+    rules.playersToStart = 1;
+    return rules;
+}
+
 inline constexpr float SCRIPT_DT = 1.0F / 60.0F;
 
 /**
@@ -43,7 +55,7 @@ struct ScriptedResult {
 };
 
 /**
- * @brief Plays `script` on a new `GameWorld{Rules{}, seed}` for `ticks`
+ * @brief Plays `script` on a new `GameWorld{soloRules(), seed}` for `ticks`
  * steps of 1/60 s, as the server would: before each step, the commands of
  * that tick are applied in script order. A @ref rtype::game::JoinPlayer
  * first reserves the lowest free slot, as the server does when a client
@@ -56,7 +68,7 @@ inline ScriptedResult runScript(const std::uint32_t seed,
     const std::vector<ScriptedStep> &script, const std::uint32_t ticks,
     const bool recordReplicated = false)
 {
-    rtype::game::GameWorld world{rtype::game::Rules{}, seed};
+    rtype::game::GameWorld world{soloRules(), seed};
     ScriptedResult result;
     std::size_t next = 0;
 

@@ -120,19 +120,25 @@ SceneRequest MessageScene::update(FrameContext &context,
     return SceneRequest::stay();
 }
 
-void MessageScene::draw(engine::render::RenderQueue &queue,
-    const FrameContext &context)
+void pushMessage(engine::render::RenderQueue &queue, unsigned hudFontSize,
+    const std::string &title, const std::string &detail,
+    const std::string &hint)
 {
-    const std::uint8_t size      = textSize(context.settings.hudFontSize);
-    const std::uint8_t titleSize = textSize(context.settings.hudFontSize * 2);
+    const std::uint8_t size      = textSize(hudFontSize);
+    const std::uint8_t titleSize = textSize(hudFontSize * 2);
     const float detailY = TITLE_Y + static_cast<float>(titleSize) * LINE_GAP;
     const float hintY   = detailY + static_cast<float>(size) * LINE_GAP * 2;
 
-    queue.push(hudText(_title, titleSize, TITLE_Y));
-    queue.push(hudText(_detail, size, detailY));
-    queue.push(hudText(_canReconnect ? "ENTER: reconnect \u00B7 ESC: quit"
-                                     : "ESC: quit",
-        size, hintY));
+    queue.push(hudText(title, titleSize, TITLE_Y));
+    queue.push(hudText(detail, size, detailY));
+    queue.push(hudText(hint, size, hintY));
+}
+
+void MessageScene::draw(engine::render::RenderQueue &queue,
+    const FrameContext &context)
+{
+    pushMessage(queue, context.settings.hudFontSize, _title, _detail,
+        _canReconnect ? "ENTER: reconnect \u00B7 ESC: quit" : "ESC: quit");
 }
 
 const std::string &MessageScene::title() const noexcept

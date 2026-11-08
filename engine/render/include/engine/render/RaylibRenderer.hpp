@@ -37,6 +37,8 @@ public:
 
     void setLogicalSize(core::Vec2f size) override;
 
+    void setBarsColor(core::Color color) override;
+
 private:
     struct Impl;
     std::unique_ptr<Impl> _impl;

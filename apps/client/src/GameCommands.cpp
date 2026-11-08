@@ -30,6 +30,7 @@ bool SnapshotCommand::execute(ClientNetworkAdapter &adapter,
     if (snapshot.chunkIndex == 0) {
         world.applyRoster(snapshot.roster);
         world.setLastProcessedInput(snapshot.lastProcessedInput);
+        world.setPhase(snapshot.phase);
     }
 
     if (auto completeTick = assembler.add(snapshot))

@@ -5,6 +5,7 @@
 ** GameWorldTests
 */
 
+#include "ScriptedGame.hpp"
 #include "rtype/game/GameWorld.hpp"
 
 #include <cstddef>
@@ -49,7 +50,7 @@ constexpr std::uint32_t SEED = 7;
 
 class World: public testing::Test {
 protected:
-    GameWorld _world{Rules{}, SEED};
+    GameWorld _world{game_tests::soloRules(), SEED};
 
     engine::ecs::Registry &registry()
     {
@@ -113,7 +114,56 @@ TEST_F(World, NewWorldIsEmptyAtTickZero)
     EXPECT_EQ(_world.roster().active(), 0U);
     for (std::uint8_t playerId = 0; playerId < 4; ++playerId)
         EXPECT_EQ(_world.roster().get(playerId), nullptr);
-    EXPECT_EQ(_world.phase(), Phase::PLAYING);
+    EXPECT_EQ(_world.phase(), Phase::WAITING);
+}
+
+/*
+** With playersToStart 2, the first player waits without a ship or an
+** enemy. The second join starts the game, and both ships appear on the
+** next step.
+*/
+TEST(WorldStart, TheGameStartsWhenEnoughPlayersJoined)
+{
+    Rules rules;
+    rules.playersToStart = 2;
+    GameWorld world{rules, SEED};
+    std::vector<rtype::game::ReplicatedEntity> entities;
+
+    world.apply(JoinPlayer{.playerId = world.reserveSlot().value(),
+        .name                        = "alice"});
+    for (int tick = 0; tick < 600; ++tick)
+        world.step(DT);
+    world.collectReplicated(entities);
+    EXPECT_EQ(world.phase(), Phase::WAITING);
+    EXPECT_TRUE(entities.empty());
+    EXPECT_EQ(world.roster().get(0)->state, SlotState::RESPAWNING);
+
+    world.apply(JoinPlayer{.playerId = world.reserveSlot().value(),
+        .name                        = "bob"});
+    EXPECT_EQ(world.phase(), Phase::PLAYING);
+    world.step(DT);
+    world.collectReplicated(entities);
+    EXPECT_EQ(entities.size(), 2U);
+    EXPECT_EQ(world.roster().get(0)->state, SlotState::ALIVE);
+    EXPECT_EQ(world.roster().get(1)->state, SlotState::ALIVE);
+}
+
+TEST(WorldStart, APlayerLeavingMidGameDoesNotStopIt)
+{
+    Rules rules;
+    rules.playersToStart = 2;
+    GameWorld world{rules, SEED};
+
+    world.apply(JoinPlayer{.playerId = world.reserveSlot().value(),
+        .name                        = "alice"});
+    world.apply(JoinPlayer{.playerId = world.reserveSlot().value(),
+        .name                        = "bob"});
+    world.step(DT);
+    world.apply(rtype::game::LeavePlayer{.playerId = 1,
+        .reason = rtype::game::LeaveReason::QUIT});
+    world.step(DT);
+    EXPECT_EQ(world.phase(), Phase::PLAYING);
+    EXPECT_EQ(world.roster().get(0)->state, SlotState::ALIVE);
 }
 
 TEST_F(World, StageRunsTheFourteenSystemsInTickOrder)

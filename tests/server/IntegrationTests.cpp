@@ -2,8 +2,11 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <gtest/gtest.h>
 #include <memory>
+#include <string>
 #include <optional>
 #include <thread>
 #include <vector>
@@ -31,13 +34,27 @@ using rtype::protocol::Welcome;
 
 constexpr int OFFENCES_PER_SECOND = 10;
 
+/*
+** The server reads its rules from a file named after the current test, so
+** a test can pick how many players start the game: one by default, so the
+** first join starts it.
+*/
 class ServerFixture {
 public:
-    ServerFixture()
+    explicit ServerFixture(int playersToStart = 1):
+        _rulesPath(std::filesystem::temp_directory_path() /
+            ("rtype_integration_" +
+                std::string(testing::UnitTest::GetInstance()
+                        ->current_test_info()
+                        ->name()) +
+                ".json"))
     {
+        std::ofstream(_rulesPath)
+            << R"({"playersToStart": )" << playersToStart << "}";
         rtype::server::ServerConfig config;
-        config.port = 0;
-        config.seed = 7;
+        config.port      = 0;
+        config.seed      = 7;
+        config.rulesPath = _rulesPath;
         _app =
             std::make_unique<rtype::server::ServerApp>(config, _stopRequested);
         _thread = std::thread([this] { _result = _app->run(); });
@@ -47,6 +64,7 @@ public:
     {
         if (!_stopped)
             stop();
+        std::filesystem::remove(_rulesPath);
     }
 
     [[nodiscard]] std::uint16_t port() const
@@ -67,6 +85,7 @@ public:
     }
 
 private:
+    std::filesystem::path _rulesPath;
     std::atomic<bool> _stopRequested{false};
     std::unique_ptr<rtype::server::ServerApp> _app;
     std::thread _thread;
@@ -163,6 +182,29 @@ TEST(IntegrationTests, JoinReceivesWelcomeAndOwnShip)
         [mine](const auto &entity) { return entity.netId == mine->shipNetId; });
     ASSERT_NE(ship, snapshot.entities.end());
     EXPECT_EQ(ship->kind, rtype::protocol::EntityKind::PLAYER_SHIP);
+}
+
+TEST(IntegrationTests, TheGameWaitsForEnoughPlayersBeforeStarting)
+{
+    ServerFixture server(2);
+    server_test::TestClient first(server.port());
+    server_test::TestClient second(server.port());
+
+    const auto joined = join(first);
+
+    ASSERT_TRUE(joined.has_value());
+    EXPECT_EQ(joined->welcome.playersToStart, 2U);
+    EXPECT_EQ(joined->snapshot.phase, rtype::protocol::GamePhase::WAITING);
+    const auto *const mine = slotOf(joined->snapshot, 0);
+    ASSERT_NE(mine, nullptr);
+    EXPECT_EQ(mine->shipNetId, 0U) << "no ship before the game starts";
+    ASSERT_TRUE(join(second).has_value());
+    const auto started = waitForSnapshot(first, [](const Snapshot &snapshot) {
+        const auto *const slot = slotOf(snapshot, 0);
+        return snapshot.phase == rtype::protocol::GamePhase::PLAYING &&
+            slot != nullptr && slot->shipNetId != 0;
+    });
+    EXPECT_TRUE(started.has_value());
 }
 
 TEST(IntegrationTests, TwoPlayersSeeMovement)

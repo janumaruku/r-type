@@ -137,6 +137,10 @@ constexpr std::array RULES{
         [](Rules &rules, std::string_view key, const Json &value) {
             rules.maxPlayers = whole<std::uint8_t>(key, value, 1, 4);
         }},
+    Rule{"playersToStart",
+        [](Rules &rules, std::string_view key, const Json &value) {
+            rules.playersToStart = whole<std::uint8_t>(key, value, 1, 4);
+        }},
     Rule{"playerSpeed",
         [](Rules &rules, std::string_view key, const Json &value) {
             rules.playerSpeed = number(key, value, Sign::POSITIVE);
@@ -291,6 +295,10 @@ bool inside(const Vec2f &point, const Vec2f &playfield) noexcept
 */
 void checkTogether(const Rules &rules)
 {
+    if (rules.playersToStart > rules.maxPlayers)
+        throw ConfigError(std::format(
+            "playersToStart: {} is above maxPlayers {}",
+            rules.playersToStart, rules.maxPlayers));
     if (rules.spawnIntervalMin > rules.spawnIntervalStart)
         throw ConfigError(std::format(
             "spawnIntervalMin: {} is above spawnIntervalStart {}",

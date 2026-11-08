@@ -19,6 +19,7 @@ namespace rtype::game {
 struct Rules {
     engine::core::Vec2f playfield{1280.0F, 720.0F};
     std::uint8_t maxPlayers = 4;
+    std::uint8_t playersToStart = 4;
     float playerSpeed       = 320.0F;
     std::array<engine::core::Vec2f, 4> playerSpawn{
         {{120, 144}, {120, 288}, {120, 432}, {120, 576}},

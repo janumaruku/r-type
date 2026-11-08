@@ -27,6 +27,7 @@
 #include "rtype/protocol/Decode.hpp"
 #include "rtype/protocol/Header.hpp"
 #include "rtype/protocol/Messages.hpp"
+#include "rtype/protocol/Snapshot.hpp"
 
 using client_tests::loopbackOf;
 using client_tests::waitForDatagrams;
@@ -200,6 +201,34 @@ protected:
         return texts;
     }
 
+    /*
+    ** Sends a one-chunk SNAPSHOT in `phase` where the first `joined` slots
+    ** wait for their ship and the others are EMPTY, then reads it.
+    */
+    void sendSnapshot(rtype::protocol::GamePhase phase, std::uint8_t joined)
+    {
+        rtype::protocol::Snapshot snapshot{.serverTick = ++_serverTick,
+            .phase = phase};
+
+        for (std::uint8_t id = 0; id < rtype::protocol::MAX_PLAYERS; ++id) {
+            rtype::protocol::PlayerInfo slot{.playerId = id};
+
+            if (id < joined) {
+                slot.state     = rtype::protocol::PlayerState::RESPAWNING;
+                slot.lives     = 3;
+                slot.maxHealth = 100;
+            }
+            snapshot.roster.push_back(slot);
+        }
+        send(MessageType::SNAPSHOT, snapshot);
+        updateFor(QUIET);
+    }
+
+    void startGame()
+    {
+        sendSnapshot(rtype::protocol::GamePhase::PLAYING, 1);
+    }
+
     template <class Message>
     void send(MessageType type, const Message &message)
     {
@@ -247,6 +276,7 @@ protected:
     net::UdpSocket _server{0};
     asio::ip::udp::endpoint _client;
     std::uint32_t _serverSequence = 0;
+    std::uint32_t _serverTick     = 0;
     std::unique_ptr<GameScene> _scene;
     engine::input::InputState _input;
     engine::input::ActionMap<Action> _actions;
@@ -385,8 +415,35 @@ static bool showsHelp(const std::vector<std::string> &texts)
     });
 }
 
+TEST_F(Game, BeforeAnySnapshotItWaitsForPlayers)
+{
+    update(0.0F);
+
+    const auto texts = drawnTexts();
+
+    EXPECT_TRUE(contains(texts, "Waiting for players"));
+    EXPECT_TRUE(contains(texts, "0 / 4 connected"));
+    EXPECT_FALSE(contains(texts, "team 0"));
+}
+
+TEST_F(Game, TheWaitingScreenCountsTheJoinedPlayers)
+{
+    sendSnapshot(rtype::protocol::GamePhase::WAITING, 2);
+
+    EXPECT_TRUE(contains(drawnTexts(), "2 / 4 connected"));
+}
+
+TEST_F(Game, TheWaitingScreenGoesAwayWhenTheGameStarts)
+{
+    sendSnapshot(rtype::protocol::GamePhase::WAITING, 3);
+    startGame();
+
+    EXPECT_FALSE(contains(drawnTexts(), "Waiting for players"));
+}
+
 TEST_F(Game, EachFrameDrawsTheHud)
 {
+    startGame();
     update(0.0F);
 
     const auto texts = drawnTexts();
@@ -398,6 +455,7 @@ TEST_F(Game, EachFrameDrawsTheHud)
 
 TEST_F(Game, F1TogglesTheHelpOnAndOff)
 {
+    startGame();
     press(Key::F1);
     update(0.0F);
     EXPECT_TRUE(showsHelp(drawnTexts()));
@@ -413,6 +471,7 @@ TEST_F(Game, F1TogglesTheHelpOnAndOff)
 
 TEST_F(Game, AnEventFromTheServerShowsItsBanner)
 {
+    startGame();
     send(MessageType::EVENT, rtype::protocol::Event{.eventId = 1,
         .type = EventType::PLAYER_JOINED, .a = 1});
     updateFor(QUIET);

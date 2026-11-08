@@ -42,6 +42,7 @@ std::vector<protocol::Snapshot> &SnapshotBuilder::build(const game::GameWorld
     protocol::Snapshot s{
         .serverTick         = world.tick(),
         .lastProcessedInput = 0,
+        .phase              = toProtocol(world.phase()),
         .roster =
             std::vector<protocol::PlayerInfo>(roster.begin(), roster.end()),
         .entities = convertEntities(_entities),

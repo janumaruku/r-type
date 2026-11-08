@@ -114,10 +114,12 @@ classDiagram
         +size() size_t
     }
     class GamePhase {
-        -Phase _phase = PLAYING
+        -Phase _phase = WAITING
         -float _untilReset = 0
         +phase() Phase
         +isOver() bool
+        +start() bool
+        +wait() bool
         +enterGameOver(float resetDelay) bool
         +update(float dt) bool
     }
@@ -165,7 +167,7 @@ classDiagram
 | `engine::core::Rng` | spawn positions, movement patterns, fire timers |
 | `NetIdAllocator` | builders (allocate), `netIdCleanupSystem` (release) |
 | `PlayerRoster` | input, health, respawn, game-over systems |
-| `GamePhase` | `gameOverSystem` (enters and leaves GAME_OVER), `apply(JoinPlayer)` (`join` or `joinWaiting`) |
+| `GamePhase` | `gameOverSystem` (starts the game, enters and leaves GAME_OVER, goes back to WAITING), `apply(JoinPlayer)` (`join` or `joinWaiting`, then `startWhenReady`), `spawnDirectorSystem` and `respawnSystem` (only in PLAYING) |
 | `SpawnDirectorState` | `spawnDirectorSystem`: elapsed time and the countdown to the next spawn, so systems hold no `static` state |
 | `EventOutbox` | every system that emits a `GameEvent` |
 | `engine::ecs::DeltaTime` | every system that moves or counts down; set by `step(dt)` |
@@ -174,13 +176,13 @@ classDiagram
 
     | Command | Effect |
     | --- | --- |
-    | `JoinPlayer{playerId, name}` | `roster.join(…, rules.playerLives)`, or `roster.joinWaiting` during a game over, then `PlayerJoined`. A slot that wasn't reserved is refused by the roster (with an error logged), and no event is emitted |
+    | `JoinPlayer{playerId, name}` | `roster.join(…, rules.playerLives)`, or `roster.joinWaiting` during a game over, then `PlayerJoined` and `startWhenReady`, which starts the game if this join makes `playersToStart`. A slot that wasn't reserved is refused by the roster (with an error logged), and no event is emitted |
     | `LeavePlayer{playerId, reason}` | Kills the ship and every missile whose `Projectile::ownerPlayerId` is that player, frees the slot, then `PlayerLeft`. Other players' ships and missiles are untouched. A free slot does nothing. The NetIds are released by `netIdCleanupSystem` on the next step |
     | `SetInput{playerId, inputSequence, buttons}` | Ignored unless `inputSequence` is newer than the slot's `lastInputSequence`. Otherwise copies `buttons` into the ship's `PlayerShip::buttons`, read by `playerInputSystem` on the next step. Without a ship (RESPAWNING or OUT) only the sequence is kept: the next INPUT, 16 ms later, carries the buttons again |
 
-- **Joining, step by step.** The server calls `reserveSlot()` when a client connects, then `apply(JoinPlayer)`: the slot goes EMPTY → RESPAWNING with a respawn timer of 0, and `PlayerJoined` is in the outbox at once. No ship exists yet. On the next `step`, `respawnSystem` (row 12) spawns the ship at `rules.playerSpawn[playerId]` and the slot becomes ALIVE, so the ship is in the next `collectReplicated`. `spawnDirectorSystem` (row 11) runs before it, so the first Bydos waits one more tick.
+- **Joining, step by step.** The server calls `reserveSlot()` when a client connects, then `apply(JoinPlayer)`: the slot goes EMPTY → RESPAWNING with a respawn timer of 0, and `PlayerJoined` is in the outbox at once. No ship exists yet. While fewer than `playersToStart` players have joined, the phase stays WAITING and nothing spawns (see [Game flow](#game-flow)). Once the game is PLAYING, on the next `step`, `respawnSystem` (row 12) spawns the ship at `rules.playerSpawn[playerId]` and the slot becomes ALIVE, so the ship is in the next `collectReplicated`. `spawnDirectorSystem` (row 11) runs before it, so the first Bydos waits one more tick.
 - **`step(dt)`** writes `dt` into `DeltaTime`, runs the `SIMULATION` stage, then increments `tick()`. Every kill and spawn of the tick is applied when it returns.
-- **`phase()`** returns `GamePhase::phase()`: PLAYING or GAME_OVER.
+- **`phase()`** returns `GamePhase::phase()`: WAITING, PLAYING or GAME_OVER. A new world is WAITING.
 - **Events** say *why* something happened, for sounds, effects and banners. They are values with no references into the registry, so the adapter can keep them after `step()` returns:
 
     | Event | Fields | Emitted by |
@@ -240,7 +242,7 @@ In the code, OUT is `SlotState::SLOT_OUT`, and the protocol's matching value is 
 
 - **A transition from the wrong state changes nothing.** It logs an error with the transition's name and the actual state, and returns `false`. The same goes for a free slot or an id ≥ 4. A bug in one system can't crash the server mid-tick, and a ship hit twice in one tick loses one life only.
 - **Queries:** `active` counts the reserved slots, EMPTY included. `allOut` is true when at least one slot has joined (any state but EMPTY) and every joined slot is OUT. `anyAlive` is true when a slot is ALIVE. `teamScore` sums the scores.
-- **`GamePhase`** has two states. `enterGameOver(delay)` goes from PLAYING to GAME_OVER and starts the countdown; it returns `false` and changes nothing when already GAME_OVER, so `GameOver` is emitted once. `update(dt)` counts down in GAME_OVER, and when the countdown reaches 0 it switches back to PLAYING and returns `true`, exactly once per game over. In PLAYING it does nothing and returns `false`.
+- **`GamePhase`** has three states and starts in WAITING. `start()` goes from WAITING to PLAYING, and `wait()` from PLAYING back to WAITING. `enterGameOver(delay)` goes from PLAYING to GAME_OVER and starts the countdown. Each returns `false` and changes nothing from any other state, so `GameOver` is emitted once. `update(dt)` counts down in GAME_OVER, and when the countdown reaches 0 it switches to WAITING and returns `true`, exactly once per game over. In the other states it does nothing and returns `false`.
 
 ## Systems and tick order
 
@@ -259,8 +261,8 @@ In the code, OUT is `SlotState::SLOT_OUT`, and the protocol's matching value is 
 | 9 | `healthSystem` | `Health`, `Replicated`, `LastHit`, `Transform`, `PlayerShip`, `ScoreValue`, rules | kill commands, roster, `EnemyKilled`, `PlayerKilled` | At 0 HP or below: records a kill. A ship loses a life (`onShipKilled`, slot to RESPAWNING or OUT) and emits `PlayerKilled`. An enemy credits its `ScoreValue` to `LastHit`'s player if that slot is still reserved, and emits `EnemyKilled`. A missile dies silently. |
 | 10 | `lifetimeSystem` | `Lifetime` | `Lifetime`, kill commands | `remaining −= dt`, and records a kill once `remaining ≤ 1e-4` (see [Lifetime](#lifetime)). |
 | 11 | `spawnDirectorSystem` | rules, roster, `GamePhase`, `SpawnDirectorState`, `Replicated`, `Rng` | `SpawnDirectorState`, new enemies | Only while a slot is ALIVE and the phase is PLAYING; otherwise its clock pauses. When `untilNextSpawn` runs out, spawns a Bydos at x = `enemySpawnX` and a random y in `enemySpawnY` unless `maxEnemies` exist, then restarts the countdown at the current interval, which shrinks over time (see [Game flow](#game-flow)). |
-| 12 | `respawnSystem` | roster | new ships, roster | For every slot whose `respawnTimer` reaches 0 (`advanceRespawns`), spawns its ship with `makePlayerShip` (its lane, invulnerable for 2 s) and marks it ALIVE. The only place a ship is spawned. |
-| 13 | `gameOverSystem` | rules, roster, `GamePhase`, `Replicated` | `GamePhase`, kill commands, roster, `SpawnDirectorState`, `GameOver`, `GameRestarted` | In PLAYING, when `allOut()`: enters GAME_OVER and emits `GameOver` once. In GAME_OVER, after `gameOverResetDelay` (5 s): kills every replicated entity, gives every joined slot 3 lives and a score of 0, resets the spawn director and emits `GameRestarted`. |
+| 12 | `respawnSystem` | roster, `GamePhase` | new ships, roster | Only in PLAYING. For every slot whose `respawnTimer` reaches 0 (`advanceRespawns`), spawns its ship with `makePlayerShip` (its lane, invulnerable for 2 s) and marks it ALIVE. The only place a ship is spawned. |
+| 13 | `gameOverSystem` | rules, roster, `GamePhase`, `Replicated` | `GamePhase`, kill commands, roster, `SpawnDirectorState`, `GameOver`, `GameRestarted` | In WAITING: `startWhenReady`. In PLAYING: back to WAITING when nobody is left, or, when `allOut()`, enters GAME_OVER and emits `GameOver` once. In GAME_OVER, after `gameOverResetDelay` (5 s): kills every replicated entity, gives every joined slot 3 lives and a score of 0, resets the spawn director, emits `GameRestarted` and goes to WAITING, which starts again at once if enough players are there. |
 | 14 | `netIdCleanupSystem` | `NetIdAllocator` | `NetIdAllocator` | Releases the NetIds of entities killed during this tick (`releaseDead`). It runs last, so every earlier system's kill commands have been applied. |
 
 A system declares the storages it iterates in its signature, and reads the others through `getComponent` (for example `healthSystem` reads `LastHit`, `ScoreValue`, `PlayerShip` and `Transform`). The Reads and Writes columns list both.
@@ -316,6 +318,9 @@ An enemy's behaviour is its set of behaviour components, each with its own syste
 
 The 4 last systems decide when things happen. They keep no state of their own: everything lives in the `SpawnDirectorState`, `PlayerRoster` and `GamePhase` resources.
 
+- **Waiting for players.** A new world is WAITING. `startWhenReady` switches it to PLAYING (and resets the spawn director) as soon as `roster.joined()`, the slots that aren't EMPTY, reaches `rules.playersToStart` (4 by default). It runs after each `JoinPlayer` and on every tick in WAITING. While WAITING, `respawnSystem` and `spawnDirectorSystem` do nothing, so the joined players are RESPAWNING without a ship and no Bydos appears.
+    - **A player leaving mid-game** doesn't stop it: the game only checks the count to start. When the last player leaves, `gameOverSystem` goes back to WAITING and clears the world, so the next players start a fresh game.
+    - **After a game over**, the restart goes to WAITING, so the game starts again only when `playersToStart` players are still joined. Players who stay are RESPAWNING until then.
 - **Spawn director.**
     - It runs only while a slot is ALIVE and the phase is PLAYING. Otherwise it returns before touching its state, so `elapsed` and `untilNextSpawn` **pause, they don't reset**: the difficulty picks up where it was when a player comes back.
     - `untilNextSpawn` starts at 0, so the first Bydos appears on the first tick with a ship alive.
@@ -333,11 +338,12 @@ The 4 last systems decide when things happen. They keep no state of their own: e
     - It isn't inside a view loop when it spawns, so it calls `makeBydosSlave(registry, registry.spawnEntity(), …)` directly.
 - **Respawn.** `respawnSystem` is the only place a ship is spawned. A first join (`join` leaves the timer at 0), a respawn after a death (`respawnDelay`, 2 s) and a restart all go through `advanceRespawns`, then `makePlayerShip` and `onShipSpawned` with the new NetId. The ship appears at its lane, invulnerable for `respawnInvulnerability` (2 s).
 - **Game over.** When every joined slot is OUT, `gameOverSystem` calls `enterGameOver(gameOverResetDelay)` and emits `GameOver{teamScore}`. `enterGameOver` returns `false` once the game is already over, so the event is emitted once. An empty server (nobody joined) is never `allOut`, so it never ends a game.
-- **Restart.** When the 5 s countdown ends (`GamePhase::update` returns `true`, the phase is PLAYING again), in this order:
+- **Restart.** When the 5 s countdown ends (`GamePhase::update` returns `true`, the phase is WAITING), in this order:
     1. every replicated entity is killed through the command buffer (Bydos and missiles; the ships are already dead);
     2. `onGameRestarted(playerLives)`: **everyone joined comes back with 3 lives and a score of 0**, OUT slots included, all RESPAWNING with a timer of 0;
     3. `SpawnDirectorState` is reset to `{}`, so the enemy interval starts again at 1.6 s;
-    4. `GameRestarted` is emitted.
+    4. `GameRestarted` is emitted;
+    5. `startWhenReady`: PLAYING again if `playersToStart` players are joined, WAITING otherwise.
 
     `respawnSystem` runs before `gameOverSystem` in the tick, so the ships come back on the next tick.
 - **Joining during a game over.** `apply(JoinPlayer)` calls `joinWaiting` instead of `join` while the phase is GAME_OVER: the player is OUT with 0 lives until the restart, then comes back with everyone else. They don't play the end of a lost game, and they don't stop `allOut` from being true.
@@ -385,6 +391,7 @@ Every gameplay number lives in `struct Rules` with these defaults. Nothing in a 
 | --- | --- | --- |
 | `playfield` | 1280 × 720 | Logical units, fixed: not in `rules.json`. Every client draws this same playfield, letterboxed to its window, so no player sees more of the world than another. |
 | `maxPlayers` | 4 |  |
+| `playersToStart` | 4 | The game waits for this many players before it starts, and again after each game over. At most `maxPlayers` |
 | `playerSpeed` | 320 u/s |  |
 | `playerSpawn[0..3]` | (120, 144), (120, 288), (120, 432), (120, 576) | One lane per player |
 | `playerLives` | 3 | At most 99, the most a SNAPSHOT carries |
@@ -431,6 +438,7 @@ Each default is checked by `RulesTests.cpp`, so changing a number is a deliberat
   | Rules | Accepted values |
   | --- | --- |
   | `maxPlayers` | 1–4: the roster, `playerSpawn` and the protocol have 4 slots |
+  | `playersToStart` | 1–4 |
   | `playerLives` | 1–99 |
   | `playerHealth`, `enemyMissileDamage`, `enemyCollisionDamage` | 1–255: the health travels as a u8 in each SNAPSHOT |
   | `maxEnemies` | 0–255 |
@@ -443,9 +451,9 @@ Each default is checked by `RulesTests.cpp`, so changing a number is a deliberat
   | `playerSpawn` | ≥ 0 and inside the playfield |
   | `enemySpawnX`, the muzzle offsets | any finite number |
 
-- **Rules that must agree,** checked once every key is read: `spawnIntervalMin` ≤ `spawnIntervalStart`, every `playerSpawn` point inside the playfield, and `enemySpawnY.max` ≤ the playfield height.
+- **Rules that must agree,** checked once every key is read: `playersToStart` ≤ `maxPlayers`, `spawnIntervalMin` ≤ `spawnIntervalStart`, every `playerSpawn` point inside the playfield, and `enemySpawnY.max` ≤ the playfield height.
 - **Errors.** Anything else throws `engine::core::ConfigError` naming the key: an unknown key (`playerSped: unknown rule`), a wrong type, an out-of-range value, a number too large for a float, or a top level that isn't an object. `load` adds the path in front, and also throws when the file can't be opened or isn't valid JSON.
-- **The client** never reads this file. It gets `playerSpeed` and `playerHalfSize` from WELCOME: with the fixed playfield, they are the only rules its prediction uses.
+- **The client** never reads this file. It gets `playerSpeed` and `playerHalfSize` from WELCOME: with the fixed playfield, they are the only rules its prediction uses. WELCOME also carries `playersToStart`, for the waiting screen.
 
 `maxPlayers` is read and sent in WELCOME, but the roster still has 4 slots whatever its value.
 
@@ -483,7 +491,7 @@ ScriptedResult runScript(std::uint32_t seed, const std::vector<ScriptedStep> &sc
     std::uint32_t ticks, bool recordReplicated = false);
 ```
 
-- It builds a `GameWorld{Rules{}, seed}`. Before each step, it applies the commands whose `tick` is the number of steps already played (tick 0 before the first step), in script order, so the script must be sorted by tick.
+- It builds a `GameWorld{soloRules(), seed}`: the default rules with `playersToStart` at 1, so the first join starts the game. Before each step, it applies the commands whose `tick` is the number of steps already played (tick 0 before the first step), in script order, so the script must be sorted by tick.
 - Each drained event is kept with the tick of the step that drained it. With `recordReplicated`, the replicated entities are kept after every step.
 - A `JoinPlayer` first calls `reserveSlot()`, as the server does when a client connects. The reserved id must be the command's `playerId`, so a script joins its players in slot order.
 

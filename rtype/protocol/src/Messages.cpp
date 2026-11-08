@@ -29,7 +29,8 @@ void deserialize(net::Packet &packet, Hello &message)
 void serialize(net::Packet &packet, const Welcome &message)
 {
     packet << message.playerId << message.tickRate << message.snapshotRate
-           << message.maxPlayers << message.serverTick << message.playerSpeed
+           << message.maxPlayers << message.playersToStart
+           << message.serverTick << message.playerSpeed
            << message.playerHalfWidth << message.playerHalfHeight;
 }
 
@@ -48,7 +49,8 @@ void checkMovementRule(float value, const char *what)
 void deserialize(net::Packet &packet, Welcome &message)
 {
     packet >> message.playerId >> message.tickRate >> message.snapshotRate >>
-        message.maxPlayers >> message.serverTick >> message.playerSpeed >>
+        message.maxPlayers >> message.playersToStart >> message.serverTick >>
+        message.playerSpeed >>
         message.playerHalfWidth >> message.playerHalfHeight;
 
     if (message.playerId >= MAX_PLAYERS)
@@ -57,6 +59,10 @@ void deserialize(net::Packet &packet, Welcome &message)
     if (message.maxPlayers == 0 || message.maxPlayers > MAX_PLAYERS)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
             "WELCOME: maxPlayers out of range");
+    if (message.playersToStart == 0 ||
+        message.playersToStart > message.maxPlayers)
+        throw ProtocolError(DecodeError::OUT_OF_RANGE,
+            "WELCOME: playersToStart out of range");
     if (message.tickRate == 0)
         throw ProtocolError(DecodeError::OUT_OF_RANGE,
             "WELCOME: tickRate out of range");

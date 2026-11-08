@@ -42,6 +42,12 @@ template <typename Enum>
     return static_cast<protocol::LeaveReason>(reason);
 }
 
+[[nodiscard]] constexpr protocol::GamePhase toProtocol(game::Phase phase)
+    noexcept
+{
+    return static_cast<protocol::GamePhase>(phase);
+}
+
 [[nodiscard]] constexpr protocol::PlayerState toProtocol(game::SlotState state)
     noexcept
 {
@@ -76,7 +82,8 @@ struct OutgoingEvent {
 [[nodiscard]] OutgoingEvent toProtocol(const game::GameEvent &event);
 
 /**
- * @brief The WELCOME for `playerId`: the world's tick, its maxPlayers, and
+ * @brief The WELCOME for `playerId`: the world's tick, its maxPlayers and
+ * playersToStart, and
  * the movement rules the client predicts its ship with (playerSpeed and
  * playerHalfSize). The playfield is fixed, so it isn't sent.
  */
@@ -116,6 +123,10 @@ static_assert(same(game::SlotState::RESPAWNING,
     protocol::PlayerState::RESPAWNING));
 static_assert(same(game::SlotState::SLOT_OUT,
     protocol::PlayerState::PLAYER_OUT));
+
+static_assert(same(game::Phase::PLAYING, protocol::GamePhase::PLAYING));
+static_assert(same(game::Phase::GAME_OVER, protocol::GamePhase::GAME_OVER));
+static_assert(same(game::Phase::WAITING, protocol::GamePhase::WAITING));
 
 static_assert(game::InputButtons::UP == protocol::buttons::UP);
 static_assert(game::InputButtons::DOWN == protocol::buttons::DOWN);
